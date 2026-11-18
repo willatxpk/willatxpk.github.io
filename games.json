@@ -1,0 +1,144 @@
+{
+    "siteTitle":  "Arcade Shelf",
+    "games":  [
+                  {
+                      "id":  "hearthlands",
+                      "title":  "Hearthlands",
+                      "tagline":  "Grow a village into a civilisation.",
+                      "description":  "Claim land, lay roads that actually matter, and lead your people from the first age to the last. Rival realms rise and fall around you, and every villager has a life of their own.",
+                      "tags":  [
+                                   "Strategy",
+                                   "Territory"
+                               ],
+                      "icon":  "🏰",
+                      "accent":  "#c98a3a",
+                      "source":  "../hearthlands",
+                      "play":  true,
+                      "download":  true,
+                      "excludeDirs":  [
+                                          "playtest"
+                                      ],
+                      "excludeFiles":  [
+                                           "serve.py"
+                                       ],
+                      "version":  1,
+                      "updated":  "2026-11-18",
+                      "hash":  "376393e1174cf863a0f73bec4c614f97ae8598c7900a04d417ac8afa50bb4e13",
+                      "size":  236215
+                  },
+                  {
+                      "id":  "ticker-tycoon",
+                      "title":  "Ticker Tycoon",
+                      "tagline":  "Trade your way from a small stake to a fortune.",
+                      "description":  "A stock-trading game. In the browser it runs on simulated news and prices. The download includes a small server that pulls live headlines and real quotes.",
+                      "tags":  [
+                                   "Simulation",
+                                   "Markets"
+                               ],
+                      "icon":  "📈",
+                      "accent":  "#3fae6a",
+                      "source":  "../stock-tycoon",
+                      "play":  true,
+                      "download":  true,
+                      "playExcludeFiles":  [
+                                               "server.py"
+                                           ],
+                      "excludeDirs":  [
+                                          "playtest"
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "downloadNote":  "Unzip it and double-click Start Ticker Tycoon.bat to get live news and prices (needs Python 3).",
+                      "version":  1,
+                      "updated":  "2026-11-18",
+                      "hash":  "2e9c899242261e31e6fc6405311062c47eaaa4e1eeeaf1e8826df0d359146798",
+                      "size":  69391
+                  },
+                  {
+                      "id":  "quiz-maze",
+                      "title":  "Quiz Maze",
+                      "tagline":  "Physics GRE practice disguised as a dungeon crawl.",
+                      "description":  "Every step onto new ground costs a question. Questions you miss come back more often, and you collect physicist cards as you go. Adventure mode adds a story dungeon with a boss at the exit.",
+                      "tags":  [
+                                   "Quiz",
+                                   "Physics GRE"
+                               ],
+                      "icon":  "🧭",
+                      "accent":  "#7a6cf0",
+                      "source":  "../quiz-maze",
+                      "play":  true,
+                      "download":  true,
+                      "excludeDirs":  [
+                                          "playtest"
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "downloadNote":  "To have a local AI model (Ollama) write the Adventure stories, unzip it and double-click Play Quiz Maze.bat (needs Python 3).",
+                      "version":  1,
+                      "updated":  "2026-11-18",
+                      "hash":  "535c71fa516f04d21bb27159c73d5a6e1a42c5aad0b97a7e7186b3f57f1aec18",
+                      "size":  150433
+                  },
+                  {
+                      "id":  "rydberg-lattice",
+                      "title":  "Rydberg Lattice",
+                      "tagline":  "Learn neutral-atom quantum computing by doing it.",
+                      "description":  "A hands-on course with a lab: trap atoms, drive Rydberg gates, and catch errors with quantum error correction. Includes a field guide.",
+                      "tags":  [
+                                   "Course",
+                                   "Quantum"
+                               ],
+                      "icon":  "⚛️",
+                      "accent":  "#3aa7d6",
+                      "source":  "../rydberg-qec",
+                      "play":  true,
+                      "download":  true,
+                      "excludeDirs":  [
+
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "version":  1,
+                      "updated":  "2026-11-18",
+                      "hash":  "491cf218c479251d0146c97bd1000ee870ce32e2e8da43d4ec01500dd2e59a0f",
+                      "size":  101597
+                  },
+                  {
+                      "id":  "kerdos",
+                      "title":  "Kerdos",
+                      "tagline":  "A personal finance app that runs on your own computer.",
+                      "description":  "Connects to your bank accounts, sorts your spending, tracks net worth, warns you about bills, and builds an investing plan. Your data never leaves your PC. You can also open it on your phone and let a local AI model help sort transactions.",
+                      "tags":  [
+                                   "App",
+                                   "Windows"
+                               ],
+                      "icon":  "💰",
+                      "accent":  "#d4b040",
+                      "source":  "../finance-app",
+                      "play":  false,
+                      "download":  true,
+                      "guide":  "kerdos.html",
+                      "excludeDirs":  [
+                                          "data",
+                                          "__pycache__"
+                                      ],
+                      "excludeFiles":  [
+                                           "config.json",
+                                           "*.bak",
+                                           "*.log",
+                                           "*.db",
+                                           "*.vault",
+                                           "*.vault.prev",
+                                           "Open Kerdos.url"
+                                       ],
+                      "downloadNote":  "Needs Windows and Python 3.12. Read the setup guide first.",
+                      "version":  1,
+                      "updated":  "2026-11-18",
+                      "hash":  "0d5bf0aaef25331e9dd094abc17d38c78e0bd13444551a210538c34f568f0f16",
+                      "size":  376445
+                  }
+              ]
+}

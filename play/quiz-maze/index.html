@@ -1,0 +1,2308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz Maze</title>
+<style>
+  :root {
+    --bg: #070b16; --panel: #0c1224; --line: #1d2a4d; --text: #e6ecff; --dim: #8b97b8;
+    --accent: #5ad1ff; --good: #3ddc84; --bad: #ff5c7a; --gold: #ffcc4d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #app { display: flex; height: 100vh; }
+  #left { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  #right { width: min(480px, 44vw); display: flex; flex-direction: column; gap: 14px; padding: 20px;
+    background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; }
+  canvas { display: block; border-radius: 6px; cursor: pointer; }
+  .shake { animation: shake .25s; }
+  @keyframes shake { 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+
+  header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+  header h1 { margin: 0; font-size: 20px; letter-spacing: .5px; }
+  #level { color: var(--dim); font-size: 14px; }
+  #stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px; }
+  .stat { background: #0a1020; border: 1px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; }
+  .stat span { display: block; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .6px; }
+  .stat b { font-size: 18px; }
+
+  #card { background: #0a1020; border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  #prompt { font-weight: 600; color: var(--accent); }
+  #deck-tag { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .6px; }
+  #deck-tag:empty { display: none; }
+  #question { font-size: 17px; line-height: 1.45; }
+  #question:empty { display: none; }
+  #options { display: flex; flex-direction: column; gap: 8px; }
+  .opt { display: flex; gap: 10px; align-items: center; text-align: left; padding: 10px 12px; font-size: 15px;
+    color: var(--text); background: #111a33; border: 1px solid #24345f; border-radius: 8px; cursor: pointer; font-family: inherit; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: #15224a; }
+  .opt:disabled { cursor: default; }
+  .opt .num { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    background: #1d2a4d; font-size: 12px; font-weight: 700; }
+  .opt.correct { border-color: var(--good); background: #0f2e22; }
+  .opt.wrong { border-color: var(--bad); background: #35121c; }
+  .opt.removed { opacity: .25; text-decoration: line-through; }
+  #lifeline-row { display: flex; justify-content: flex-end; gap: 8px; }
+  #lifeline-row button:disabled { opacity: .5; }
+  #found-card { font-size: 14px; line-height: 1.5; padding: 10px 12px; border-radius: 8px; background: #2a2210; border-left: 3px solid var(--gold); }
+  #found-card:empty { display: none; }
+  #found-card b { display: block; color: var(--gold); }
+  .codex-card { font-size: 13px; line-height: 1.45; padding: 8px 0; border-top: 1px solid var(--line); }
+  .codex-card b { display: block; color: var(--gold); }
+  .codex-card.locked { color: var(--dim); }
+  .codex-card.locked b { color: var(--dim); }
+  #codex-wrap summary { cursor: pointer; color: var(--text); margin-top: 6px; }
+  #feedback { font-size: 14px; line-height: 1.5; padding: 10px 12px; border-radius: 8px; }
+  #feedback:empty { display: none; }
+  #feedback.good { background: #0f2e22; border-left: 3px solid var(--good); }
+  #feedback.bad { background: #35121c; border-left: 3px solid var(--bad); }
+  #feedback.info { background: #111a33; border-left: 3px solid var(--dim); }
+  #feedback .expl { color: var(--dim); display: block; margin-top: 6px; }
+  footer { margin-top: auto; color: var(--dim); font-size: 12px; line-height: 1.6; }
+  kbd { background: #1d2a4d; border-radius: 4px; padding: 1px 5px; font-size: 11px; font-family: inherit; }
+
+  button.btn { padding: 8px 14px; font-size: 14px; border-radius: 8px; border: 1px solid #2c3f73;
+    background: #15224a; color: var(--text); cursor: pointer; font-family: inherit; }
+  button.btn:hover:not(:disabled) { border-color: var(--accent); }
+  button.btn.primary { background: var(--accent); color: #04121c; border-color: var(--accent); font-weight: 700; }
+  button.btn:disabled { cursor: default; }
+
+  #rank { display: flex; flex-direction: column; gap: 6px; }
+  #rank-line { display: flex; justify-content: space-between; font-size: 13px; }
+  #rank-title { font-weight: 700; }
+  #rank-xp { color: var(--dim); }
+  #xp-bar { height: 8px; background: #0a1020; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  #xp-fill { height: 100%; width: 0; background: linear-gradient(90deg, #5ad1ff, #b38cff); transition: width .4s; }
+  #effects { display: flex; gap: 6px; flex-wrap: wrap; }
+  #effects:empty { display: none; }
+  #objectives { font-size: 13px; line-height: 1.6; background: #0a1020; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  #objectives:empty { display: none; }
+  #objectives .done { color: var(--good); }
+  .badge { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #15224a; border: 1px solid #2c3f73; }
+  #left { position: relative; }
+  #toasts { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column;
+    align-items: center; gap: 6px; pointer-events: none; z-index: 5; }
+  .toast { background: rgba(12, 18, 36, .95); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px;
+    font-size: 14px; white-space: nowrap; animation: toast 2s forwards; }
+  .toast.big { font-size: 18px; font-weight: 700; border-color: var(--gold); color: var(--gold); padding: 10px 20px; animation-duration: 3.2s; }
+  @keyframes toast { 0% { opacity: 0; transform: translateY(-8px); } 10% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+  #menu-rank { color: var(--text); margin-top: 10px; }
+
+  #overlay { position: fixed; inset: 0; background: rgba(3, 6, 14, .82); display: none; align-items: center; justify-content: center; z-index: 10; }
+  #overlay.show { display: flex; }
+  .modal { display: none; width: min(620px, 92vw); max-height: 90vh; overflow-y: auto; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 14px; padding: 24px 28px; }
+  .modal.show { display: block; }
+  .modal h1 { margin: 0 0 6px; }
+  .modal h3 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--dim); }
+  .modal p { color: var(--dim); line-height: 1.5; margin: 0; }
+  .modal label { display: flex; gap: 8px; align-items: center; padding: 4px 0; cursor: pointer; }
+  .modal label small { color: var(--dim); }
+  .deck-group { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 2px; font-weight: 600; }
+  .deck-group:first-child { margin-top: 0; }
+  .deck-group button { background: none; border: none; color: var(--accent, #5ad1ff); cursor: pointer; padding: 0; font: inherit; font-size: 12px; font-weight: 400; }
+  .modal select { background: #111a33; color: var(--text); border: 1px solid #24345f; border-radius: 6px; padding: 6px 8px; font-size: 14px; }
+  .modal .row { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .missed { border-top: 1px solid var(--line); padding: 10px 0; font-size: 14px; line-height: 1.5; }
+  .missed .yours { color: var(--bad); }
+  .missed .right { color: var(--good); }
+  .missed .expl { color: var(--dim); }
+  #deck-error { color: var(--bad); font-size: 13px; min-height: 1em; margin-top: 6px; }
+  [hidden] { display: none !important; }
+
+  /* Adventure mode */
+  #adv-options { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding-left: 26px; }
+  .modal input[type=text] { background: #111a33; color: var(--text); border: 1px solid #24345f; border-radius: 6px;
+    padding: 7px 9px; font-size: 14px; font-family: inherit; width: 100%; }
+  .inline-inputs { display: grid; grid-template-columns: 2fr 1fr; gap: 6px; }
+  .note { color: var(--dim); }
+  .modal h2 { margin: 0; font-size: 20px; }
+  .modal p.story, p.story { color: var(--text); font-style: italic; line-height: 1.6; white-space: pre-line; margin: 10px 0 0; }
+  .adv-head { display: flex; gap: 12px; align-items: center; }
+  .adv-head small { color: var(--dim); }
+  .adv-icon { font-size: 38px; line-height: 1; }
+  .choices { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .choice { text-align: left; }
+  .choice small { color: var(--dim); }
+  .adv-quiz { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .adv-quiz:empty, .adv-result:empty { display: none; }
+  .adv-opts { display: flex; flex-direction: column; gap: 8px; }
+  .adv-q { font-size: 16px; line-height: 1.45; }
+  .adv-expl { color: var(--dim); font-size: 13px; }
+  .deck-tag { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .6px; }
+  .adv-result { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: #111a33; line-height: 1.5; }
+  .reward { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #2a2210; border-left: 3px solid var(--gold); }
+  .hurt { margin-top: 8px; color: var(--bad); }
+  .dice { display: inline-grid; place-items: center; min-width: 44px; height: 44px; border-radius: 10px; background: #1d2a4d;
+    font-weight: 800; font-size: 20px; margin-right: 10px; vertical-align: middle; }
+  .roll-line { margin-top: 12px; display: flex; align-items: center; }
+  .bar { height: 10px; background: #0a1020; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-top: 4px; }
+  .bar > div { height: 100%; width: 100%; background: linear-gradient(90deg, #3ddc84, #a6f36b); transition: width .4s; }
+  .bar.boss > div { background: linear-gradient(90deg, #ff5c7a, #ff9f5a); }
+  .fight-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0 6px; }
+  .fight-row small, .hero-line { color: var(--dim); font-size: 13px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .log { margin-top: 12px; font-size: 13px; line-height: 1.6; color: var(--dim); max-height: 150px; overflow-y: auto; }
+  .log div:first-child { color: var(--text); }
+  #hero-panel { background: #0a1020; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .hero-top { display: flex; justify-content: space-between; gap: 8px; }
+  #hero-stats { color: var(--dim); }
+  #inventory { display: flex; flex-wrap: wrap; gap: 6px; }
+  #hero-progress { color: var(--dim); }
+  #hero-progress.ready { color: var(--good); }
+  .badge.used { opacity: .4; text-decoration: line-through; }
+  #journal-wrap { background: #0a1020; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  #journal-wrap summary { cursor: pointer; }
+  #journal { font-size: 13px; line-height: 1.55; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  #journal .entry { border-left: 2px solid var(--line); padding-left: 8px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left"><canvas id="maze"></canvas><div id="toasts"></div></div>
+  <div id="right">
+    <header><h1>Quiz Maze</h1><div><span id="hearts" title="Hearts"></span> <span id="level"></span></div></header>
+    <div id="rank">
+      <div id="rank-line"><span id="rank-title"></span><span id="rank-xp"></span></div>
+      <div id="xp-bar"><div id="xp-fill"></div></div>
+    </div>
+    <div id="stats">
+      <div class="stat"><span>Time</span><b id="st-time">0:00</b></div>
+      <div class="stat"><span>Correct</span><b id="st-acc">0/0</b></div>
+      <div class="stat"><span>Streak</span><b id="st-streak">0</b></div>
+      <div class="stat"><span>Coins</span><b id="st-coins">0/0</b></div>
+      <div class="stat"><span>50/50</span><b id="st-life">0</b></div>
+    </div>
+    <div id="effects"></div>
+    <div id="objectives" title="Bonus objectives (+30 XP each)"></div>
+    <div id="hero-panel" hidden>
+      <div class="hero-top"><b id="hero-name"></b><span id="hero-hp-text"></span></div>
+      <div class="bar"><div id="hero-hp-fill"></div></div>
+      <div id="hero-stats"></div>
+      <div id="hero-progress"></div>
+      <div id="inventory"></div>
+    </div>
+    <div id="card">
+      <div id="prompt">Choose a direction to move.</div>
+      <div id="deck-tag"></div>
+      <div id="question"></div>
+      <div id="options"></div>
+      <div id="lifeline-row">
+        <button class="btn" id="btn-travel" disabled title="Fast-travel to the next unexplored opening">Fast travel <kbd>F</kbd></button>
+        <button class="btn" id="btn-reroll" disabled>Reroll <kbd>R</kbd></button>
+        <button class="btn" id="btn-5050" disabled>Use 50/50 <kbd>H</kbd></button>
+        <button class="btn" id="btn-zap" disabled hidden title="Answer a question to zap the nearest enemy in a straight line">⚡ Zap <kbd>Z</kbd></button>
+      </div>
+      <div id="feedback"></div>
+      <div id="found-card"></div>
+    </div>
+    <details id="journal-wrap" open hidden><summary>📖 Journal</summary><div id="journal"></div></details>
+    <footer>
+      <kbd>←↑↓→</kbd> / <kbd>WASD</kbd> pick a direction (change it any time before answering) · <kbd>1</kbd>–<kbd>4</kbd> or click to answer ·
+      <kbd>H</kbd> 50/50 · <kbd>R</kbd> reroll a question for 5 coins · <kbd>F</kbd> or click a visited cell to fast-travel · <kbd>Z</kbd> zap · <kbd>Esc</kbd> menu<br>
+      Enemies move like chess pieces, one step for each move you make: 👁️ a hunter picks up your trail and closes in (you can see it
+      even through fog), and 👻 shades wander. A correct answer's dash carries you several cells for one of their steps, so it's how
+      you pull away; fast travel gives them a step every 3 cells.
+      Getting caught costs a ❤️, and the hunter then loses your trail for 10–12 moves. <kbd>Z</kbd> zaps the nearest enemy in a straight
+      line (marked ⚡ when one is in range): answer right to banish it for a while.<br>
+      A correct answer lets you dash down the corridor to the next junction. A wrong answer costs a ❤️
+      and knocks you back up to 3 cells. Walking through cells you've already visited is free, and <kbd>F</kbd> fast-travels to the nearest unexplored opening.
+      Stopping on a junction with full hearts saves a 🚩 checkpoint. Lose all 3 ❤️ and you decohere: back to that checkpoint,
+      and ground explored since then must be re-earned (you keep the map). Every 3-answer streak restores a ❤️, or at full
+      hearts earns a 50/50 token (max 3).<br>
+      Each maze has 3 🎯 bonus objectives worth +30 XP. Pick up coins for XP, and look in dead ends for power-ups: ❤️ heart, 🛡️ shield, ✂️ 50/50 token,
+      🔦 lantern, ⚡ double XP. Dead ends can also hide 📜 physicist cards for your Codex.<br>
+      Adventure mode: 🗿 🔒 🧩 👹 encounters guard items (answer a question or roll the dice; each failed attempt adds +2 to
+      later dice rolls there), and the 🐉 exit is the boss's lair, where the boss grows stronger every 3 rounds. Once you hold
+      the 🔮 bane, a glowing trail leads to the lair. Your hero trains as you play: XP you earn in adventure mode raises your
+      hero's level, and each level gives +1 Might, Guard and Wit and +2 max HP.
+    </footer>
+  </div>
+</div>
+
+<div id="overlay" class="show">
+  <div class="modal show" id="menu">
+    <h1>Quiz Maze</h1>
+    <p>Reach the gold exit. Every step onto new ground costs a question; explored ground is free to walk.
+      Questions you miss come back more often, and your progress is saved in this browser.</p>
+    <p id="menu-rank"></p>
+    <h3>Mode</h3>
+    <label><input type="radio" name="mode" value="classic" checked> Classic maze</label>
+    <label><input type="radio" name="mode" value="adventure"> Adventure <small>(a story dungeon: encounters guard items, and a boss waits at the exit)</small></label>
+    <div id="adv-options" hidden>
+      <input type="text" id="opt-theme" maxlength="80" placeholder="Your theme, e.g. a haunted particle accelerator">
+      <label><input type="checkbox" id="opt-ai" checked> Write the story with my local Ollama model</label>
+      <div class="inline-inputs">
+        <input type="text" id="opt-ollama" value="http://127.0.0.1:11434" aria-label="Ollama URL">
+        <input type="text" id="opt-model" value="qwen2.5:3b" aria-label="Model name">
+      </div>
+      <small class="note">If the model can't be reached, a built-in story is used instead.</small>
+      <small class="note" id="file-warning" hidden>⚠️ This page was opened as a file, so Ollama will refuse its requests. For AI stories,
+        run <code>py -3 -m http.server 8791</code> in the quiz-maze folder and open http://localhost:8791 instead.</small>
+    </div>
+    <h3>Question decks</h3>
+    <div id="deck-list"></div>
+    <div id="deck-error"></div>
+    <details id="codex-wrap"><summary>📜 Physicist card Codex (<span id="codex-count"></span>)</summary><div id="codex"></div></details>
+    <h3>Maze size</h3>
+    <select id="opt-size">
+      <option value="7">Tiny (7×7)</option>
+      <option value="9">Small (9×9)</option>
+      <option value="13" selected>Medium (13×13)</option>
+      <option value="17">Large (17×17)</option>
+      <option value="23">Huge (23×23)</option>
+    </select>
+    <h3>Options</h3>
+    <label><input type="checkbox" id="opt-fog" checked> Fog of war <small>(see only along open corridors)</small></label>
+    <label><input type="checkbox" id="opt-dash" checked> Corridor dash <small>(moves run to the next junction)</small></label>
+    <label><input type="checkbox" id="opt-loops" checked> Loops <small>(extra passages, so a knock-back is less brutal)</small></label>
+    <label><input type="checkbox" id="opt-enemies" checked> Enemies <small>(a hunter and wandering shades move when you do; Z zaps them)</small></label>
+    <div class="row">
+      <button class="btn primary" id="btn-start">Start <kbd>Enter</kbd></button>
+      <button class="btn" id="btn-resume" style="display:none">Resume <kbd>Esc</kbd></button>
+      <button class="btn" id="btn-reset" style="margin-left:auto">Reset all progress</button>
+    </div>
+  </div>
+  <div class="modal" id="win"></div>
+  <div class="modal" id="story"></div>
+  <div class="modal" id="encounter"></div>
+  <div class="modal" id="boss"></div>
+</div>
+
+<script src="questions.js?v=3"></script>
+<script>
+(() => {
+  const DECKS = window.QUESTION_DECKS;
+  const DIRS = [
+    { bit: 1, dx: 0, dy: -1, opp: 4, name: "north", arrow: "↑" },
+    { bit: 2, dx: 1, dy: 0, opp: 8, name: "east", arrow: "→" },
+    { bit: 4, dx: 0, dy: 1, opp: 1, name: "south", arrow: "↓" },
+    { bit: 8, dx: -1, dy: 0, opp: 2, name: "west", arrow: "←" },
+  ];
+  const KEYMAP = { ArrowUp: 0, w: 0, ArrowRight: 1, d: 1, ArrowDown: 2, s: 2, ArrowLeft: 3, a: 3 };
+  const STEP_MS = 55, MARGIN = 6;
+
+  const $ = id => document.getElementById(id);
+  const rand = n => Math.floor(Math.random() * n);
+  const pick = arr => arr[rand(arr.length)];
+  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = rand(i + 1); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  const popcount = n => (n & 1) + (n >> 1 & 1) + (n >> 2 & 1) + (n >> 3 & 1);
+  const fmtTime = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const key = (x, y) => x + "," + y;
+
+  const canvas = $("maze"), ctx = canvas.getContext("2d");
+  let cell = 20, dpr = 1;
+  let G = null;            // current game state
+  let settings = null;     // chosen on the menu
+
+  // ---------- Spaced repetition (Leitner boxes, saved in localStorage) ----------
+  // Each question lives in box 0..MAX_BOX. A wrong answer sends it to box 0, a correct one
+  // moves it up a box. Lower boxes are drawn more often. Keyed by question text.
+  const SRS_KEY = "quizMaze.srs.v1";
+  const BOX_WEIGHT = [20, 8, 3, 1, 0.3], UNSEEN_WEIGHT = 3, MAX_BOX = 4;
+  let srs = loadSrs();
+  let recent = [];         // recently asked question texts, kept out of the next few draws
+
+  function loadSrs() {
+    try { return JSON.parse(localStorage.getItem(SRS_KEY)) || {}; } catch { return {}; }
+  }
+  function saveSrs() {
+    try { localStorage.setItem(SRS_KEY, JSON.stringify(srs)); } catch {}
+  }
+  function recordAnswer(q, ok) {
+    const r = srs[q.q];
+    if (!r) srs[q.q] = { box: ok ? 2 : 0, seen: 1, wrong: ok ? 0 : 1 };
+    else {
+      r.seen++;
+      if (ok) r.box = Math.min(MAX_BOX, r.box + 1);
+      else { r.box = 0; r.wrong++; }
+    }
+    saveSrs();
+  }
+  const isReview = q => { const r = srs[q.q]; return !!r && r.wrong > 0 && r.box <= 1; };
+
+  // ---------- XP and rank (saved in localStorage) ----------
+  const PROFILE_KEY = "quizMaze.profile.v1";
+  // [first level with this title, title, player orb color]
+  const TITLES = [
+    [1, "Freshman", "#5ad1ff"], [2, "Sophomore", "#5ad1ff"], [3, "Junior", "#3ddc84"], [4, "Senior", "#3ddc84"],
+    [5, "Grad Student", "#b38cff"], [7, "PhD Candidate", "#b38cff"], [9, "Postdoc", "#ff9f5a"],
+    [12, "Assistant Professor", "#ff9f5a"], [15, "Tenured Professor", "#ff5c7a"], [19, "Nobel Laureate", "#fff3b0"],
+  ];
+  const xpToNext = lvl => 100 * lvl;
+  let profile = loadProfile();
+
+  function loadProfile() {
+    try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || { xp: 0 }; } catch { return { xp: 0 }; }
+  }
+  function saveProfile() {
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch {}
+  }
+  function rankInfo(xp) {
+    let lvl = 1, rest = xp;
+    while (rest >= xpToNext(lvl)) { rest -= xpToNext(lvl); lvl++; }
+    const [, title, color] = TITLES.filter(t => t[0] <= lvl).pop();
+    return { lvl, rest, need: xpToNext(lvl), title, color };
+  }
+  function gainXp(n) {
+    const before = rankInfo(profile.xp);
+    profile.xp += n;
+    if (G) G.xpGained += n;
+    if (settings && settings.adventure && hero) heroXp(n);
+    saveProfile();
+    const after = rankInfo(profile.xp);
+    if (after.lvl > before.lvl) {
+      toast(after.title !== before.title
+        ? `⭐ Level ${after.lvl}! New title: ${after.title}` + (after.color !== before.color ? " (new orb color)" : "")
+        : `⭐ Level up! You're now level ${after.lvl}`, true);
+    }
+    renderRank();
+  }
+  function renderRank() {
+    const r = rankInfo(profile.xp);
+    $("rank-title").textContent = `Lv ${r.lvl} · ${r.title}`;
+    $("rank-title").style.color = r.color;
+    $("rank-xp").textContent = `${r.rest} / ${r.need} XP`;
+    $("xp-fill").style.width = (100 * r.rest / r.need) + "%";
+    $("menu-rank").textContent = `Your rank: level ${r.lvl}, ${r.title} (${profile.xp} XP total)`;
+    renderCodex();
+  }
+
+  // ---------- Pickups ----------
+  // Coins are scattered like Pac-Man pellets. Power-ups sit mostly in dead ends,
+  // so exploring one isn't a total waste.
+  const POWERUPS = {
+    shield: { icon: "🛡️", name: "Shield", desc: "your next wrong answer or enemy catch costs nothing" },
+    heart: { icon: "❤️", name: "Heart", desc: "+1 heart (max 3)" },
+    token: { icon: "✂️", name: "50/50 token", desc: "removes two wrong answers" },
+    lantern: { icon: "🔦", name: "Lantern", desc: "lights up the area around you" },
+    double: { icon: "⚡", name: "Double XP", desc: "×2 XP on your next 5 correct answers" },
+  };
+  const MAX_HEARTS = 3, REROLL_COST = 5;
+  const COIN_CHANCE = 0.3, COIN_XP = 2, ALL_COINS_XP = 25, MAX_TOKENS = 5, KNOCKBACK = 3, CARD_XP = 15;
+
+  // Physicist cards: one or two hidden in dead ends per maze, collected into a Codex that persists.
+  const CARDS = [
+    { id: "noether", name: "Emmy Noether", fact: "Proved in 1918 that every continuous symmetry of a physical system comes with a conserved quantity. Time symmetry gives energy conservation." },
+    { id: "feynman", name: "Richard Feynman", fact: "At Los Alamos he amused himself by cracking colleagues' safes and filing cabinets, partly to show how poor the security was." },
+    { id: "dirac", name: "Paul Dirac", fact: "His 1928 relativistic electron equation predicted antimatter. Carl Anderson found the positron in 1932." },
+    { id: "curie", name: "Marie Curie", fact: "The only person to win Nobel Prizes in two different sciences: Physics (1903) and Chemistry (1911)." },
+    { id: "bell", name: "John Stewart Bell", fact: "Worked mainly on accelerator and particle physics at CERN; his 1964 theorem on hidden variables was close to a side project." },
+    { id: "shor", name: "Peter Shor", fact: "Found his polynomial-time quantum factoring algorithm in 1994 at Bell Labs, kicking off serious interest in quantum computers." },
+    { id: "meitner", name: "Lise Meitner", fact: "With her nephew Otto Frisch, she gave the first theoretical explanation of nuclear fission (1938–39). Element 109, meitnerium, is named for her." },
+    { id: "bose", name: "Satyendra Nath Bose", fact: "Mailed his derivation of Planck's law to Einstein in 1924. Einstein translated it into German and got it published. Bosons bear his name." },
+    { id: "wu", name: "Chien-Shiung Wu", fact: "Her 1956–57 cobalt-60 experiment showed the weak interaction violates parity, overturning a symmetry physicists assumed was exact." },
+    { id: "fermi", name: "Enrico Fermi", fact: "Estimated the Trinity test's yield on the spot by dropping scraps of paper and watching how far the blast wave pushed them." },
+    { id: "bb84", name: "Bennett & Brassard", fact: "Charles Bennett and Gilles Brassard proposed BB84 in 1984, the first quantum key distribution protocol." },
+    { id: "boltzmann", name: "Ludwig Boltzmann", fact: "The formula S = k log W is engraved above his bust on his tombstone in Vienna's Zentralfriedhof." },
+  ];
+
+  function placeItems(open, w, h, ex, ey) {
+    const items = new Map();
+    const free = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if ((x || y) && !(x === ex && y === ey)) free.push([x, y]);
+    }
+    const spots = shuffle(free.filter(([x, y]) => popcount(open[y][x]) === 1))
+      .concat(shuffle(free.filter(([x, y]) => popcount(open[y][x]) !== 1)));
+    // Cards you haven't found yet go in the first dead ends, then power-ups.
+    const owned = new Set(profile.cards || []);
+    const newCards = shuffle(CARDS.filter(c => !owned.has(c.id))).slice(0, w * h >= 150 ? 2 : 1);
+    newCards.forEach(c => spots.length && items.set(key(...spots.shift()), "card:" + c.id));
+    // In adventure mode the chapter's encounters take the next dead ends, and there are fewer power-ups.
+    if (settings.adventure) chapter.encounters.forEach((e, i) => spots.length && items.set(key(...spots.shift()), "enc:" + i));
+    const types = shuffle(Object.keys(POWERUPS).filter(t => t !== "lantern" || settings.fog));
+    const nPower = settings.adventure ? Math.max(1, Math.round(w * h / 80)) : Math.max(2, Math.round(w * h / 40));
+    for (let i = 0; i < nPower && i < spots.length; i++) items.set(key(...spots[i]), types[i % types.length]);
+    for (const [x, y] of free) {
+      if (!items.has(key(x, y)) && Math.random() < COIN_CHANCE) items.set(key(x, y), "coin");
+    }
+    return items;
+  }
+
+  function collect(x, y) {
+    const k = key(x, y), it = G.items.get(k);
+    if (!it) return;
+    if (it.startsWith("enc:")) { G.encounterHere = +it.slice(4); return; }
+    G.items.delete(k);
+    if (it === "coin") {
+      G.coins++; G.wallet++;
+      gainXp(COIN_XP);
+      if (G.coins === G.coinsTotal) { toast(`🪙 All coins collected! +${ALL_COINS_XP} XP`); gainXp(ALL_COINS_XP); }
+    } else if (it.startsWith("card:")) {
+      const card = CARDS.find(c => c.id === it.slice(5));
+      profile.cards = [...new Set([...(profile.cards || []), card.id])];
+      gainXp(CARD_XP);
+      toast(`📜 New physicist card: ${card.name} (${profile.cards.length}/${CARDS.length}) +${CARD_XP} XP`, true);
+      showCard(card);
+      G.cardFound = true;
+    } else {
+      const p = POWERUPS[it];
+      G.powerups++;
+      if (it === "shield") G.shield = true;
+      if (it === "token") G.lifelines = Math.min(MAX_TOKENS, G.lifelines + 1);
+      if (it === "double") G.doubleLeft += 5;
+      if (it === "heart") G.hearts = Math.min(MAX_HEARTS, G.hearts + 1);
+      if (it === "lantern") lightArea(4);
+      toast(`${p.icon} ${p.name}: ${p.desc}`);
+    }
+    updateStats();
+  }
+
+  function showCard(card) {
+    const el = $("found-card");
+    el.innerHTML = `<b></b><span></span>`;
+    el.querySelector("b").textContent = `📜 ${card.name}`;
+    el.querySelector("span").textContent = card.fact;
+  }
+
+  function renderCodex() {
+    const owned = new Set(profile.cards || []);
+    $("codex-count").textContent = `${owned.size}/${CARDS.length}`;
+    const list = $("codex");
+    list.innerHTML = "";
+    for (const card of CARDS) {
+      const div = document.createElement("div");
+      div.className = "codex-card" + (owned.has(card.id) ? "" : " locked");
+      div.innerHTML = `<b></b><span></span>`;
+      div.querySelector("b").textContent = owned.has(card.id) ? card.name : "???";
+      div.querySelector("span").textContent = owned.has(card.id) ? card.fact : "Not found yet. Look in dead ends.";
+      list.appendChild(div);
+    }
+  }
+
+  function lightArea(r) {
+    for (let y = Math.max(0, G.py - r); y <= Math.min(G.h - 1, G.py + r); y++)
+      for (let x = Math.max(0, G.px - r); x <= Math.min(G.w - 1, G.px + r); x++) G.revealed.add(key(x, y));
+  }
+
+  function toast(msg, big) {
+    const t = document.createElement("div");
+    t.className = "toast" + (big ? " big" : "");
+    t.textContent = msg;
+    $("toasts").appendChild(t);
+    setTimeout(() => t.remove(), big ? 3200 : 2000);
+  }
+
+  // ---------- Maze generation ----------
+  // open[y][x] is a bitmask of open passages (N=1, E=2, S=4, W=8).
+  function generateMaze(w, h, braid) {
+    const open = Array.from({ length: h }, () => new Array(w).fill(0));
+    const seen = Array.from({ length: h }, () => new Array(w).fill(false));
+    const inside = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
+    const stack = [[0, 0]];
+    seen[0][0] = true;
+    while (stack.length) {
+      const [x, y] = stack[stack.length - 1];
+      const next = DIRS.filter(d => inside(x + d.dx, y + d.dy) && !seen[y + d.dy][x + d.dx]);
+      if (!next.length) { stack.pop(); continue; }
+      const d = pick(next), nx = x + d.dx, ny = y + d.dy;
+      open[y][x] |= d.bit; open[ny][nx] |= d.opp;
+      seen[ny][nx] = true;
+      stack.push([nx, ny]);
+    }
+    // Knock out walls at some dead ends to create loops.
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (popcount(open[y][x]) !== 1 || Math.random() >= braid) continue;
+      const closed = DIRS.filter(d => !(open[y][x] & d.bit) && inside(x + d.dx, y + d.dy));
+      if (!closed.length) continue;
+      const d = pick(closed);
+      open[y][x] |= d.bit; open[y + d.dy][x + d.dx] |= d.opp;
+    }
+    return open;
+  }
+
+  function distances(open, w, h, sx, sy) {
+    const dist = Array.from({ length: h }, () => new Array(w).fill(-1));
+    dist[sy][sx] = 0;
+    const q = [[sx, sy]];
+    for (let i = 0; i < q.length; i++) {
+      const [x, y] = q[i];
+      for (const d of DIRS) {
+        if (!(open[y][x] & d.bit)) continue;
+        const nx = x + d.dx, ny = y + d.dy;
+        if (dist[ny][nx] < 0) { dist[ny][nx] = dist[y][x] + 1; q.push([nx, ny]); }
+      }
+    }
+    return dist;
+  }
+
+  // Cells traversed when moving in direction d. With dash on, follow the corridor
+  // (including around corners) until reaching a junction, dead end, or the exit.
+  function walkPath(x, y, d) {
+    const path = [];
+    let cx = x + d.dx, cy = y + d.dy, from = d.opp;
+    path.push([cx, cy]);
+    if (!settings.dash) return path;
+    while (!(cx === G.ex && cy === G.ey) && path.length < G.w * G.h) {
+      const o = G.open[cy][cx];
+      if (popcount(o) !== 2) break;
+      const nd = DIRS.find(k => (o & k.bit) && k.bit !== from);
+      cx += nd.dx; cy += nd.dy; from = nd.opp;
+      path.push([cx, cy]);
+    }
+    return path;
+  }
+
+  // Line of sight: you can see down every open straight corridor from where you stand.
+  function reveal() {
+    G.revealed.add(key(G.px, G.py));
+    for (const d of DIRS) {
+      let x = G.px, y = G.py;
+      while (G.open[y][x] & d.bit) {
+        x += d.dx; y += d.dy;
+        G.revealed.add(key(x, y));
+      }
+    }
+  }
+
+  // ---------- Questions ----------
+  // Weighted draw: missed questions (low boxes) come up more often, mastered ones rarely.
+  function nextQuestion() {
+    const pool = settings.decks.flatMap(id => DECKS[id].questions.map(q => ({ ...q, deck: id })));
+    const avoid = new Set(recent.slice(-Math.min(15, Math.floor(pool.length / 2))));
+    const candidates = pool.filter(q => !avoid.has(q.q));
+    const weights = candidates.map(q => (srs[q.q] ? BOX_WEIGHT[srs[q.q].box] : UNSEEN_WEIGHT));
+    let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+    let i = 0;
+    while (i < candidates.length - 1 && (r -= weights[i]) > 0) i++;
+    const q = candidates[i];
+    recent.push(q.q);
+    if (recent.length > 50) recent.shift();
+    return q;
+  }
+
+  // ---------- Game flow ----------
+  function newGame(level) {
+    const size = settings.size + (level - 1) * 2;
+    const open = generateMaze(size, size, settings.loops ? 0.3 : 0);
+    const dist = distances(open, size, size, 0, 0);
+    let ex = 0, ey = 0, best = -1;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      if (dist[y][x] > best) { best = dist[y][x]; ex = x; ey = y; }
+    }
+    const items = placeItems(open, size, size, ex, ey);
+    const carry = G ? { lifelines: G.lifelines, shield: G.shield, doubleLeft: G.doubleLeft, wallet: G.wallet }
+                    : { lifelines: 0, shield: false, doubleLeft: 0, wallet: 0 };
+    G = {
+      w: size, h: size, open, px: 0, py: 0, ex, ey, level, optimal: best,
+      visited: new Set([key(0, 0)]), revealed: new Set(),
+      checkpoint: { x: 0, y: 0, visited: new Set([key(0, 0)]) },
+      pending: null, busy: false, won: false,
+      correct: 0, answered: 0, streak: 0, bestStreak: 0, ...carry, hearts: MAX_HEARTS, decoherences: 0, powerups: 0, cardFound: false,
+      objectives: shuffle(OBJECTIVES.filter(o => !o.possible || o.possible(items))).slice(0, 3).map(o => ({ ...o, done: false })),
+      steps: 0, elapsed: 0, missed: [], deckStats: {},
+      items, coins: 0, coinsTotal: [...items.values()].filter(t => t === "coin").length, xpGained: 0,
+    };
+    reveal();
+    spawnEnemies();
+    $("level").textContent = `${settings.adventure ? "Chapter" : "Level"} ${level} · ${size}×${size}`;
+    $("deck-tag").textContent = ""; $("question").textContent = ""; $("options").innerHTML = "";
+    $("found-card").innerHTML = "";
+    setFeedback("info", "Find the gold exit. Pick a direction to get your first question.");
+    idlePrompt();
+    update5050();
+    updateStats();
+    hideOverlay();
+    resize();
+  }
+
+  function requestMove(d) {
+    if (!G || G.busy || G.won) return;
+    if (G.pending) { retarget(d); return; }
+    if (!(G.open[G.py][G.px] & d.bit)) { bump(); return; }
+    if (G.visited.has(key(G.px + d.dx, G.py + d.dy))) { freeMove(d); return; }
+    askQuestion(d);
+  }
+
+  // Walking back through cells you've already visited is free. Unlike the answer dash, a free walk
+  // only goes straight: it stops at the first corner, junction or dead end, and before new ground,
+  // so the key you press always matches where you end up (no looping back around a bend).
+  function freeMove(d) {
+    const path = [];
+    let x = G.px, y = G.py;
+    do {
+      x += d.dx; y += d.dy;
+      path.push([x, y]);
+    } while (settings.dash && popcount(G.open[y][x]) === 2 && (G.open[y][x] & d.bit)
+             && G.visited.has(key(x + d.dx, y + d.dy)));
+    $("prompt").textContent = `Walking ${d.arrow} ${d.name} through explored ground (free).`;
+    animate(path, () => {
+      if (arrived() || endTurn()) return;
+      draw();
+      idlePrompt();
+    });
+  }
+
+  // While a question is waiting, another arrow switches which unexplored direction it will take you;
+  // the question stays the same. Explored ground and walls can't be picked until it's answered,
+  // so you can't back out of a question by walking away and drawing a new one later.
+  function retarget(d) {
+    const P = G.pending;
+    if (P.answered || d === P.dir) return;
+    if (P.zap) { flash($("prompt")); return; }
+    if (!(G.open[G.py][G.px] & d.bit) || G.visited.has(key(G.px + d.dx, G.py + d.dy))) {
+      $("prompt").textContent = `Moving ${P.dir.arrow} ${P.dir.name}. Answer to advance, or press the arrow for another unexplored direction.`;
+      flash($("prompt"));
+      return;
+    }
+    P.dir = d;
+    $("prompt").textContent = `Moving ${d.arrow} ${d.name}. Answer correctly to advance.`;
+    draw();
+  }
+
+  // zap: the question fires a zap in direction d instead of moving you.
+  function askQuestion(d, zap = false) {
+    const q = nextQuestion();
+    showQuestion({ dir: d, q, order: shuffle(q.a.map((_, i) => i)), answered: false, removed: new Set(), review: isReview(q), zap });
+  }
+
+  // Show a pending question (new, or restored from a saved game with any 50/50 removals).
+  function showQuestion(P) {
+    const { dir: d, q, order } = P;
+    G.pending = P;
+    const target = P.zap && zapTarget(d);
+    $("prompt").textContent = P.zap ? `⚡ Zapping ${target ? enemyName(target.e) : "down the corridor"} ${d.arrow} ${d.name}. Answer correctly to fire.`
+      : `Moving ${d.arrow} ${d.name}. Answer correctly to advance.`;
+    $("deck-tag").textContent = DECKS[q.deck].name + (P.review ? " · Review: you missed this before" : "");
+    $("question").textContent = q.q;
+    const opts = $("options");
+    opts.innerHTML = "";
+    order.forEach((ai, i) => {
+      const b = document.createElement("button");
+      b.className = "opt" + (P.removed.has(i) ? " removed" : "");
+      b.disabled = P.removed.has(i);
+      b.innerHTML = `<span class="num">${i + 1}</span><span class="txt"></span>`;
+      b.querySelector(".txt").textContent = q.a[ai];
+      b.onclick = () => answer(i);
+      opts.appendChild(b);
+    });
+    setFeedback("", "");
+    $("found-card").innerHTML = "";
+    update5050();
+    draw();
+  }
+
+  function answer(i) {
+    const P = G && G.pending;
+    if (!P || P.answered || G.busy || i >= P.order.length || P.removed.has(i)) return;
+    P.answered = true;
+    const ok = P.order[i] === 0;
+    const btns = [...document.querySelectorAll(".opt")];
+    btns.forEach((b, j) => { b.disabled = true; if (P.order[j] === 0) b.classList.add("correct"); });
+    if (!ok) btns[i].classList.add("wrong");
+
+    scoreAnswer(P.q, ok, P.q.a[P.order[i]]);
+    if (P.zap) { finishZap(P, ok); return; }
+    let path = [], msg, decohere = false;
+    if (ok) {
+      path = walkPath(G.px, G.py, P.dir);
+      msg = `Correct! You advance ${P.dir.name}` + (path.length > 1 ? ` ${path.length} cells.` : ".") + streakBonus();
+      let xp = 10 + Math.min(5, G.streak - 1) + (P.review ? 5 : 0);
+      if (G.doubleLeft > 0) { xp *= 2; G.doubleLeft--; }
+      gainXp(xp);
+      msg += ` +${xp} XP.`;
+    } else {
+      const others = DIRS.filter(d => d !== P.dir && (G.open[G.py][G.px] & d.bit));
+      // With nowhere to fall back to (in practice only the entrance), a miss costs just the streak,
+      // so you can't lose hearts or decohere before you've made any progress.
+      if (!others.length) {
+        msg = "Wrong. There's nowhere to fall back to, so it only costs your streak. Try again.";
+      } else if (G.shield) {
+        G.shield = false;
+        msg = "Wrong, but your 🛡️ shield absorbs the hit. You stay put.";
+      } else if (--G.hearts <= 0) {
+        decohere = true;
+        msg = "Wrong, and that was your last ❤️. Decoherence! You're thrown back to your last 🚩 checkpoint, " +
+          "and ground explored since then must be re-earned. You keep your map.";
+      } else {
+        const d = pick(others);
+        path = walkPath(G.px, G.py, d).slice(0, KNOCKBACK);
+        msg = `Wrong, −1 ❤️. You stumble ${d.arrow} ${d.name}` + (path.length > 1 ? ` ${path.length} cells.` : " a cell.");
+      }
+    }
+    setFeedback(ok ? "good" : "bad", msg, P.q.e);
+    update5050();
+    updateStats();
+    animate(path, () => {
+      G.pending = null;
+      if (decohere) { decohereNow(); return; }
+      if (arrived() || endTurn()) return;
+      draw();
+      idlePrompt();
+    });
+  }
+
+  // Fast travel: shortest route through visited cells to a target, or to the nearest cell
+  // that still has an unexplored opening. Returns the cells to walk (excluding where you stand).
+  function travelPath(goal) {
+    const start = key(G.px, G.py), prev = new Map([[start, null]]), queue = [[G.px, G.py]];
+    for (let i = 0; i < queue.length; i++) {
+      const [x, y] = queue[i];
+      if (goal(x, y)) {
+        const path = [];
+        for (let k = key(x, y); k !== start; k = prev.get(k)) path.unshift(k.split(",").map(Number));
+        return path;
+      }
+      for (const d of DIRS) {
+        const nx = x + d.dx, ny = y + d.dy, nk = key(nx, ny);
+        if ((G.open[y][x] & d.bit) && G.visited.has(nk) && !prev.has(nk)) { prev.set(nk, key(x, y)); queue.push([nx, ny]); }
+      }
+    }
+    return null;
+  }
+  // Stopping on a junction with full hearts saves a checkpoint (the entrance is the first one).
+  // Decoherence rolls you back to it, keeping only the trail you had explored at that point.
+  function decohereNow() {
+    G.px = G.checkpoint.x; G.py = G.checkpoint.y;
+    G.visited = new Set(G.checkpoint.visited);
+    G.hearts = MAX_HEARTS;
+    G.decoherences++;
+    reveal();
+    updateStats();
+    bump();
+    draw();
+    idlePrompt();
+  }
+
+  // ---------- Enemies ----------
+  // A hunter picks up your trail just out of sight and closes in along the shortest path; shades wander
+  // at random. Like chess, they move one step for every move you make (fast travel counts as one move
+  // per 3 cells), so a correct answer's dash is how you pull away. The hunter is always visible, even
+  // through fog; shades only where you can see. Getting caught costs a ❤️ (a shield blocks it) and
+  // sends that enemy away for a while. Z zaps the nearest enemy in a straight line if you answer right.
+  const STALKER_DELAY = 2, HUNT_RANGE = [8, 12], ZAP_XP = 15;
+  const ENEMY_ICON = { stalker: "👁️", wanderer: "👻" };
+  const foes = () => (G && G.enemies) || [];
+  const enemyAt = (x, y) => foes().find(e => e.x === x && e.y === y);
+  const enemyName = e => e.kind === "wanderer" ? "a shade"
+    : settings.adventure && chapter ? `${chapter.boss.name}'s hound` : "the Watcher";
+  const capital = s => s[0].toUpperCase() + s.slice(1);
+
+  function spawnEnemies() {
+    G.enemies = [];
+    if (settings.enemies === false) return;  // on unless turned off (older saves have no setting)
+    G.enemies.push({ kind: "stalker", x: -1, y: -1, wait: STALKER_DELAY });
+    for (let i = 0; i < Math.max(1, Math.round(G.w * G.h / 70)); i++) {
+      const e = { kind: "wanderer", x: -1, y: -1, wait: 0 };
+      placeEnemy(e);
+      G.enemies.push(e);
+    }
+  }
+
+  // The hunter picks up your trail 8-12 steps away, preferring ground you haven't seen;
+  // shades reappear at least 6 steps from you.
+  function placeEnemy(e) {
+    const dist = distances(G.open, G.w, G.h, G.px, G.py);
+    const [lo, hi] = e.kind === "stalker" ? HUNT_RANGE : [6, Infinity];
+    const near = [], hidden = [];
+    let best = [0, 0];
+    for (let y = 0; y < G.h; y++) for (let x = 0; x < G.w; x++) {
+      if (dist[y][x] >= lo && dist[y][x] <= hi && !enemyAt(x, y)) {
+        near.push([x, y]);
+        if (!G.revealed.has(key(x, y))) hidden.push([x, y]);
+      }
+      if (dist[y][x] > dist[best[1]][best[0]]) best = [x, y];
+    }
+    [e.x, e.y] = hidden.length ? pick(hidden) : near.length ? pick(near) : best;
+    e.px = e.x; e.py = e.y; e.wait = 0;
+    if (e.kind === "stalker") toast(`${ENEMY_ICON.stalker} ${capital(enemyName(e))} has picked up your trail!`, true);
+  }
+
+  // caught: the hunter just caught you, so it stays away longer (10-12 moves) to give you room to recover.
+  function banish(e, caught = false) {
+    e.x = -1; e.y = -1;
+    e.wait = e.kind !== "stalker" ? 8 : caught ? 10 + rand(3) : 6;
+  }
+
+  function catchPlayer(e) {
+    if (G.shield) {
+      G.shield = false;
+      toast(`🛡️ Your shield stops ${enemyName(e)}!`);
+    } else {
+      G.hearts = Math.max(0, G.hearts - 1);
+      toast(`${ENEMY_ICON[e.kind]} ${capital(enemyName(e))} catches you! −1 ❤️`, true);
+      bump();
+    }
+    banish(e, true);
+    updateStats();
+  }
+
+  function moveEnemies() {
+    const dist = distances(G.open, G.w, G.h, G.px, G.py);
+    for (const e of foes()) {
+      if (e.x < 0) { if (--e.wait <= 0) placeEnemy(e); continue; }
+      const opts = DIRS.filter(d => G.open[e.y][e.x] & d.bit).map(d => [e.x + d.dx, e.y + d.dy]);
+      let next;
+      if (e.kind === "stalker") next = opts.find(([x, y]) => dist[y][x] === dist[e.y][e.x] - 1);
+      else {
+        const ahead = opts.filter(([x, y]) => x !== e.px || y !== e.py);  // shades don't double back unless stuck
+        next = pick(ahead.length ? ahead : opts);
+      }
+      if (!next) continue;
+      e.px = e.x; e.py = e.y;
+      [e.x, e.y] = next;
+      if (e.x === G.px && e.y === G.py) catchPlayer(e);
+    }
+  }
+
+  // Called when an action ends. Returns true if being caught used up your last heart.
+  function endTurn(ticks = 1) {
+    for (let t = 0; t < ticks && !G.won; t++) moveEnemies();
+    // An encounter is about to open here, so a decoherence waits until your next move.
+    if (G.hearts > 0 || (G.items.get(key(G.px, G.py)) || "").startsWith("enc:")) return false;
+    setFeedback("bad", "Caught with no ❤️ left. Decoherence! You're thrown back to your last 🚩 checkpoint, " +
+      "and ground explored since then must be re-earned. The hunter loses your trail for a while.");
+    decohereNow();
+    foes().filter(e => e.kind === "stalker" && e.x >= 0).forEach(e => banish(e));
+    draw();
+    return true;
+  }
+
+  // The nearest enemy in a straight, open line from you, optionally only in direction d.
+  function zapTarget(d) {
+    let best = null;
+    for (const dir of d ? [d] : DIRS) {
+      let x = G.px, y = G.py, n = 0;
+      while (G.open[y][x] & dir.bit) {
+        x += dir.dx; y += dir.dy; n++;
+        const e = enemyAt(x, y);
+        if (e) { if (!best || n < best.n) best = { d: dir, e, n }; break; }
+      }
+    }
+    return best;
+  }
+
+  function zapKey() {
+    if (!G || G.busy || G.won || G.pending || !foes().length) return;
+    const t = zapTarget();
+    if (!t) { bump(); setFeedback("info", "⚡ Nothing to zap: an enemy has to be in a straight, open line from you."); return; }
+    askQuestion(t.d, true);
+  }
+
+  function finishZap(P, ok) {
+    const t = zapTarget(P.dir);
+    let msg;
+    if (ok && t) {
+      let xp = ZAP_XP;
+      if (G.doubleLeft > 0) { xp *= 2; G.doubleLeft--; }
+      gainXp(xp);
+      G.bolt = [[G.px, G.py], [t.e.x, t.e.y]];
+      msg = `⚡ Direct hit! ${capital(enemyName(t.e))} is banished for a while.` + streakBonus() + ` +${xp} XP.`;
+      banish(t.e);
+    } else {
+      msg = ok ? "⚡ Your zap crackles down the corridor, but nothing is there any more." + streakBonus()
+        : "⚡ Your zap fizzles out.";
+    }
+    setFeedback(ok ? "good" : "bad", msg, P.q.e);
+    G.busy = true;
+    updateStats();
+    draw();
+    setTimeout(() => {
+      G.bolt = null; G.pending = null; G.busy = false;
+      if (endTurn()) return;
+      draw();
+      idlePrompt();
+    }, 350);
+  }
+
+  // Every 3-answer streak restores a heart, or at full hearts earns a 50/50 token.
+  function streakBonus() {
+    if (G.streak % 3 !== 0) return "";
+    if (G.hearts < MAX_HEARTS) { G.hearts++; return " Streak bonus: +1 ❤️."; }
+    if (G.lifelines < 3) { G.lifelines++; return " Streak bonus: +1 50/50 token."; }
+    return "";
+  }
+
+  // Reaching the exit: the boss's lair in adventure mode, otherwise the end of the level.
+  function arrived() {
+    if (G.px !== G.ex || G.py !== G.ey) return false;
+    if (settings.adventure) startBoss(); else win();
+    return true;
+  }
+
+  function saveCheckpoint() {
+    if (G.hearts < MAX_HEARTS || popcount(G.open[G.py][G.px]) < 3) return;
+    const moved = G.checkpoint.x !== G.px || G.checkpoint.y !== G.py;
+    G.checkpoint = { x: G.px, y: G.py, visited: new Set(G.visited) };
+    if (moved) toast("🚩 Checkpoint saved");
+  }
+
+  function idlePrompt() {
+    saveCheckpoint();
+    const fresh = DIRS.filter(d => (G.open[G.py][G.px] & d.bit) && !G.visited.has(key(G.px + d.dx, G.py + d.dy)));
+    $("prompt").textContent = "Choose your next direction. " + (fresh.length
+      ? "New ground (needs a question): " + fresh.map(d => `${d.arrow} ${d.name}`).join(", ") + "."
+      : fastTravelTarget() ? "No new ground here. Press F to fast-travel to the next unexplored opening."
+      : "No new ground here, and nowhere to fast-travel to.");
+    update5050();
+  }
+
+  const isFrontier = (x, y) => DIRS.some(d => (G.open[y][x] & d.bit) && !G.visited.has(key(x + d.dx, y + d.dy)));
+  // Where F would take you: the nearest other cell with an unexplored opening, through explored ground.
+  const fastTravelTarget = () => travelPath((x, y) => (x !== G.px || y !== G.py) && isFrontier(x, y));
+
+  function fastTravelKey() {
+    if (!G || G.busy || G.won || G.pending) return;
+    const path = fastTravelTarget();
+    if (path) { fastTravel(path, "to the next unexplored opening"); return; }
+    bump();
+    idlePrompt();
+    $("prompt").textContent += isFrontier(G.px, G.py)
+      ? " (F has nowhere else to go: this is the only unexplored opening.)"
+      : " (F has nowhere to go: no unexplored openings are reachable.)";
+  }
+
+  function fastTravel(path, label) {
+    if (!G || G.busy || G.won || G.pending) return;
+    if (!path) { bump(); return; }
+    if (!path.length) { idlePrompt(); return; }
+    $("prompt").textContent = `Fast-traveling ${label} (free)…`;
+    animate(path, () => {
+      if (arrived() || endTurn(Math.ceil(path.length / 3))) return;
+      draw();
+      idlePrompt();
+    }, 30);
+  }
+
+  function animate(path, done, stepMs = STEP_MS) {
+    G.busy = true;
+    let i = 0;
+    const step = () => {
+      if (i >= path.length) { G.busy = false; done(); return; }
+      const [x, y] = path[i++];
+      G.px = x; G.py = y; G.steps++;
+      G.visited.add(key(x, y));
+      reveal();
+      collect(x, y);
+      const foe = enemyAt(x, y);
+      if (foe) catchPlayer(foe);  // walking into an enemy; running out of hearts is handled when the move ends
+      draw();
+      // Stop early on an unresolved encounter or the exit, even partway along a path.
+      if (G.encounterHere != null || (x === G.ex && y === G.ey)) {
+        const enc = G.encounterHere;
+        G.encounterHere = null;
+        G.busy = false;
+        done();
+        if (enc != null) openEncounter(enc);
+        return;
+      }
+      setTimeout(step, stepMs);
+    };
+    step();
+  }
+
+  function use5050() {
+    const P = G && G.pending;
+    if (!P || P.answered || G.lifelines <= 0 || P.removed.size || P.order.length < 3) return;
+    const btns = [...document.querySelectorAll(".opt")];
+    const wrong = P.order.map((ai, i) => (ai !== 0 ? i : -1)).filter(i => i >= 0);
+    shuffle(wrong).slice(0, P.order.length - 2).forEach(i => {
+      P.removed.add(i); btns[i].disabled = true; btns[i].classList.add("removed");
+    });
+    G.lifelines--;
+    update5050();
+    updateStats();
+  }
+
+  function win() {
+    G.won = true;
+    checkObjectives();
+    const exitXp = 50 + 10 * G.level;
+    gainXp(exitXp);
+    const r = rankInfo(profile.xp);
+    const acc = G.answered ? Math.round(100 * G.correct / G.answered) : 100;
+    const deckLines = Object.entries(G.deckStats)
+      .map(([id, s]) => `<div class="stat"><span>${DECKS[id].name}</span><b>${s.c}/${s.n}</b></div>`).join("");
+    const m = $("win");
+    m.innerHTML = `
+      <h1>${settings.adventure ? `Chapter ${G.level} cleared! 🏆` : "Escaped! 🏁"}</h1>
+      ${settings.adventure ? '<p class="story" id="win-story"></p>' : ""}
+      <p>${settings.adventure ? "Chapter" : "Level"} ${G.level} cleared in ${fmtTime(G.elapsed)}. Exit bonus: +${exitXp} XP.</p>
+      <p style="color:${r.color}">Rank: level ${r.lvl}, ${r.title} · ${r.rest} / ${r.need} XP to next level</p>
+      <div class="summary">
+        <div class="stat"><span>Accuracy</span><b>${acc}%</b></div>
+        <div class="stat"><span>Questions</span><b>${G.answered}</b></div>
+        <div class="stat"><span>Best streak</span><b>${G.bestStreak}</b></div>
+        <div class="stat"><span>Decoherences</span><b>${G.decoherences}</b></div>
+        <div class="stat"><span>Objectives</span><b>${G.objectives.filter(o => o.done).length}/${G.objectives.length}</b></div>
+        <div class="stat"><span>Steps taken</span><b>${G.steps}</b></div>
+        <div class="stat"><span>Shortest path</span><b>${G.optimal}</b></div>
+        <div class="stat"><span>Coins</span><b>${G.coins}/${G.coinsTotal}</b></div>
+        <div class="stat"><span>XP earned</span><b>+${G.xpGained}</b></div>
+        ${deckLines}
+      </div>
+      <h3>Review missed questions (${G.missed.length})</h3>
+      <div id="missed-list"></div>
+      <div class="row">
+        <button class="btn primary" id="btn-next">Next ${settings.adventure ? "chapter" : "level"} <kbd>Enter</kbd></button>
+        <button class="btn" id="btn-replay">New maze, same size</button>
+        <button class="btn" id="btn-menu">Menu</button>
+      </div>`;
+    const list = m.querySelector("#missed-list");
+    if (!G.missed.length) list.innerHTML = `<p>None. Flawless run.</p>`;
+    for (const { q, chosen } of G.missed) {
+      const div = document.createElement("div");
+      div.className = "missed";
+      div.innerHTML = `<div class="qq"></div><div class="yours"></div><div class="right"></div><div class="expl"></div>`;
+      div.querySelector(".qq").textContent = q.q;
+      div.querySelector(".yours").textContent = "✗ " + chosen;
+      div.querySelector(".right").textContent = "✓ " + q.a[0];
+      div.querySelector(".expl").textContent = q.e || "";
+      list.appendChild(div);
+    }
+    if (settings.adventure) m.querySelector("#win-story").textContent = chapter.victoryPending ? "The dust settles…" : chapter.victory;
+    m.querySelector("#btn-next").onclick = () => nextLevel(G.level + 1);
+    m.querySelector("#btn-replay").onclick = () => nextLevel(G.level);
+    m.querySelector("#btn-menu").onclick = showMenu;
+    showOverlay("win");
+    saveRun();
+  }
+
+  // ---------- Adventure mode ----------
+  // Each maze is a story chapter written from the player's theme by a local LLM (Ollama), with a
+  // built-in fallback. Encounters sit in dead ends and each guards an item; the exit is the boss's
+  // lair, fought with dice, hero stats, items and questions. All story text is shown with
+  // textContent, never as HTML.
+  const ITEM_KINDS = {
+    weapon: { icon: "⚔️", label: "Weapon", effect: "+2 Might" },
+    armor: { icon: "🪖", label: "Armor", effect: "+2 Guard" },
+    charm: { icon: "🧿", label: "Charm", effect: "+2 Wit" },
+    potion: { icon: "🧪", label: "Potion", effect: "Heals 8 HP during a fight" },
+    bane: { icon: "🔮", label: "Bane", effect: "Strikes this chapter's boss for 3d6 + Wit and weakens its defense" },
+  };
+  const ITEM_STAT = { weapon: "might", armor: "guard", charm: "wit" };
+  const ENCOUNTER_KINDS = {
+    riddle: { icon: "🗿", label: "Riddle", wits: "Answer the riddle", dice: "Guess boldly", stat: "wit", dmg: 4 },
+    lock: { icon: "🔒", label: "Lock", wits: "Work out the mechanism", dice: "Force it open", stat: "might", dmg: 4 },
+    puzzle: { icon: "🧩", label: "Puzzle", wits: "Reason it through", dice: "Fiddle with it", stat: "wit", dmg: 4 },
+    enemy: { icon: "👹", label: "Enemy", wits: "Outwit it", dice: "Fight it", stat: "might", dmg: 6 },
+  };
+  const STAT_NAMES = { might: "Might", guard: "Guard", wit: "Wit" };
+  const OUTCOME_TEXT = {
+    riddle: ["The statue's eyes dim, satisfied, and a hidden niche slides open.", "The statue shrieks, and the air itself lashes at you."],
+    lock: ["With a heavy clunk, the lock gives way.", "The mechanism snaps shut on your fingers."],
+    puzzle: ["The pieces settle into place with a soft chime.", "The pieces scatter, and a spark leaps out at you."],
+    enemy: ["Your foe staggers back and flees into the dark, dropping something.", "It lands a vicious blow before you can react."],
+  };
+  const ENCOUNTERS_PER_CHAPTER = 5, ENCOUNTER_XP = 20, POTION_HEAL = 8;
+  const ENRAGE_EVERY = 3;   // the boss deals +1 damage for every 3 rounds the fight lasts
+  const STUDY_BONUS = 2;    // each failed attempt at an encounter adds this to the next dice roll there
+  const STORY_SETTINGS_KEY = "quizMaze.adventure.v1";
+  const STORY_SYSTEM = "You are the narrator of a light-hearted dungeon-crawler quiz game. " +
+    "Write vivid, short, family-friendly prose in the second person. Never mention quiz answers.";
+  let chapter = null;   // the current chapter's story
+  let hero = null;      // the player's hero; persists across chapters within a run
+  let advAnswer = null; // answer handler while a question is shown inside an adventure modal
+  let generating = false;
+
+  const roll = sides => 1 + rand(sides);
+  // name and quest are set by chapter 1's story; saga records each cleared chapter so later ones continue it.
+  const newHero = () => ({ hp: 20, maxHp: 20, might: 1, guard: 1, wit: 1, items: [], name: "", quest: "", saga: [], level: 1, xp: 0 });
+
+  // The hero trains as you play: all XP earned in adventure mode also counts toward hero levels.
+  // Each level needs HERO_XP more than the last and gives +1 Might, Guard and Wit, and +2 max HP.
+  const HERO_XP = 100, LEVEL_HP = 2;
+  const heroNeed = () => HERO_XP * (hero.level || 1);
+  function heroXp(n) {
+    hero.level ||= 1;
+    hero.xp = (hero.xp || 0) + n;
+    while (hero.xp >= heroNeed()) {
+      hero.xp -= heroNeed();
+      hero.level++;
+      hero.might++; hero.guard++; hero.wit++;
+      hero.maxHp += LEVEL_HP; hero.hp = Math.min(hero.maxHp, hero.hp + LEVEL_HP);
+      toast(`⬆️ Hero level ${hero.level}! Might, Guard and Wit +1, max HP +${LEVEL_HP}`, true);
+      journal("⬆️", `You reached hero level ${hero.level}.`);
+    }
+    renderHero();
+  }
+  const heroStat = s => hero[s] + 2 * hero.items.filter(i => ITEM_STAT[i.kind] === s).length;
+
+  // Ask the local model for text or JSON; returns null on any failure or timeout.
+  // Ollama only accepts browser requests from web origins, so a page opened as a file can never reach it.
+  const FILE_PAGE = location.origin === "null";
+  let storyError = "";  // why the last story request failed, shown with the built-in story
+
+  async function storyLLM(prompt, json, maxTokens, timeoutMs) {
+    if (!settings.storyAI) return null;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const res = await fetch(settings.ollama.replace(/\/+$/, "") + "/api/chat", {
+        method: "POST", signal: ctl.signal,
+        body: JSON.stringify({ model: settings.model, stream: false, format: json ? "json" : undefined,
+          messages: [{ role: "system", content: STORY_SYSTEM }, { role: "user", content: prompt }],
+          options: { temperature: 0.9, num_predict: maxTokens } }),
+      });
+      const data = await res.json();
+      if (data.error) { storyError = `Ollama said: ${data.error}`; return null; }
+      const text = (data.message || {}).content || "";
+      return json ? JSON.parse(text) : text.trim() || null;
+    } catch (e) {
+      storyError = FILE_PAGE ? "This page was opened as a file, and Ollama only answers web pages. Open the game at " +
+          "http://localhost instead (run `py -3 -m http.server 8791` in the quiz-maze folder, then visit http://localhost:8791), " +
+          "or set the OLLAMA_ORIGINS environment variable to * and restart Ollama."
+        : e.name === "AbortError" ? `The story model at ${settings.ollama} took longer than ${Math.round(timeoutMs / 1000)} seconds.`
+        : e instanceof SyntaxError ? "The story model's reply wasn't valid JSON."
+        : `Couldn't reach the story model at ${settings.ollama}. Is Ollama running?`;
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function fallbackChapter(theme, level, prevBoss) {
+    const bosses = ["The Entropy Warden", "The Decoherent King", "The Null Hypothesis", "The Paradox Engine", "The Unobserved"];
+    return {
+      title: `Chapter ${level}: ${prevBoss ? "Deeper into" : "Into"} ${theme}`,
+      hero: "a wandering scholar",
+      quest: `to reach the heart of ${theme} and break the guardians' hold on it, one by one`,
+      intro: (prevBoss ? `Fresh from your victory over ${prevBoss}, you press deeper into ${theme}. ` : `You step into ${theme}. `) +
+        "Somewhere ahead waits another guardian that feeds on ignorance, and every passage between here and there will test what you know.",
+      boss: { name: bosses[(level - 1) % bosses.length], description: `It has ruled over ${theme} for an age, and it does not like visitors.`,
+        weakness: "a well-reasoned argument" },
+      items: [
+        { kind: "weapon", name: "Blade of First Principles", description: "Cuts through any assumption." },
+        { kind: "armor", name: "Mantle of Error Bars", description: "Absorbs the worst of your mistakes." },
+        { kind: "charm", name: "Charm of Lucky Guesses", description: "It hums when you are close to the truth." },
+        { kind: "potion", name: "Flask of Strong Coffee", description: "Restores body and mind." },
+        { kind: "bane", name: "Sigil of the Final Proof", description: "Forged against the guardian's one flaw." },
+      ],
+      encounters: [
+        { kind: "riddle", name: "The Whispering Statue", description: "A stone face blocks a niche and will only speak in riddles." },
+        { kind: "lock", name: "The Sealed Archive", description: "An iron door with a lock of interlocking dials." },
+        { kind: "puzzle", name: "The Shifting Tiles", description: "Glowing floor tiles rearrange themselves as you watch." },
+        { kind: "enemy", name: "A Stray Paradox", description: "A flickering creature that contradicts itself as it attacks." },
+        { kind: "enemy", name: "The Gatekeeper Golem", description: "A lumbering golem that guards a cache of supplies." },
+      ],
+      victory: `The guardian falls silent, and the air of ${theme} grows still. The way forward is open.`,
+    };
+  }
+
+  // Fill gaps in the model's JSON from the fallback so a weak or partial answer still works.
+  function mergeChapter(raw, fb) {
+    const str = (v, d, max) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : d);
+    if (!raw || typeof raw !== "object") return { ...fb, source: "built-in" };
+    const boss = raw.boss && typeof raw.boss === "object" ? raw.boss : {};
+    const rawItems = Array.isArray(raw.items) ? raw.items : [];
+    const items = Object.keys(ITEM_KINDS).map(kind => {
+      const f = fb.items.find(i => i.kind === kind);
+      const it = rawItems.find(i => i && String(i.kind).toLowerCase() === kind);
+      return it ? { kind, name: str(it.name, f.name, 40), description: str(it.description, f.description, 160) } : f;
+    });
+    const encounters = (Array.isArray(raw.encounters) ? raw.encounters : [])
+      .filter(e => e && ENCOUNTER_KINDS[String(e.kind).toLowerCase()])
+      .map(e => ({ kind: String(e.kind).toLowerCase(), name: str(e.name, "A strange presence", 40), description: str(e.description, "", 200) }))
+      .slice(0, ENCOUNTERS_PER_CHAPTER);
+    while (encounters.length < ENCOUNTERS_PER_CHAPTER) encounters.push(fb.encounters[encounters.length]);
+    return {
+      source: "ai",
+      title: str(raw.title, fb.title, 80), quest: str(raw.quest, fb.quest, 200),
+      hero: str(raw.hero, fb.hero, 50).replace(/^(A|An|The) /, w => w.toLowerCase()),  // reads as "You are a …"
+      intro: str(raw.intro, fb.intro, 600),
+      boss: { name: str(boss.name, fb.boss.name, 40), description: str(boss.description, fb.boss.description, 240),
+        weakness: str(boss.weakness, fb.boss.weakness, 60) },
+      items, encounters, victory: str(raw.victory, fb.victory, 400),
+    };
+  }
+
+  // One continuing story: chapter 1 names the hero and sets a long quest; every later chapter gets the
+  // saga so far (recent chapters in full) and the hero's gear, and must pick up where the last one ended.
+  async function makeChapter(level) {
+    const theme = settings.theme || "a forgotten physics laboratory";
+    const saga = hero.saga, first = !saga.length;
+    const gear = hero.items.filter(i => i.kind !== "potion" && i.kind !== "bane").map(i => i.name).slice(-8);
+    const story = first ? "" :
+      `\nThis is a continuing story. The hero is ${hero.name}; keep the same hero.` +
+      (hero.quest ? ` Their overarching quest: ${hero.quest}.` : "") +
+      "\nThe story so far:\n" +
+      saga.map((s, i) => i >= saga.length - 3 ? `- ${s.title}: the hero defeated ${s.boss}. ${s.victory}` : `- ${s.title}: the hero defeated ${s.boss}.`).join("\n") +
+      (gear.length ? `\nThe hero now carries: ${gear.join(", ")}.` : "") +
+      "\nThis chapter must pick up right where the last one ended, move the quest forward and raise the stakes. The intro may mention the hero's gear.";
+    storyError = "";
+    const ask = () => storyLLM(
+      `Create chapter ${level} of a dungeon adventure. Theme: "${theme}".${story}\n` +
+      `Return JSON with exactly these keys: {"title": string, ` +
+      (first ? `"hero": "the player's role in 2-5 words", "quest": "one sentence: the long quest that will span many chapters", ` : "") +
+      `"intro": "2-3 sentences setting the scene", "boss": {"name": string, "description": "1-2 sentences", "weakness": "2-6 words"}, ` +
+      `"items": [5 objects {"name": string, "kind": "weapon"|"armor"|"charm"|"potion"|"bane", "description": "one sentence"}, ` +
+      `exactly one of each kind; the bane must exploit the boss's weakness], ` +
+      `"encounters": [${ENCOUNTERS_PER_CHAPTER} objects {"name": string, "kind": "riddle"|"lock"|"puzzle"|"enemy", "description": "one sentence"}, mix the kinds], ` +
+      `"victory": "2 sentences in the past tense for when the boss is defeated, ending on a hint of what comes next, with no questions"}. Everything must fit the theme.`, true, 900, 90000);
+    let raw = await ask();
+    if (!raw && /JSON/.test(storyError)) raw = await ask();  // small models sometimes garble the JSON; one retry usually fixes it
+    const ch = mergeChapter(raw, fallbackChapter(theme, level, first ? "" : saga[saga.length - 1].boss));
+    // The hero and quest are fixed by the first chapter.
+    if (hero.name) ch.hero = hero.name; else hero.name = ch.hero;
+    if (!hero.quest) hero.quest = ch.quest;
+    // Each encounter guards one item, in random order, so the bane could be anywhere.
+    const rewards = shuffle([...ch.items]);
+    ch.encounters = ch.encounters.map((e, i) => ({ ...e, reward: rewards[i] }));
+    return ch;
+  }
+
+  async function startChapter(level) {
+    if (generating) return;
+    generating = true;
+    const fresh = !hero;
+    if (fresh) hero = newHero();
+    hero.saga ||= [];  // heroes from saves made before the saga existed
+    showStory(`Chapter ${level}`, settings.storyAI
+      ? `Writing your story with ${settings.model}… This can take up to a minute on a local model.`
+      : "Preparing your story…", null);
+    try {
+      chapter = await makeChapter(level);
+    } finally {
+      generating = false;
+    }
+    hero.maxHp = 20 + 3 * (level - 1) + LEVEL_HP * ((hero.level || 1) - 1);
+    hero.hp = hero.maxHp;
+    newGame(level);
+    // The journal runs across the whole saga; it only starts over with a new hero.
+    if (fresh) $("journal").innerHTML = "";
+    journal("📖", `${chapter.title}. ${chapter.intro}`);
+    const last = hero.saga[hero.saga.length - 1];
+    showStory(chapter.title,
+      (last ? `Previously: you defeated ${last.boss}. ${last.victory}\n\n` : "") +
+      `You are ${chapter.hero}. ${chapter.intro}` + (hero.quest ? `\n\nYour quest: ${hero.quest}` : "") +
+      `\n\nAt the heart of this place waits ${chapter.boss.name}. ` +
+      `${chapter.boss.description} Its weakness: ${chapter.boss.weakness}.\n\n` +
+      `${ENCOUNTERS_PER_CHAPTER} encounters (🗿 🔒 🧩 👹) hide in the maze, each guarding an item. Gather what you can before you face the boss at the 🐉 lair.` +
+      (chapter.source === "built-in" && settings.storyAI ? `\n\n(This is the built-in story. ${storyError || `Couldn't reach the story model at ${settings.ollama}.`})` : ""),
+      () => { hideOverlay(); });
+  }
+
+  // A modal with a title, some story text and an optional button.
+  function showStory(title, text, onContinue) {
+    const m = $("story");
+    m.innerHTML = `<h1></h1><p class="story"></p><div class="row"></div>`;
+    m.querySelector("h1").textContent = title;
+    m.querySelector(".story").textContent = text;
+    if (onContinue) {
+      const b = document.createElement("button");
+      b.className = "btn primary";
+      b.innerHTML = "Begin <kbd>Enter</kbd>";
+      b.onclick = onContinue;
+      m.querySelector(".row").appendChild(b);
+    }
+    showOverlay("story");
+  }
+
+  function journal(icon, text) {
+    const div = document.createElement("div");
+    div.className = "entry";
+    div.textContent = `${icon} ${text}`;
+    $("journal").prepend(div);
+  }
+
+  function renderHero() {
+    const on = !!(settings && settings.adventure && hero);
+    $("hero-panel").hidden = !on;
+    $("journal-wrap").hidden = !on;
+    if (!on) return;
+    $("hero-name").textContent = `🧙 ${chapter ? chapter.hero : "Hero"} · Lv ${hero.level || 1}`;
+    $("hero-hp-text").textContent = `HP ${Math.max(0, hero.hp)} / ${hero.maxHp}`;
+    $("hero-hp-fill").style.width = (100 * Math.max(0, hero.hp) / hero.maxHp) + "%";
+    $("hero-stats").textContent = Object.keys(STAT_NAMES).map(s => `${STAT_NAMES[s]} ${heroStat(s)}`).join(" · ") +
+      ` · next level ${hero.xp || 0}/${heroNeed()} XP`;
+    $("inventory").innerHTML = "";
+    for (const it of hero.items) {
+      const b = document.createElement("span");
+      b.className = "badge" + (it.used ? " used" : "");
+      b.textContent = `${ITEM_KINDS[it.kind].icon} ${it.name}`;
+      b.title = `${ITEM_KINDS[it.kind].label}: ${ITEM_KINDS[it.kind].effect}. ${it.description}`;
+      $("inventory").appendChild(b);
+    }
+    renderProgress();
+  }
+
+  // Chapter progress, plus a one-time nudge toward the lair once you hold the bane.
+  // Once you're ready, the encounter count gives way to the lair, so it doesn't read as a checklist.
+  function renderProgress() {
+    if (!chapter || !G) return;
+    const left = [...G.items.values()].filter(v => v.startsWith("enc:")).length;
+    const won = hero.items.filter(it => it.chapter === G.level);  // each cleared encounter gave one item
+    const cleared = won.length;
+    const bane = won.some(it => it.kind === "bane");
+    const ready = bane || left === 0;
+    const el = $("hero-progress");
+    el.textContent = ready
+      ? `Bane ${bane ? "✔" : "✘"} · You feel ready: follow the glowing trail to the 🐉 lair` +
+        (left ? ` · ${left > 1 ? `The ${left} remaining encounters are` : "The last encounter is"} optional` : "")
+      : `Encounters ${cleared}/${cleared + left} · Bane ✘ · ` +
+        (cleared >= 3 ? "The bane is still out there; the boss will be tough without it" : "Clear encounters to find the 🔮 bane");
+    el.classList.toggle("ready", ready);
+    if (ready && !G.readyNudged) {
+      G.readyNudged = true;
+      toast("⚔️ Ready! Follow the trail to the 🐉 lair", true);
+      journal("⚔️", "You feel ready to face the boss. A glowing trail now leads to the 🐉 lair; any remaining encounters are optional.");
+      draw();
+    }
+  }
+
+  // Once you're ready, the shortest route from you to the lair, through the whole maze (fog included).
+  function lairRoute() {
+    if (!settings.adventure || !G.readyNudged) return null;
+    G.lairDist ||= distances(G.open, G.w, G.h, G.ex, G.ey);
+    const route = [[G.px, G.py]];
+    let [x, y] = [G.px, G.py];
+    while (G.lairDist[y][x] > 0) {
+      const d = DIRS.find(d => (G.open[y][x] & d.bit) && G.lairDist[y + d.dy][x + d.dx] === G.lairDist[y][x] - 1);
+      x += d.dx; y += d.dy;
+      route.push([x, y]);
+    }
+    return route;
+  }
+
+  // Shared scoring for every question, wherever it is asked.
+  function scoreAnswer(q, ok, chosen) {
+    G.answered++;
+    recordAnswer(q, ok);
+    const ds = G.deckStats[q.deck] ||= { c: 0, n: 0 };
+    ds.n++;
+    if (ok) {
+      G.correct++; ds.c++; G.streak++;
+      G.bestStreak = Math.max(G.bestStreak, G.streak);
+    } else {
+      G.streak = 0;
+      G.missed.push({ q, chosen });
+    }
+  }
+
+  // Show a question inside an adventure modal; calls done(ok) after it's answered.
+  function quizIn(el, done) {
+    const q = nextQuestion(), order = shuffle(q.a.map((_, i) => i));
+    el.innerHTML = `<div class="deck-tag"></div><div class="adv-q"></div><div class="adv-opts"></div><div class="adv-expl"></div>`;
+    el.querySelector(".deck-tag").textContent = DECKS[q.deck].name;
+    el.querySelector(".adv-q").textContent = q.q;
+    const btns = order.map((ai, i) => {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.innerHTML = `<span class="num">${i + 1}</span><span class="txt"></span>`;
+      b.querySelector(".txt").textContent = q.a[ai];
+      b.onclick = () => advAnswer && advAnswer(i);
+      el.querySelector(".adv-opts").appendChild(b);
+      return b;
+    });
+    advAnswer = i => {
+      if (i >= order.length) return;
+      advAnswer = null;
+      const ok = order[i] === 0;
+      btns.forEach((b, j) => { b.disabled = true; if (order[j] === 0) b.classList.add("correct"); });
+      if (!ok) btns[i].classList.add("wrong");
+      scoreAnswer(q, ok, q.a[order[i]]);
+      el.querySelector(".adv-expl").textContent = q.e || "";
+      updateStats();
+      done(ok);
+    };
+  }
+
+  // Animate a die in `el`, then call done(result).
+  function rollDie(el, sides, done) {
+    // Background tabs throttle timers heavily, so skip the animation when nobody can see it.
+    if (document.hidden) { const r = roll(sides); el.textContent = r; return done(r); }
+    let n = 0;
+    const t = setInterval(() => {
+      el.textContent = roll(sides);
+      if (++n < 10) return;
+      clearInterval(t);
+      const r = roll(sides);
+      el.textContent = r;
+      done(r);
+    }, 55);
+  }
+
+  function encounterCell(i) {
+    for (const [k, it] of G.items) if (it === "enc:" + i) return k;
+    return null;
+  }
+
+  function openEncounter(i) {
+    const e = chapter.encounters[i], K = ENCOUNTER_KINDS[e.kind], dc = 11 + G.level, stat = heroStat(K.stat);
+    const study = STUDY_BONUS * (e.fails || 0);  // you've learned from failed attempts here
+    const m = $("encounter");
+    delete m.dataset.resolved;
+    m.innerHTML = `
+      <div class="adv-head"><span class="adv-icon"></span><div><h2></h2><small class="kind"></small></div></div>
+      <p class="story"></p>
+      <div class="choices">
+        <button class="btn choice" data-c="wits">🧠 <span></span> <small>(answer a question)</small></button>
+        <button class="btn choice" data-c="dice" title="Each failed attempt here adds +${STUDY_BONUS} to this roll">🎲 <span></span>
+          <small>(d20 + ${STAT_NAMES[K.stat]} ${stat}${study ? ` + ${study} from ${e.fails} failed attempt${e.fails > 1 ? "s" : ""}` : ""} vs ${dc})</small></button>
+        <button class="btn choice" data-c="leave">↩ Leave it for now</button>
+      </div>
+      <div class="adv-quiz"></div>
+      <div class="adv-result"></div>
+      <div class="row"></div>`;
+    m.querySelector(".adv-icon").textContent = K.icon;
+    m.querySelector("h2").textContent = e.name;
+    m.querySelector(".kind").textContent = `${K.label} · guards something useful`;
+    m.querySelector(".story").textContent = e.description || "Something blocks the way.";
+    m.querySelector('[data-c="wits"] span').textContent = K.wits;
+    m.querySelector('[data-c="dice"] span').textContent = K.dice;
+    const choose = c => {
+      m.querySelector(".choices").hidden = true;
+      if (c === "leave") { hideOverlay(); return; }
+      if (c === "wits") quizIn(m.querySelector(".adv-quiz"), ok => resolveEncounter(i, ok, ok ? "You answer correctly." : "Your answer is wrong."));
+      else {
+        const res = m.querySelector(".adv-result");
+        res.innerHTML = `<span class="dice">?</span><span class="roll-text">Rolling…</span>`;
+        rollDie(res.querySelector(".dice"), 20, r => {
+          const total = r + stat + study;
+          const ok = r === 20 || (r !== 1 && total >= dc);
+          resolveEncounter(i, ok, `d20 rolled ${r} + ${STAT_NAMES[K.stat]} ${stat}${study ? ` + ${study} studied` : ""} = ${total} vs ${dc}: ${ok ? "success" : "failure"}.`);
+        });
+      }
+    };
+    m.querySelectorAll(".choice").forEach(b => { b.onclick = () => choose(b.dataset.c); });
+    showOverlay("encounter");
+  }
+
+  function resolveEncounter(i, ok, how) {
+    const e = chapter.encounters[i], K = ENCOUNTER_KINDS[e.kind], m = $("encounter");
+    if (m.dataset.resolved || !encounterCell(i)) return;  // each attempt resolves once
+    m.dataset.resolved = "1";
+    const res = m.querySelector(".adv-result");
+    const story = document.createElement("p");
+    story.className = "story";
+    story.textContent = OUTCOME_TEXT[e.kind][ok ? 0 : 1];
+    const line = document.createElement("div");
+    line.textContent = (ok ? "✅ " : "❌ ") + how;
+    if (!res.querySelector(".dice")) res.innerHTML = "";
+    res.querySelector(".roll-text")?.remove();
+    res.append(line, story);
+    if (ok) {
+      const k = encounterCell(i);
+      if (k) G.items.delete(k);
+      hero.items.push({ ...e.reward, chapter: G.level });
+      gainXp(ENCOUNTER_XP);
+      const r = document.createElement("div");
+      r.className = "reward";
+      r.textContent = `${ITEM_KINDS[e.reward.kind].icon} You gain ${e.reward.name} (${ITEM_KINDS[e.reward.kind].effect}). ${e.reward.description} +${ENCOUNTER_XP} XP`;
+      res.appendChild(r);
+      journal(K.icon, `${e.name}: success. Gained ${e.reward.name}.`);
+    } else {
+      const dmg = Math.max(1, roll(K.dmg) - (heroStat("guard") - 1));
+      hero.hp -= dmg;
+      e.fails = (e.fails || 0) + 1;
+      const r = document.createElement("div");
+      r.className = "hurt";
+      r.textContent = `You take ${dmg} damage (HP ${Math.max(0, hero.hp)}/${hero.maxHp}). The ${K.label.toLowerCase()} is still here; ` +
+        `you've learned from this, so your next dice roll here gets +${STUDY_BONUS * e.fails}.`;
+      res.appendChild(r);
+      journal(K.icon, `${e.name}: failed, took ${dmg} damage.`);
+    }
+    // Let the model narrate the moment; keep the built-in line if it's slow or unavailable.
+    storyLLM(`In the story "${chapter.title}", the hero (${chapter.hero}) faced ${e.name}: ${e.description} ` +
+      `The hero ${ok ? `succeeded and found ${e.reward.name}` : "failed and was hurt"}. ` +
+      "Narrate this moment in 1-2 vivid sentences, second person, present tense.", false, 90, 15000)
+      .then(t => { if (t && story.isConnected) story.textContent = t; });
+    renderHero();
+    const b = document.createElement("button");
+    b.className = "btn primary";
+    b.innerHTML = "Continue <kbd>Enter</kbd>";
+    b.onclick = () => {
+      hideOverlay();
+      if (hero.hp <= 0) {
+        hero.hp = hero.maxHp;
+        journal("💫", "You collapsed and came to at your last checkpoint.");
+        setFeedback("bad", "You collapse from your wounds and come to at your last 🚩 checkpoint, fully healed. Ground explored since then must be re-earned.");
+        decohereNow();
+        renderHero();
+      }
+    };
+    m.querySelector(".row").appendChild(b);
+  }
+
+  // ----- Boss fight -----
+  function startBoss() {
+    const lv = G.level;
+    G.busy = true;
+    if (!G.boss) {
+      G.boss = { hp: 24 + 8 * lv, maxHp: 24 + 8 * lv, ac: 11 + lv, atk: 2 + lv, dmg: lv, weakened: 0, block: false, rounds: 0, enrage: 0 };
+      journal("🐉", `You enter the lair of ${chapter.boss.name}.`);
+    }
+    const m = $("boss");
+    m.innerHTML = `
+      <div class="adv-head"><span class="adv-icon">🐉</span><div><h2></h2><small class="weak"></small></div></div>
+      <p class="story"></p>
+      <div class="fight-row">
+        <div><small class="boss-hp"></small><div class="bar boss"><div class="boss-fill"></div></div></div>
+        <div><small class="hero-hp"></small><div class="bar"><div class="hero-fill"></div></div></div>
+      </div>
+      <div class="hero-line"></div>
+      <div class="actions"></div>
+      <div class="adv-quiz"></div>
+      <div class="roll-line"><span class="dice">🎲</span><span class="roll-text">Choose your action.</span></div>
+      <div class="log"></div>`;
+    m.querySelector("h2").textContent = chapter.boss.name;
+    m.querySelector(".weak").textContent = `Weakness: ${chapter.boss.weakness}`;
+    m.querySelector(".story").textContent = chapter.boss.description;
+    bossRender();
+    bossActions(true);
+    showOverlay("boss");
+  }
+
+  function bossRender() {
+    const m = $("boss"), B = G.boss;
+    m.querySelector(".boss-hp").textContent = `${chapter.boss.name}: ${Math.max(0, B.hp)} / ${B.maxHp} HP · Defense ${B.ac - B.weakened}` +
+      (B.enrage ? ` · 🔥 Enraged +${B.enrage}` : ` · enrages in ${ENRAGE_EVERY - B.rounds % ENRAGE_EVERY}`);
+    m.querySelector(".boss-fill").style.width = (100 * Math.max(0, B.hp) / B.maxHp) + "%";
+    m.querySelector(".hero-hp").textContent = `You: ${Math.max(0, hero.hp)} / ${hero.maxHp} HP · Defense ${10 + heroStat("guard")}`;
+    m.querySelector(".hero-fill").style.width = (100 * Math.max(0, hero.hp) / hero.maxHp) + "%";
+    m.querySelector(".hero-line").textContent = Object.keys(STAT_NAMES).map(s => `${STAT_NAMES[s]} ${heroStat(s)}`).join(" · ");
+    renderHero();
+  }
+
+  function bossLog(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    $("boss").querySelector(".log").prepend(div);
+    // Keep the fight's events (across attempts) so the victory can be written from what happened.
+    if (G.boss) (G.boss.events ||= []).push(text);
+  }
+
+  function bossActions(enabled) {
+    const box = $("boss").querySelector(".actions");
+    box.innerHTML = "";
+    if (!enabled) return;
+    const add = (label, title, fn) => {
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = label;
+      b.title = title;
+      b.onclick = () => { bossActions(false); fn(); };
+      box.appendChild(b);
+    };
+    add("⚔️ Attack", "Answer a question; if right, roll d20 + Might + 2 to hit, then d6 + Might damage", bossAttack);
+    add("🛡️ Defend", "Answer a question; if right, you block its next attack (no counterattack)", bossDefend);
+    hero.items.forEach(it => {
+      if (it.used) return;
+      if (it.kind === "potion") add(`🧪 ${it.name}`, ITEM_KINDS.potion.effect, () => usePotion(it));
+      if (it.kind === "bane" && it.chapter === G.level) add(`🔮 ${it.name}`, ITEM_KINDS.bane.effect, () => useBane(it));
+    });
+    add("🏃 Retreat", "Return to your checkpoint; the boss keeps its wounds", bossRetreat);
+  }
+
+  const rollText = t => { $("boss").querySelector(".roll-text").textContent = t; };
+
+  function bossAttack() {
+    quizIn($("boss").querySelector(".adv-quiz"), ok => {
+      if (!ok) { rollText("You hesitate."); bossLog("⚔️ You hesitate on the question, and your strike goes wide."); return bossTurn(); }
+      const B = G.boss, might = heroStat("might"), ac = B.ac - B.weakened;
+      rollText("Rolling to hit…");
+      rollDie($("boss").querySelector(".dice"), 20, r => {
+        const hit = r === 20 || (r !== 1 && r + might + 2 >= ac);
+        if (!hit) { rollText(`d20 ${r} + ${might + 2} = ${r + might + 2} vs ${ac}: miss.`); bossLog("⚔️ You strike, but it twists away."); return bossTurn(); }
+        const dmg = (roll(6) + might) * (r === 20 ? 2 : 1);
+        B.hp -= dmg;
+        rollText(`d20 ${r} + ${might + 2} = ${r + might + 2} vs ${ac}: ${r === 20 ? "critical hit" : "hit"}! ${dmg} damage.`);
+        bossLog(`⚔️ You hit ${chapter.boss.name} for ${dmg}${r === 20 ? " (critical!)" : ""}.`);
+        afterPlayer();
+      });
+    });
+  }
+
+  function bossDefend() {
+    quizIn($("boss").querySelector(".adv-quiz"), ok => {
+      if (ok) { G.boss.block = true; rollText("You brace yourself."); bossLog("🛡️ You read its next move and brace."); }
+      else { rollText("You lose your footing."); bossLog("🛡️ You fumble your guard."); }
+      bossTurn();
+    });
+  }
+
+  function usePotion(it) {
+    it.used = true;
+    const heal = Math.min(POTION_HEAL, hero.maxHp - hero.hp);
+    hero.hp += heal;
+    rollText(`You drink ${it.name}.`);
+    bossLog(`🧪 You drink ${it.name} and recover ${heal} HP.`);
+    bossRender();
+    bossTurn();
+  }
+
+  function useBane(it) {
+    it.used = true;
+    const dmg = roll(6) + roll(6) + roll(6) + heroStat("wit");
+    G.boss.hp -= dmg;
+    G.boss.weakened = 3;
+    rollText(`${it.name} strikes for ${dmg}!`);
+    bossLog(`🔮 You turn ${it.name} on its weakness (${chapter.boss.weakness}): ${dmg} damage, and its defense drops by 3.`);
+    journal("🔮", `Used ${it.name} against ${chapter.boss.name}.`);
+    afterPlayer();
+  }
+
+  function afterPlayer() {
+    bossRender();
+    if (G.boss.hp <= 0) bossVictory(); else bossTurn();
+  }
+
+  function bossTurn() {
+    $("boss").querySelector(".adv-quiz").innerHTML = "";
+    bossRender();
+    setTimeout(() => {
+      const B = G.boss;
+      // Stalling has a cost: the boss grows stronger the longer the fight lasts.
+      B.rounds++;
+      if (B.rounds % ENRAGE_EVERY === 0) {
+        B.enrage++;
+        bossLog(`🔥 ${chapter.boss.name} grows enraged: +${B.enrage} damage.`);
+      }
+      if (B.block) {
+        B.block = false;
+        bossLog("🛡️ It attacks, but you block it.");
+        rollText("Blocked!");
+        bossRender();
+        return bossActions(true);
+      }
+      const ac = 10 + heroStat("guard");
+      rollDie($("boss").querySelector(".dice"), 20, r => {
+        const hit = r === 20 || (r !== 1 && r + B.atk >= ac);
+        if (!hit) {
+          rollText(`It attacks: d20 ${r} + ${B.atk} = ${r + B.atk} vs ${ac}: miss.`);
+          bossLog(`🐉 ${chapter.boss.name} lunges and misses.`);
+          return bossActions(true);
+        }
+        const dmg = (roll(6) + B.dmg + B.enrage) * (r === 20 ? 2 : 1);
+        hero.hp -= dmg;
+        rollText(`It attacks: d20 ${r} + ${B.atk} = ${r + B.atk} vs ${ac}: hit for ${dmg}.`);
+        bossLog(`🐉 ${chapter.boss.name} hits you for ${dmg}${r === 20 ? " (critical!)" : ""}.`);
+        bossRender();
+        if (hero.hp <= 0) bossDefeat(); else bossActions(true);
+      });
+    }, 500);
+  }
+
+  function bossVictory() {
+    bossActions(false);
+    rollText(`${chapter.boss.name} is defeated!`);
+    bossLog(`🏆 ${chapter.boss.name} is defeated!`);
+    // The ending is written now, from the fight itself; the chapter's pre-written one is the fallback.
+    const ch = chapter;  // the player may move on to the next chapter before the text arrives
+    const entry = { title: ch.title, boss: ch.boss.name, victory: ch.victory };
+    ch.victoryPending = true;
+    writeVictory().then(text => {
+      if (text) { ch.victory = text; entry.victory = text; }
+      ch.victoryPending = false;
+      journal("🏆", `Defeated ${ch.boss.name}. ${ch.victory}`);
+      const el = $("win-story");
+      if (el && chapter === ch) el.textContent = ch.victory;
+    });
+    const b = document.createElement("button");
+    b.className = "btn primary";
+    b.innerHTML = "Claim victory <kbd>Enter</kbd>";
+    b.onclick = () => {
+      hero.saga.push(entry);
+      gainXp(50 + 20 * G.level); G.busy = false; win();
+    };
+    $("boss").querySelector(".actions").appendChild(b);
+  }
+
+  // Ask the model for a short ending based on the fight's actual events, the hero's state and the quest.
+  function writeVictory() {
+    const B = G.boss, events = (B.events || []).filter(e => !e.startsWith("🏆"));
+    const close = hero.hp <= Math.max(3, hero.maxHp / 4);
+    const falls = events.filter(e => e.startsWith("💫")).length, retreats = events.filter(e => e.startsWith("🏃")).length;
+    const items = events.filter(e => /^(🔮|🧪)/.test(e));
+    const facts = [
+      `The hero ended the fight with ${hero.hp} of ${hero.maxHp} HP${close ? " (a very close call)" : ""}.`,
+      falls ? `The boss defeated the hero ${falls} time${falls > 1 ? "s" : ""} before this win.` : "",
+      retreats ? `The hero retreated ${retreats} time${retreats > 1 ? "s" : ""} to regroup.` : "",
+      items.length ? "" : "The hero used no special items in the fight.",
+    ].filter(Boolean).join(" ");
+    return storyLLM(
+      `In the story "${chapter.title}", ${chapter.hero} has just defeated ${chapter.boss.name} (${chapter.boss.description}). ` +
+      `What happened in the fight, in order:\n${events.slice(-14).join("\n")}\n${facts}\n` +
+      `Write the victory in 2-3 vivid sentences, second person, past tense, based only on these events: name the decisive blow` +
+      `${items.length ? " and the items the hero used" : ""}${close || falls ? ", and how hard-won it was" : ""}. ` +
+      `Then add one sentence hinting at what lies ahead in the quest${hero.quest ? ` (${hero.quest})` : ""}. ` +
+      "Do not mention numbers, damage or HP, and do not ask the reader any questions.",
+      false, 200, 30000);
+  }
+
+  function bossDefeat() {
+    const B = G.boss;
+    B.hp = Math.min(B.maxHp, B.hp + Math.round(B.maxHp / 4));
+    B.weakened = 0;
+    B.rounds = 0; B.enrage = 0;
+    hero.hp = hero.maxHp;
+    rollText("You fall.");
+    bossLog(`💫 You fall. ${chapter.boss.name} recovers some strength while you're gone.`);
+    journal("💫", `Defeated by ${chapter.boss.name}; came to at the last checkpoint.`);
+    const b = document.createElement("button");
+    b.className = "btn primary";
+    b.innerHTML = "Retreat to checkpoint <kbd>Enter</kbd>";
+    b.onclick = () => {
+      hideOverlay();
+      G.busy = false;
+      setFeedback("bad", `${chapter.boss.name} drove you back. You come to at your last 🚩 checkpoint, fully healed. It keeps most of its wounds.`);
+      decohereNow();
+      renderHero();
+    };
+    $("boss").querySelector(".actions").appendChild(b);
+  }
+
+  function bossRetreat() {
+    hideOverlay();
+    G.busy = false;
+    G.boss.rounds = 0; G.boss.enrage = 0;
+    G.boss.events = [...(G.boss.events || []), "🏃 You retreated to regroup."];
+    G.px = G.checkpoint.x; G.py = G.checkpoint.y;
+    reveal();
+    draw();
+    journal("🏃", `Retreated from ${chapter.boss.name}.`);
+    setFeedback("info", `You retreat to your 🚩 checkpoint. ${chapter.boss.name} keeps its wounds; its lair is explored ground, so walking back is free.`);
+    idlePrompt();
+  }
+
+  // Keys while an adventure modal is open. Returns true if the key was handled here.
+  function advKey(e) {
+    const shown = ["story", "encounter", "boss"].find(id => $(id).classList.contains("show"));
+    if (!shown) return false;
+    if (/^[1-9]$/.test(e.key) && advAnswer) { advAnswer(+e.key - 1); return true; }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const b = $(shown).querySelector(".row .btn.primary, .actions .btn.primary");
+      if (b) b.click();
+    }
+    return true;
+  }
+
+  // ---------- UI helpers ----------
+  function setFeedback(cls, msg, expl) {
+    const f = $("feedback");
+    f.className = cls;
+    f.textContent = msg;
+    if (expl) {
+      const s = document.createElement("span");
+      s.className = "expl";
+      s.textContent = expl;
+      f.appendChild(s);
+    }
+  }
+
+  function update5050() {
+    const P = G && G.pending;
+    $("btn-5050").disabled = !(P && !P.answered && G.lifelines > 0 && !P.removed.size);
+    $("btn-reroll").disabled = !(P && !P.answered && !G.busy && G.wallet >= REROLL_COST);
+    $("btn-reroll").innerHTML = `Reroll · ${REROLL_COST}🪙 (have ${G ? G.wallet : 0}) <kbd>R</kbd>`;
+    $("btn-travel").disabled = !(G && !G.busy && !G.pending && !G.won && fastTravelTarget());
+    $("btn-zap").hidden = !foes().length;
+    $("btn-zap").disabled = !(G && !G.busy && !G.pending && !G.won && zapTarget());
+  }
+
+  // Spend coins to swap the current question for a different one (same direction).
+  function reroll() {
+    const P = G && G.pending;
+    if (!P || P.answered || G.busy || G.wallet < REROLL_COST) return;
+    G.wallet -= REROLL_COST;
+    askQuestion(P.dir, P.zap);
+    updateStats();
+  }
+
+  // Bonus objectives: three per maze, chosen from those that are possible in this maze.
+  const OBJECTIVES = [
+    { text: "Find this maze's physicist card", ok: () => G.cardFound, possible: items => [...items.values()].some(t => t.startsWith("card:")) },
+    { text: "Collect half the coins", ok: () => G.coinsTotal > 0 && G.coins * 2 >= G.coinsTotal },
+    { text: "Hit a 5-answer streak", ok: () => G.bestStreak >= 5 },
+    { text: "Pick up 2 power-ups", ok: () => G.powerups >= 2, possible: items => [...items.values()].filter(t => POWERUPS[t]).length >= 2 },
+    { text: "Clear every encounter", ok: () => ![...G.items.values()].some(t => t.startsWith("enc:")),
+      possible: items => [...items.values()].some(t => t.startsWith("enc:")) },
+    { text: "Escape without decohering", ok: () => G.won && G.decoherences === 0 },
+    { text: "Escape with 2+ hearts left", ok: () => G.won && G.hearts >= 2 },
+  ];
+  const OBJECTIVE_XP = 30;
+
+  function checkObjectives() {
+    for (const o of G.objectives) {
+      if (o.done || !o.ok()) continue;
+      o.done = true;
+      gainXp(OBJECTIVE_XP);
+      toast(`🎯 Objective complete: ${o.text} +${OBJECTIVE_XP} XP`);
+    }
+    $("objectives").innerHTML = "";
+    for (const o of G.objectives) {
+      const div = document.createElement("div");
+      div.className = o.done ? "done" : "";
+      div.textContent = `${o.done ? "✅" : "⬜"} ${o.text}`;
+      $("objectives").appendChild(div);
+    }
+  }
+
+  function updateStats() {
+    $("st-time").textContent = fmtTime(G.elapsed);
+    $("st-acc").textContent = `${G.correct}/${G.answered}`;
+    $("hearts").textContent = "❤️".repeat(Math.max(0, G.hearts)) + "🖤".repeat(MAX_HEARTS - Math.max(0, G.hearts));
+    $("st-streak").textContent = G.streak;
+    $("st-life").textContent = G.lifelines;
+    $("st-coins").textContent = `${G.coins}/${G.coinsTotal}`;
+    const fx = [];
+    if (G.shield) fx.push("🛡️ Shield ready");
+    if (G.doubleLeft) fx.push(`⚡ ×2 XP (${G.doubleLeft} left)`);
+    // How close the hunter is, so you can feel it coming even through the fog.
+    const hunter = foes().find(e => e.kind === "stalker");
+    if (hunter) {
+      if (hunter.x < 0) fx.push(`${ENEMY_ICON.stalker} ${capital(enemyName(hunter))} stirs in ${hunter.wait} turn${hunter.wait === 1 ? "" : "s"}`);
+      else {
+        const d = distances(G.open, G.w, G.h, G.px, G.py)[hunter.y][hunter.x];
+        fx.push(`${d <= 4 ? "⚠️" : ENEMY_ICON.stalker} ${capital(enemyName(hunter))}: ${d} cell${d === 1 ? "" : "s"} away`);
+      }
+    }
+    $("effects").innerHTML = fx.map(f => `<span class="badge">${f}</span>`).join("");
+    update5050();
+    checkObjectives();
+    renderHero();
+  }
+
+  function bump() {
+    canvas.classList.remove("shake");
+    void canvas.offsetWidth;
+    canvas.classList.add("shake");
+  }
+
+  function flash(el) {
+    el.animate([{ opacity: 1 }, { opacity: .3 }, { opacity: 1 }], { duration: 300 });
+  }
+
+  const overlayOpen = () => $("overlay").classList.contains("show");
+  const MODALS = ["menu", "win", "story", "encounter", "boss"];
+  function showOverlay(which) {
+    $("overlay").classList.add("show");
+    for (const id of MODALS) $(id).classList.toggle("show", id === which);
+  }
+  function hideOverlay() {
+    $("overlay").classList.remove("show");
+    for (const id of MODALS) $(id).classList.remove("show");
+  }
+  function showMenu() {
+    updateResume();
+    renderDeckList();
+    showOverlay("menu");
+  }
+
+  function startFromMenu() {
+    const decks = [...document.querySelectorAll("#deck-list input:checked")].map(i => i.value);
+    if (!decks.length) { $("deck-error").textContent = "Pick at least one deck."; return; }
+    $("deck-error").textContent = "";
+    settings = {
+      decks,
+      size: +$("opt-size").value,
+      fog: $("opt-fog").checked,
+      dash: $("opt-dash").checked,
+      loops: $("opt-loops").checked,
+      enemies: $("opt-enemies").checked,
+      adventure: document.querySelector('input[name="mode"]:checked').value === "adventure",
+      theme: $("opt-theme").value.trim().slice(0, 80),
+      storyAI: $("opt-ai").checked,
+      ollama: $("opt-ollama").value.trim() || "http://127.0.0.1:11434",
+      model: $("opt-model").value.trim() || "qwen2.5:3b",
+    };
+    try {
+      localStorage.setItem(STORY_SETTINGS_KEY, JSON.stringify({ mode: settings.adventure ? "adventure" : "classic", decks,
+        theme: settings.theme, storyAI: settings.storyAI, ollama: settings.ollama, model: settings.model }));
+    } catch {}
+    G = null; hero = null; chapter = null;
+    try { localStorage.removeItem(RUN_KEY); } catch {}
+    nextLevel(1);
+  }
+
+  const nextLevel = level => (settings.adventure ? startChapter(level) : newGame(level));
+
+  // ---------- Saved game (localStorage) ----------
+  // The current run (maze, position, hearts, pending question, hero, story, journal) is saved every
+  // second and when the page closes, so you can close the tab and continue later. A cleared maze is
+  // saved too, and continuing it starts the next level with your hero and carried-over bonuses.
+  const RUN_KEY = "quizMaze.run.v1";
+  const PLAYTEST = new URLSearchParams(location.search).has("agent");  // playtests never touch your save
+
+  function saveRun() {
+    if (!G || !settings || PLAYTEST) return;
+    try {
+      const { lairDist, encounterHere, pending, bolt, ...rest } = G;
+      localStorage.setItem(RUN_KEY, JSON.stringify({
+        v: 1, settings, hero, chapter,
+        journal: [...$("journal").children].map(e => e.textContent),
+        G: {
+          ...rest, busy: false,
+          visited: [...G.visited], revealed: [...G.revealed],
+          checkpoint: { ...G.checkpoint, visited: [...G.checkpoint.visited] },
+          items: [...G.items],
+          objectives: G.objectives.map(o => ({ text: o.text, done: o.done })),
+          pending: pending && !pending.answered ? { ...pending, dir: DIRS.indexOf(pending.dir), removed: [...pending.removed] } : null,
+        },
+      }));
+    } catch {}
+  }
+
+  function loadRun() {
+    if (PLAYTEST) return null;
+    try {
+      const run = JSON.parse(localStorage.getItem(RUN_KEY));
+      return run && run.v === 1 && run.G && run.settings ? run : null;
+    } catch { return null; }
+  }
+
+  function restoreRun(run) {
+    settings = run.settings; hero = run.hero; chapter = run.chapter;
+    if (hero) hero.saga ||= [];  // saves made before the saga existed
+    if (chapter) chapter.victoryPending = false;
+    const g = run.G;
+    G = {
+      ...g,
+      visited: new Set(g.visited), revealed: new Set(g.revealed),
+      checkpoint: { ...g.checkpoint, visited: new Set(g.checkpoint.visited) },
+      items: new Map(g.items),
+      objectives: g.objectives.map(o => ({ ...(OBJECTIVES.find(x => x.text === o.text) || { text: o.text, ok: () => false }), done: o.done })),
+      pending: null,
+    };
+    $("journal").innerHTML = "";
+    for (const t of run.journal || []) {
+      const div = document.createElement("div");
+      div.className = "entry";
+      div.textContent = t;
+      $("journal").appendChild(div);
+    }
+    // A cleared maze continues with the next one.
+    if (G.won) { nextLevel(G.level + 1); return; }
+    if (!G.enemies) spawnEnemies();  // saves from before enemies existed
+    $("level").textContent = `${settings.adventure ? "Chapter" : "Level"} ${G.level} · ${G.w}×${G.h}`;
+    $("deck-tag").textContent = ""; $("question").textContent = ""; $("options").innerHTML = "";
+    $("found-card").innerHTML = "";
+    hideOverlay();
+    resize();
+    setFeedback("info", "Welcome back! Your game is restored where you left off.");
+    if (g.pending) showQuestion({ ...g.pending, dir: DIRS[g.pending.dir], removed: new Set(g.pending.removed) });
+    else idlePrompt();
+    updateStats();
+    // Reopen an encounter or boss fight that was in progress.
+    const here = G.items.get(key(G.px, G.py));
+    if (here && here.startsWith("enc:")) openEncounter(+here.slice(4));
+    else if (settings.adventure && G.px === G.ex && G.py === G.ey) startBoss();
+  }
+
+  // The menu offers to resume the game in memory, or else the saved one; Enter picks it.
+  function resumeLabel() {
+    if (G && !G.won) return "Resume";
+    const run = loadRun();
+    if (!run) return null;
+    const adv = run.settings.adventure, lv = run.G.level + (run.G.won ? 1 : 0);
+    const title = adv && run.chapter && !run.G.won ? run.chapter.title.replace(/^chapter \d+:\s*/i, "") : "";
+    return `Continue ${adv ? "chapter" : "level"} ${lv}` + (title ? `: ${title}` : "");
+  }
+  function updateResume() {
+    const label = resumeLabel(), b = $("btn-resume");
+    b.style.display = label ? "" : "none";
+    b.classList.toggle("primary", !!label);
+    b.textContent = (label || "") + " ";
+    b.insertAdjacentHTML("beforeend", "<kbd>Enter</kbd>");
+    $("btn-start").classList.toggle("primary", !label);
+    $("btn-start").innerHTML = label ? "New game" : "Start <kbd>Enter</kbd>";
+  }
+  function resumeGame() {
+    if (G && !G.won) { hideOverlay(); return; }
+    const run = loadRun();
+    if (run) restoreRun(run);
+  }
+  window.addEventListener("pagehide", saveRun);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) saveRun(); });
+
+  // Restore the last adventure settings and show their options only in adventure mode.
+  function syncMode() {
+    $("adv-options").hidden = document.querySelector('input[name="mode"]:checked').value !== "adventure";
+    $("file-warning").hidden = !(FILE_PAGE && $("opt-ai").checked);
+  }
+  try {
+    const s = JSON.parse(localStorage.getItem(STORY_SETTINGS_KEY)) || {};
+    if (s.mode === "adventure") document.querySelector('input[name="mode"][value="adventure"]').checked = true;
+    if (s.theme) $("opt-theme").value = s.theme;
+    if (s.ollama) $("opt-ollama").value = s.ollama;
+    if (s.model) $("opt-model").value = s.model;
+    if (s.storyAI === false) $("opt-ai").checked = false;
+  } catch {}
+  document.querySelectorAll('input[name="mode"]').forEach(r => { r.onchange = syncMode; });
+  $("opt-ai").onchange = syncMode;
+  syncMode();
+
+  // ---------- Rendering ----------
+  function resize() {
+    if (!G) return;
+    const pane = $("left");
+    const W = pane.clientWidth - 32, H = pane.clientHeight - 32;
+    cell = Math.max(6, Math.floor(Math.min((W - 2 * MARGIN) / G.w, (H - 2 * MARGIN) / G.h)));
+    dpr = window.devicePixelRatio || 1;
+    const cw = cell * G.w + 2 * MARGIN, ch = cell * G.h + 2 * MARGIN;
+    canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
+    canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
+    draw();
+  }
+
+  function draw() {
+    if (!G) return;
+    const c = ctx, cs = cell, m = MARGIN;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = "#04060c";
+    c.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    const seen = (x, y) => !settings.fog || G.revealed.has(key(x, y));
+
+    for (let y = 0; y < G.h; y++) for (let x = 0; x < G.w; x++) {
+      if (!seen(x, y)) continue;
+      c.fillStyle = G.visited.has(key(x, y)) ? "#16264a" : "#0e1730";
+      c.fillRect(m + x * cs, m + y * cs, cs, cs);
+    }
+
+    // Pickups stay hidden in the fog until you see them.
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = `${Math.round(cs * 0.55)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+    for (const [k, it] of G.items) {
+      const [x, y] = k.split(",").map(Number);
+      if (!seen(x, y)) continue;
+      const cx = m + x * cs + cs / 2, cy = m + y * cs + cs / 2;
+      if (it === "coin") {
+        c.fillStyle = "#ffe9a8";
+        c.beginPath(); c.arc(cx, cy, Math.max(1.5, cs * 0.09), 0, Math.PI * 2); c.fill();
+      } else {
+        const enc = it.startsWith("enc:");
+        c.fillStyle = enc ? "rgba(255, 92, 122, .25)" : "rgba(179, 140, 255, .22)";
+        c.beginPath(); c.arc(cx, cy, cs * 0.4, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#fff";
+        c.fillText(it.startsWith("card:") ? "📜" : enc ? ENCOUNTER_KINDS[chapter.encounters[+it.slice(4)].kind].icon : POWERUPS[it].icon,
+          cx, cy + cs * 0.03);
+      }
+    }
+
+    // Enemies: the hunter is always visible, glowing red even through fog; shades only where you can see.
+    c.font = `${Math.round(cs * 0.6)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+    for (const e of foes()) {
+      if (e.x < 0 || (e.kind !== "stalker" && !seen(e.x, e.y))) continue;
+      c.save();
+      if (e.kind === "stalker") {
+        c.fillStyle = "rgba(255, 92, 122, .3)";
+        c.beginPath(); c.arc(m + e.x * cs + cs / 2, m + e.y * cs + cs / 2, cs * 0.45, 0, Math.PI * 2); c.fill();
+      }
+      c.shadowColor = e.kind === "stalker" ? "#ff5c7a" : "#b38cff"; c.shadowBlur = cs * 0.8;
+      c.fillStyle = "#fff";
+      c.fillText(ENEMY_ICON[e.kind], m + e.x * cs + cs / 2, m + e.y * cs + cs / 2 + cs * 0.03);
+      c.restore();
+    }
+    // ⚡ on the enemy you could zap right now (or the one you're aiming at).
+    const aim = !G.won && !G.bolt && (G.pending ? G.pending.zap && zapTarget(G.pending.dir) : !G.busy && zapTarget());
+    if (aim) {
+      c.save();
+      c.font = `${Math.round(cs * 0.55)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      c.shadowColor = "#ffcc4d"; c.shadowBlur = cs * 0.6;
+      c.fillStyle = "#fff";
+      c.fillText("⚡", m + aim.e.x * cs + cs * 0.8, m + aim.e.y * cs + cs * 0.22);
+      c.restore();
+    }
+    if (G.bolt) {
+      const [[ax, ay], [bx, by]] = G.bolt;
+      c.save();
+      c.strokeStyle = "#fff3b0"; c.shadowColor = "#ffcc4d"; c.shadowBlur = cs * 0.6;
+      c.lineWidth = Math.max(2, cs * 0.14); c.lineCap = "round";
+      c.beginPath();
+      c.moveTo(m + ax * cs + cs / 2, m + ay * cs + cs / 2);
+      c.lineTo(m + bx * cs + cs / 2, m + by * cs + cs / 2);
+      c.stroke();
+      c.restore();
+    }
+
+    // Checkpoint flag (not drawn on the entrance, which is always the starting checkpoint).
+    if (G.checkpoint.x || G.checkpoint.y) {
+      c.font = `${Math.round(cs * 0.34)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      c.fillStyle = "#fff";
+      c.fillText("🚩", m + G.checkpoint.x * cs + cs * 0.82, m + G.checkpoint.y * cs + cs * 0.2);
+    }
+
+    // Exit is always visible as a beacon.
+    const exX = m + G.ex * cs + cs / 2, exY = m + G.ey * cs + cs / 2;
+    c.save();
+    if (settings.adventure) {
+      c.shadowColor = "#ff5c7a"; c.shadowBlur = cs * 0.8;
+      c.fillStyle = "rgba(255, 92, 122, .3)";
+      c.beginPath(); c.arc(exX, exY, cs * 0.42, 0, Math.PI * 2); c.fill();
+      c.shadowBlur = 0;
+      c.font = `${Math.round(cs * 0.6)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      c.fillStyle = "#fff";
+      c.fillText("🐉", exX, exY + cs * 0.03);
+    } else {
+      c.shadowColor = "#ffcc4d"; c.shadowBlur = cs * 0.8;
+      c.fillStyle = "#ffcc4d";
+      star(c, exX, exY, cs * 0.36, cs * 0.16);
+    }
+    c.restore();
+
+    c.strokeStyle = "#6f93ef";
+    c.lineWidth = Math.max(2, cs * 0.12);
+    c.lineCap = "round";
+    c.beginPath();
+    for (let y = 0; y < G.h; y++) for (let x = 0; x < G.w; x++) {
+      if (!seen(x, y)) continue;
+      const o = G.open[y][x], X = m + x * cs, Y = m + y * cs;
+      if (!(o & 1)) { c.moveTo(X, Y); c.lineTo(X + cs, Y); }
+      if (!(o & 2)) { c.moveTo(X + cs, Y); c.lineTo(X + cs, Y + cs); }
+      if (!(o & 4)) { c.moveTo(X, Y + cs); c.lineTo(X + cs, Y + cs); }
+      if (!(o & 8)) { c.moveTo(X, Y); c.lineTo(X, Y + cs); }
+    }
+    c.stroke();
+
+    // Glowing trail to the lair once you're ready for the boss.
+    const route = lairRoute();
+    if (route && route.length > 1) {
+      c.save();
+      c.strokeStyle = "rgba(255, 140, 110, .8)";
+      c.shadowColor = "#ff5c7a"; c.shadowBlur = cs * 0.4;
+      c.lineWidth = Math.max(2, cs * 0.1);
+      c.lineJoin = "round";
+      c.setLineDash([cs * 0.18, cs * 0.22]);
+      c.beginPath();
+      route.forEach(([x, y], i) => c[i ? "lineTo" : "moveTo"](m + x * cs + cs / 2, m + y * cs + cs / 2));
+      c.stroke();
+      c.restore();
+    }
+
+    const px = m + G.px * cs + cs / 2, py = m + G.py * cs + cs / 2;
+
+    // Pending move indicator.
+    if (G.pending && !G.pending.answered) {
+      const d = G.pending.dir;
+      const ax = px + d.dx * cs * 0.75, ay = py + d.dy * cs * 0.75, s = cs * 0.22;
+      c.fillStyle = "rgba(90, 209, 255, .85)";
+      c.beginPath();
+      c.moveTo(ax + d.dx * s, ay + d.dy * s);
+      c.lineTo(ax - d.dx * s + d.dy * s, ay - d.dy * s + d.dx * s);
+      c.lineTo(ax - d.dx * s - d.dy * s, ay - d.dy * s - d.dx * s);
+      c.closePath();
+      c.fill();
+    }
+
+    c.save();
+    const orb = rankInfo(profile.xp).color;
+    c.shadowColor = orb; c.shadowBlur = cs * 0.6;
+    c.fillStyle = orb;
+    c.beginPath(); c.arc(px, py, cs * 0.3, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+
+  function star(c, x, y, R, r) {
+    c.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const rad = i % 2 ? r : R, a = -Math.PI / 2 + i * Math.PI / 5;
+      c.lineTo(x + rad * Math.cos(a), y + rad * Math.sin(a));
+    }
+    c.closePath();
+    c.fill();
+  }
+
+  // ---------- Setup ----------
+  // Decks are listed under their group heading, each group with All / None shortcuts. The first
+  // time, the decks you picked last session are checked (or all of them, the very first time).
+  function renderDeckList() {
+    const deckList = $("deck-list");
+    let checked = new Set([...deckList.querySelectorAll("input:checked")].map(i => i.value));
+    if (!deckList.children.length) {
+      let saved = null;
+      try { saved = (JSON.parse(localStorage.getItem(STORY_SETTINGS_KEY)) || {}).decks; } catch {}
+      checked = new Set(Array.isArray(saved) && saved.some(id => DECKS[id]) ? saved : Object.keys(DECKS));
+    }
+    deckList.innerHTML = "";
+    const groups = new Map();
+    for (const [id, deck] of Object.entries(DECKS)) {
+      const g = deck.group || "Other";
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push([id, deck]);
+    }
+    for (const [g, decks] of groups) {
+      const head = document.createElement("div");
+      head.className = "deck-group";
+      head.innerHTML = `<span></span><button type="button" data-v="1">All</button><button type="button" data-v="">None</button>`;
+      head.querySelector("span").textContent = g;
+      const boxes = [];
+      head.querySelectorAll("button").forEach(b => { b.onclick = () => boxes.forEach(i => { i.checked = !!b.dataset.v; }); });
+      deckList.appendChild(head);
+      for (const [id, deck] of decks) {
+        const recs = deck.questions.map(q => srs[q.q]);
+        const seen = recs.filter(Boolean).length;
+        const mastered = recs.filter(r => r && r.box >= MAX_BOX - 1).length;
+        const review = deck.questions.filter(isReview).length;
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" value="${id}"> <span></span>
+          <small>${deck.questions.length} questions · ${seen} seen · ${mastered} mastered · ${review} to review</small>`;
+        label.querySelector("input").checked = checked.has(id);
+        label.querySelector("span").textContent = deck.name;
+        boxes.push(label.querySelector("input"));
+        deckList.appendChild(label);
+      }
+    }
+  }
+  renderDeckList();
+  renderRank();
+
+  $("btn-reset").onclick = () => {
+    if (!confirm("Reset all progress? This clears your XP, rank, physicist cards, which questions you've seen and missed, and your saved game.")) return;
+    srs = {}; recent = [];
+    saveSrs();
+    profile = { xp: 0 };
+    saveProfile();
+    G = null; hero = null; chapter = null;
+    try { localStorage.removeItem(RUN_KEY); } catch {}
+    updateResume();
+    renderRank();
+    renderDeckList();
+  };
+
+  $("btn-start").onclick = startFromMenu;
+  $("btn-resume").onclick = resumeGame;
+  updateResume();
+  $("btn-5050").onclick = use5050;
+  $("btn-reroll").onclick = reroll;
+  $("btn-travel").onclick = fastTravelKey;
+  $("btn-zap").onclick = zapKey;
+  window.addEventListener("resize", resize);
+  canvas.addEventListener("click", e => {
+    if (!G) return;
+    const r = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left - MARGIN) / cell), y = Math.floor((e.clientY - r.top - MARGIN) / cell);
+    if (x < 0 || y < 0 || x >= G.w || y >= G.h || !G.visited.has(key(x, y))) { bump(); return; }
+    fastTravel(travelPath((cx, cy) => cx === x && cy === y), "across explored ground");
+  });
+
+  document.addEventListener("keydown", e => {
+    if (overlayOpen()) {
+      if (advKey(e)) return;
+      const winShown = $("win").classList.contains("show");
+      if (e.key === "Enter") { e.preventDefault(); winShown ? nextLevel(G.level + 1) : resumeLabel() ? resumeGame() : startFromMenu(); }
+      else if (e.key === "Escape" && !winShown && G && !G.won) hideOverlay();
+      return;
+    }
+    if (!G) return;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (k === "Escape") { showMenu(); return; }
+    if (k in KEYMAP) { e.preventDefault(); requestMove(DIRS[KEYMAP[k]]); return; }
+    if (/^[1-9]$/.test(k)) { answer(+k - 1); return; }
+    if (k === "h") use5050();
+    if (k === "r") reroll();
+    if (k === "f") fastTravelKey();
+    if (k === "z") zapKey();
+  });
+
+  setInterval(() => {
+    if (G && !G.won && !overlayOpen()) { G.elapsed++; updateStats(); }
+    saveRun();
+  }, 1000);
+
+  // Read-only hook for the LLM playtester (playtest/agent.js); only active with ?agent in the URL.
+  if (new URLSearchParams(location.search).has("agent")) {
+    window.__quizMaze = { game: () => G, DIRS, canFastTravel: () => !!(G && fastTravelTarget()), lairRoute: () => G && lairRoute() };
+    const s = document.createElement("script");
+    s.src = "playtest/agent.js";
+    document.body.appendChild(s);
+  }
+})();
+</script>
+</body>
+</html>

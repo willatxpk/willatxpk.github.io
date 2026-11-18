@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rydberg Lattice — a neutral-atom quantum computing course</title>
+<style>
+:root{--bg:#060a13;--panel:#0d1424;--panel2:#131d33;--line:#22304d;--txt:#dfe8f7;--mut:#8b9bb8;--X:#ff8a3d;--Z:#38b6ff;--er:#ff4fd8;--ok:#4dffa0;--bad:#ff4d5e;--gold:#ffd25a}
+*{box-sizing:border-box}
+body{margin:0;background:#05070d radial-gradient(ellipse at top,#0c1630,#05070d 70%) no-repeat;color:var(--txt);font:14px/1.5 "Segoe UI",system-ui,sans-serif;min-height:100vh}
+header{display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:#070c18dd;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;letter-spacing:.5px;font-weight:600}
+header h1 span{color:var(--Z)}
+.tabs{display:flex;gap:4px}
+.tab{background:none;border:1px solid transparent;color:var(--mut);padding:6px 12px;border-radius:7px;cursor:pointer;font:inherit}
+.tab.on{color:var(--txt);border-color:var(--line);background:var(--panel2)}
+.spacer{flex:1}
+.speed{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:12.5px}
+.speed button{padding:3px 8px;font-size:12px}
+button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:6px 11px;cursor:pointer;font:inherit;transition:background .15s,border-color .15s}
+button:hover:not(:disabled){border-color:#3f5683;background:#18243f}
+button:disabled{opacity:.4;cursor:default}
+button.pri{background:#173a66;border-color:#2f6bb3}
+button.pri:hover:not(:disabled){background:#1d4a82}
+button.on{border-color:var(--gold);color:var(--gold)}
+.layout{display:grid;grid-template-columns:270px minmax(380px,1fr) 340px;gap:14px;padding:14px;align-items:start}
+@media (max-width:1100px){.layout{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 8px}
+.card h3{font-size:13px;margin:10px 0 4px;color:var(--mut);text-transform:uppercase;letter-spacing:.8px}
+.mut{color:var(--mut)}
+.small{font-size:12.5px}
+.lvl{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:7px;cursor:pointer;color:var(--txt)}
+.lvl:hover{background:var(--panel2)}
+.lvl.cur{background:#162544;outline:1px solid #2f6bb3}
+.lvl.lock{opacity:.38;cursor:default}
+.lvl .id{font-variant-numeric:tabular-nums;color:var(--mut);width:28px;font-size:12px}
+.lvl .st{margin-left:auto;color:var(--gold);font-size:12px;letter-spacing:-1px}
+.chap{font-size:11.5px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin:10px 0 3px}
+.boardwrap{background:radial-gradient(circle at 50% 45%,#0e1a33,#070b15 75%);border:1px solid var(--line);border-radius:14px;padding:8px;position:relative}
+.boardwrap svg{width:100%;height:auto;display:block;max-height:calc(100vh - 190px)}
+.boardhead{display:flex;justify-content:space-between;align-items:center;padding:4px 8px 6px;color:var(--mut);font-size:13px}
+.boardhead b{color:var(--txt)}
+.flash{animation:flash .6s}
+@keyframes flash{0%{border-color:#38b6ff}100%{border-color:var(--line)}}
+/* svg */
+.stab{cursor:pointer;fill-opacity:.12;stroke:#000a;stroke-width:.02;transition:fill-opacity .2s}
+.stab.tX{fill:var(--X)} .stab.tZ{fill:var(--Z)}
+.stab:hover{fill-opacity:.25}
+.stab.lit{fill-opacity:.88;animation:pulse 1.3s ease-in-out infinite}
+.stab.lit.new{fill-opacity:.5;animation:none;stroke:#fff;stroke-dasharray:.09 .06;stroke-width:.035}
+.stab.unrel{fill:url(#hatch);fill-opacity:1;animation:none}
+.stab.sel{stroke:#fff;stroke-width:.08;stroke-dasharray:none}
+@keyframes pulse{50%{fill-opacity:.62}}
+.anc{fill:#9fb3d9;opacity:.55;pointer-events:none}
+.qmark{fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-weight:700}
+.order{fill:none;stroke:#ffffff;stroke-opacity:.13;stroke-width:.025;pointer-events:none}
+.orderhook{fill:none;stroke:var(--gold);stroke-opacity:.8;stroke-width:.045;pointer-events:none}
+.trap{fill:none;stroke:#7d93c2;stroke-opacity:.35;stroke-width:.02;pointer-events:none}
+.atom{fill:url(#atomg);pointer-events:none}
+.halo{fill:url(#halo);pointer-events:none}
+.halo.er{fill:url(#haloE)}
+.halo.lost{display:none}
+.atom.er{fill:var(--er)}
+.atom.lost{fill:#0000;stroke:#7d93c2;stroke-dasharray:.05 .05;stroke-width:.03}
+.hit{fill:#0000;cursor:pointer}
+.clab{fill:var(--ok);font-weight:700;pointer-events:none}
+.elab{fill:var(--bad);font-weight:700;pointer-events:none}
+.resring{fill:none;stroke:var(--bad);stroke-width:.05;pointer-events:none}
+.resring.ok{stroke:#ffffff55;stroke-dasharray:.06 .05}
+.bnd{cursor:pointer;opacity:.35;transition:opacity .2s}
+.bnd.tX{fill:var(--X)} .bnd.tZ{fill:var(--Z)}
+.bnd:hover,.bnd.cand{opacity:.95}
+.bnd.cand{animation:bp 1s infinite}
+@keyframes bp{50%{opacity:.5}}
+.hintline{stroke:var(--gold);stroke-width:.06;stroke-dasharray:.12 .08;fill:none;pointer-events:none;stroke-linecap:round}
+.hintdot{fill:var(--gold);pointer-events:none}
+.btxt{fill:var(--mut);text-anchor:middle;pointer-events:none}
+/* panels */
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.tools button{min-width:44px}
+.tools button.tX{color:var(--X)} .tools button.tZ{color:var(--Z)} .tools button.tY{color:#d68bff}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.msg{margin-top:10px;padding:9px 11px;border-radius:8px;background:#0a1120;border:1px solid var(--line);min-height:20px}
+.msg.good{border-color:#2a7a52;background:#0b1d16}
+.msg.bad{border-color:#7a2a35;background:#1e0d12}
+.msg.warn{border-color:#7a6a2a;background:#1d190b}
+.stat{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dashed #1c2740}
+.stat:last-child{border-bottom:none}
+.pips{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.pip{width:15px;height:15px;border-radius:4px;background:#1a2540;border:1px solid var(--line)}
+.pip.w{background:#1f7a4d}.pip.l{background:#8a2a36}.pip.u{background:#5a5a2a}
+.brief{max-height:340px;overflow:auto;padding-right:4px}
+.brief p{margin:0 0 8px}
+.brief .cite{color:var(--mut);font-size:12px}
+details summary{cursor:pointer;color:var(--mut);font-size:12.5px;margin-bottom:4px}
+.legend{display:grid;grid-template-columns:18px 1fr;gap:4px 8px;font-size:12.5px;align-items:center}
+.sw{width:14px;height:14px;border-radius:3px}
+.feed{max-height:120px;overflow:auto;font-size:12px;color:var(--mut)}
+.kbd{font-family:Consolas,monospace;background:#1a2540;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11px}
+.hw{border-bottom:1px dashed #1c2740;padding:6px 0}
+.hw:last-child{border-bottom:none}
+.hw .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.hw .v{font-size:12px;color:var(--mut)}
+.hw button{padding:3px 8px;font-size:12px}
+.ms{display:flex;gap:6px;font-size:12.5px;padding:2px 0}
+.ms .ck{width:16px}
+.money{font-size:22px;font-weight:600;color:var(--gold)}
+.opt{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 8px}
+.modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:20}
+.modal .card{max-width:520px;width:92%;border-color:#3a4f7c;box-shadow:0 20px 60px #000}
+.modal .opts{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.modal .opts button{text-align:left}
+.guide{max-width:920px;margin:14px auto;padding:0 14px}
+.guide .card p{margin:0 0 8px}
+.guide a,.brief a{color:#7cc8ff}
+.ref{font-size:13px;margin:0 0 7px}
+.big{font-size:28px;font-weight:600}
+table.st{border-collapse:collapse;width:100%;font-size:12.5px}
+table.st td,table.st th{padding:3px 4px;border-bottom:1px dashed #1c2740;text-align:right}
+table.st th:first-child,table.st td:first-child{text-align:left}
+/* course lessons */
+.simbody svg{width:100%;height:auto;display:block;max-height:calc(100vh - 230px)}
+.simrow{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.simrow>svg:first-child{flex:2 1 380px;width:auto}
+.simrow .fan{flex:1 1 180px;max-width:260px}
+.simbody svg.strip{max-height:120px}
+.simbody svg.snaps{max-height:360px}
+.sl{margin:8px 0}
+.sll{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mut)}
+.sll b{color:var(--txt)}
+input[type=range]{width:100%;accent-color:#38b6ff}
+.mq{margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:8px;background:#0a1120}
+.mqq{margin-bottom:6px}
+button.good{border-color:#2a7a52;background:#0b1d16;color:var(--ok)}
+button.badb{border-color:#7a2a35;background:#1e0d12;color:var(--bad)}
+button.gdone{opacity:.35;text-decoration:line-through}
+.quizbox{padding:18px 22px;min-height:340px}
+.qq{font-size:18px;margin-bottom:14px;line-height:1.45}
+.qopts{display:flex;flex-direction:column;gap:8px}
+.qopt{text-align:left;padding:10px 14px;font-size:14.5px}
+.kv{display:flex;flex-wrap:wrap;gap:6px 16px;padding:6px 12px;font-size:12.5px;color:var(--mut)}
+.kv b{color:var(--txt)}
+.timeline{padding:14px 12px 4px}
+.rail{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.rname{width:110px;color:var(--mut);font-size:12.5px}
+.pulse{width:54px;height:30px;border-radius:6px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-weight:700}
+.pulse.on{background:#3a2a0a;border:1px solid var(--gold);color:var(--gold)}
+table.tt td,table.tt th{text-align:center}
+.unit{display:flex;justify-content:space-between;align-items:center;padding:6px 4px;margin-top:4px;cursor:pointer;font-size:13px;color:var(--txt);border-top:1px solid #16213a}
+.unit:hover{color:#fff}
+.unit.open{color:var(--gold)}
+.snapgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;flex:1 1 300px}
+.snapc{border:1px solid var(--line);border-radius:8px;padding:3px;text-align:center;color:var(--mut)}
+.snapc.ok{border-color:#2a7a52;color:var(--ok)}
+.snapc svg{max-height:110px}
+.mat td{padding:2px 8px;font-variant-numeric:tabular-nums}
+.stabt td,.stabt th{padding:2px 5px;font-family:Consolas,monospace}
+.sbit{padding:1px 6px;border-radius:4px;background:#1a2540;color:var(--mut)}
+.sbit.on{background:#5a2a10;color:var(--gold)}
+.qrow{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 14px}
+.qbtn{min-width:46px}
+code{font-family:Consolas,monospace;font-size:12px;color:var(--gold)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Rydberg <span>Lattice</span> <span class="mut small" style="color:var(--mut)">— neutral-atom quantum computing course</span></h1>
+  <div class="tabs">
+    <button class="tab" data-v="curriculum">Course</button>
+    <button class="tab" data-v="lab">Lab</button>
+    <button class="tab" data-v="guide">Field guide</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="speed" id="speedbox"></div>
+</header>
+<div id="app"></div>
+<div id="modal"></div>
+<script>
+'use strict';
+/* ================================================================
+   Utilities
+   ================================================================ */
+const SAVE_KEY = 'rydbergCourse_v2', OLD_SAVE_KEY = 'rydbergQEC_v1';
+const rnd = Math.random;
+const pick = a => a[Math.floor(rnd() * a.length)];
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const hasX = P => P==='X' || P==='Y';
+const hasZ = P => P==='Z' || P==='Y';
+const pauliOf = (x,z) => x&&z ? 'Y' : x ? 'X' : z ? 'Z' : '';
+const DEPOL = {x:1/3, y:1/3, z:1/3};
+const SVGNS = 'http://www.w3.org/2000/svg';
+function S(tag, attrs, parent){ const e=document.createElementNS(SVGNS,tag); for(const k in attrs) e.setAttribute(k, attrs[k]); if(parent) parent.appendChild(e); return e; }
+function H(tag, attrs={}, html){
+  const e=document.createElement(tag);
+  for(const k in attrs){
+    if(k==='on') for(const ev in attrs.on) e.addEventListener(ev, attrs.on[ev]);
+    else if(k==='cls') e.className=attrs[k];
+    else if(k==='disabled'){ if(attrs[k]) e.disabled=true; }
+    else e.setAttribute(k, attrs[k]);
+  }
+  if(html!=null) e.innerHTML=html;
+  return e;
+}
+function btn(label, fn, cls='', disabled=false, title=''){ return H('button',{cls, disabled, title, on:{click:fn}}, label); }
+const xor = (a,b) => a.map((v,i)=>v^b[i]);
+const pct = (v,d=1) => (v*100).toFixed(d)+'%';
+
+/* ================================================================
+   Codes: stabilizer layouts, logical operators, matching graphs
+   ================================================================ */
+// Rotated surface code, distance d. Data atoms on a d×d grid; check (ancilla) atoms on faces.
+// Z-type faces detect X errors, X-type faces detect Z errors.
+// Logical X_L = X on a column (top→bottom), logical Z_L = Z on a row (left→right).
+function buildSurface(d){
+  const qs=[], stabs=[], idx=(r,c)=>r*d+c;
+  for(let r=0;r<d;r++) for(let c=0;c<d;c++) qs.push({x:c,y:r,r,c});
+  for(let i=0;i<=d;i++) for(let j=0;j<=d;j++){
+    const type = (i+j)%2===0 ? 'X' : 'Z';
+    const bulk = i>=1 && i<=d-1 && j>=1 && j<=d-1;
+    const tb = (i===0||i===d) && j>=1 && j<=d-1;
+    const lr = (j===0||j===d) && i>=1 && i<=d-1;
+    if(!(bulk || (tb && type==='X') || (lr && type==='Z'))) continue;
+    const q=[];
+    for(const [r,c] of [[i-1,j-1],[i-1,j],[i,j],[i,j-1]]) if(r>=0&&r<d&&c>=0&&c<d) q.push(idx(r,c));
+    let side=null, cx=j-0.5, cy=i-0.5;
+    if(!bulk){
+      side = i===0?'top' : i===d?'bottom' : j===0?'left' : 'right';
+      if(side==='top') cy=-0.25; if(side==='bottom') cy=d-0.75;
+      if(side==='left') cx=-0.25; if(side==='right') cx=d-0.75;
+    }
+    // bulk q order: TL, TR, BR, BL
+    stabs.push({type, q, side, cx, cy});
+  }
+  const code = {kind:'surface', d, n:d*d, qs, stabs,
+    logX: Array.from({length:d},(_,r)=>idx(r,0)),
+    logZ: Array.from({length:d},(_,c)=>idx(0,c)),
+    boundaryOf:(q,errT)=> errT==='X' ? (qs[q].r < d/2 ? 'top':'bottom') : (qs[q].c < d/2 ? 'left':'right'),
+    bounds:{X:['top','bottom'], Z:['left','right']}};
+  return finalize(code);
+}
+// Repetition code: n atoms in a line, two-body checks of one type.
+function buildRep(n, check){
+  const qs=Array.from({length:n},(_,i)=>({x:i,y:0,r:0,c:i}));
+  const stabs=[];
+  for(let i=0;i<n-1;i++) stabs.push({type:check, q:[i,i+1], side:'pill', cx:i+0.5, cy:0});
+  const all=qs.map((_,i)=>i);
+  const errT = check==='Z' ? 'X' : 'Z';
+  const code = {kind:'rep', n, d:n, qs, stabs,
+    logX: check==='Z' ? all : [0],
+    logZ: check==='Z' ? [0] : all,
+    boundaryOf:q=> q < n/2 ? 'left' : 'right',
+    bounds:{[errT]:['left','right']}};
+  if(!code.bounds.X) code.bounds.X=[]; if(!code.bounds.Z) code.bounds.Z=[];
+  return finalize(code);
+}
+function finalize(code){
+  code.qStabs = Array.from({length:code.n},()=>[]);
+  code.stabs.forEach((s,i)=>s.q.forEach(q=>code.qStabs[q].push(i)));
+  code.graph = {X:buildGraph(code,'X'), Z:buildGraph(code,'Z')};
+  return code;
+}
+// Matching graph for one error type: nodes = detecting checks (+ virtual boundary nodes), edges = data atoms.
+function buildGraph(code, errT){
+  const dt = errT==='X' ? 'Z' : 'X', adj=new Map();
+  const add=(a,b,q)=>{ if(!adj.has(a)) adj.set(a,[]); adj.get(a).push({to:b,q}); };
+  for(let q=0;q<code.n;q++){
+    const ss = code.qStabs[q].filter(i=>code.stabs[i].type===dt);
+    if(ss.length===2){ add(ss[0],ss[1],q); add(ss[1],ss[0],q); }
+    else if(ss.length===1){ const b='B:'+code.boundaryOf(q,errT); add(ss[0],b,q); add(b,ss[0],q); }
+  }
+  return adj;
+}
+const detType = errT => errT==='X' ? 'Z' : 'X';
+const errTypeOf = stabType => stabType==='Z' ? 'X' : 'Z';
+
+function dijkstra(adj, src, wq){
+  const dist=new Map([[src,0]]), prev=new Map(), done=new Set();
+  for(;;){
+    let best=null, bd=Infinity;
+    for(const [k,v] of dist) if(!done.has(k) && v<bd){ bd=v; best=k; }
+    if(best===null) break;
+    done.add(best);
+    if(typeof best==='string' && best!==src) continue; // never route through a boundary
+    for(const e of adj.get(best)||[]){
+      const w=wq(e.q); if(!isFinite(w)) continue;
+      const nd=bd+w;
+      if(nd < (dist.has(e.to)?dist.get(e.to):Infinity)){ dist.set(e.to,nd); prev.set(e.to,{from:best,q:e.q}); }
+    }
+  }
+  return {dist, prev, src};
+}
+function tracePath(res, target){
+  const qs=[]; let cur=target;
+  while(cur!==res.src && res.prev.has(cur)){ const p=res.prev.get(cur); qs.push(p.q); cur=p.from; }
+  return cur===res.src ? qs : null;
+}
+// Minimum-weight perfect matching (exact bitmask DP up to 16 defects, greedy beyond).
+function decodeType(code, errT, lit, wq){
+  const out={qs:new Set(), pairs:[]}, n=lit.length;
+  if(!n) return out;
+  const adj=code.graph[errT];
+  const runs=lit.map(s=>dijkstra(adj,s,wq));
+  const bn=(code.bounds[errT]||[]).map(b=>'B:'+b);
+  const dist=lit.map((_,i)=>lit.map((t,j)=> i===j ? Infinity : (runs[i].dist.has(t)?runs[i].dist.get(t):Infinity)));
+  const bd=[], bc=[];
+  lit.forEach((_,i)=>{ let best=Infinity, ch=null; for(const b of bn){ const v=runs[i].dist.has(b)?runs[i].dist.get(b):Infinity; if(v<best){best=v;ch=b;} } bd.push(best); bc.push(ch); });
+  const plan=[];
+  if(n<=16){
+    const N=1<<n, memo=new Float64Array(N).fill(-1), ch=new Int16Array(N);
+    const f=m=>{
+      if(m===0) return 0;
+      if(memo[m]>=0) return memo[m];
+      const i=31-Math.clz32(m&-m), rest=m&~(1<<i);
+      let best=bd[i]+f(rest), c=-1;
+      for(let j=0;j<n;j++) if(rest&(1<<j)){ const v=dist[i][j]+f(rest&~(1<<j)); if(v<best){best=v;c=j;} }
+      memo[m]=best; ch[m]=c; return best;
+    };
+    f(N-1);
+    let m=N-1;
+    while(m){ const i=31-Math.clz32(m&-m), c=ch[m]; plan.push([i,c]); m&=~(1<<i); if(c>=0) m&=~(1<<c); }
+  } else {
+    const left=new Set(lit.map((_,i)=>i));
+    while(left.size){
+      let best=Infinity, bi=-1, bj=-1;
+      for(const i of left){ if(bd[i]<best){best=bd[i];bi=i;bj=-1;} for(const j of left) if(j>i && dist[i][j]<best){best=dist[i][j];bi=i;bj=j;} }
+      if(bi<0) break;
+      plan.push([bi,bj]); left.delete(bi); if(bj>=0) left.delete(bj);
+    }
+  }
+  for(const [i,j] of plan){
+    const target = j<0 ? bc[i] : lit[j];
+    if(target==null) continue;
+    const path=tracePath(runs[i], target); if(!path) continue;
+    for(const q of path){ if(out.qs.has(q)) out.qs.delete(q); else out.qs.add(q); }
+    out.pairs.push([lit[i], target]);
+  }
+  return out;
+}
+function synOf(code, X, Z, s){ const st=code.stabs[s], v=st.type==='Z'?X:Z; let p=0; for(const q of st.q) p^=v[q]; return p; }
+function logicalFail(code, X, Z){ let fx=0, fz=0; for(const q of code.logZ) fx^=X[q]; for(const q of code.logX) fz^=Z[q]; return {fx, fz}; }
+
+/* ================================================================
+   Curriculum
+   ================================================================ */
+// Error-correction levels; course.js slots them into the syllabus (LEVELS).
+const QEC_LEVELS = [
+ {id:'1.1', ch:1, title:'A qubit in a tweezer', kind:'intro',
+  brief:`<p>Each qubit is a single neutral atom held in a focused laser beam, an <b>optical tweezer</b>. Two long-lived internal states, such as hyperfine or nuclear-spin levels, store |0⟩ and |1⟩. Laser pulses rotate between them.</p>
+  <p>For two-qubit gates, atoms are briefly excited to a <b>Rydberg state</b>, a highly excited orbital with a huge electron cloud. Two nearby Rydberg atoms can't both be excited (the <b>Rydberg blockade</b>), and that gives a controlled-Z gate.</p>
+  <p>Readout is fluorescence imaging: the atom is either bright or dark. Prepare an equal superposition and measure it repeatedly. The outcome is <b>genuinely random</b>, and measuring destroys the superposition. So we can never just look at our data atoms to find errors.</p>
+  <p class="cite">Goal: measure 8 equal superpositions.</p>`},
+ {id:'1.2', ch:1, title:'Parity, not values', code:{kind:'rep',n:3,check:'Z'}, noise:{type:'exact',k:1,paulis:['X']}, shots:3, pass:3, tools:['X'],
+  brief:`<p>Three data atoms encode one logical bit: |0<sub>L</sub>⟩=|000⟩, |1<sub>L</sub>⟩=|111⟩, and any superposition of the two.</p>
+  <p>Between each pair sits a <b>check atom</b>. Using two Rydberg CZ gates it measures Z⊗Z, i.e. "do my neighbours agree?". It learns nothing about the logical value, so the superposition survives.</p>
+  <p>One data atom was hit by an X (bit-flip) error. Lit checks mean the neighbours disagree. Pick the <b>X</b> tool and click the atom you think flipped, then submit.</p>`},
+ {id:'1.3', ch:1, title:'When the majority lies', code:{kind:'rep',n:5,check:'Z'}, noise:{type:'iid',p:0.14,bias:{x:1,y:0,z:0}}, shots:6, pass:5, tools:['match','X'], hint:true,
+  brief:`<p>Real noise is random: each atom flips independently with some probability <i>p</i>. A chain of neighbouring flips lights only the checks at its <b>endpoints</b>, so lit checks (we call them <b>defects</b>) come in pairs, or a single one if the chain runs off an end of the code.</p>
+  <p>New tool: <b>Match</b>. Click a defect, then click a second defect (or a glowing end-bar) and every atom between them is flipped. Choosing which defects belong together is <b>decoding</b>.</p>
+  <p>Sometimes 3 of 5 atoms flip. Then the simplest explanation is wrong, and correcting it completes a <b>logical</b> error. No decoder can avoid this. If the reference decoder would also have failed, the shot is marked "unlucky" and replayed.</p>`},
+ {id:'1.4', ch:1, title:"The error you can't see", code:{kind:'rep',n:3,check:'Z'}, noise:{type:'exact',k:1,paulis:['Z']}, shots:2, pass:0, tools:['X'], bench:false,
+  brief:`<p>Qubits can also suffer <b>phase flips</b> (Z errors): |0⟩+|1⟩ → |0⟩−|1⟩. On Rydberg hardware these come from laser phase noise, Rydberg-state decay, and atom motion.</p>
+  <p>Z errors commute with Z⊗Z checks, so this code is <b>blind</b> to them. Watch: nothing lights up. Submit anyway and see what the reveal says.</p>
+  <p>Arbitrary (continuous) errors are fine once we can catch both X and Z, because measuring checks <i>digitizes</i> any error into X, Z, or both (Y = XZ).</p>`},
+ {id:'1.5', ch:1, title:'The phase-flip code', code:{kind:'rep',n:5,check:'X'}, noise:{type:'iid',p:0.12,bias:{x:0,y:0,z:1}}, shots:4, pass:4, tools:['match','Z'], hint:true,
+  brief:`<p>Rotate every check into the X basis and the code now measures X⊗X, which catches Z errors. On a Rydberg array this just means Hadamard-like pulses on the check atom around its CZ gates.</p>
+  <p>Orange = X-type checks (they detect Z errors). Fix the phase flips with <b>Z</b> corrections or Match.</p>
+  <p>A repetition code protects against <i>one</i> kind of error. To protect against both at once we need a 2-D code.</p>`},
+
+ {id:'2.1', ch:2, title:'Plaquettes', code:{kind:'surface',d:3}, noise:{type:'exact',k:1,paulis:['X']}, shots:4, pass:4, tools:['X','match'],
+  brief:`<p>The <b>rotated surface code</b>: 9 data atoms (white) at the corners and 8 check atoms (small dots) in the faces. <b style="color:var(--Z)">Blue</b> faces measure Z⊗Z⊗Z⊗Z and detect X errors. <b style="color:var(--X)">Orange</b> faces measure X⊗X⊗X⊗X and detect Z errors. Neighbouring faces share two atoms, so every check commutes with every other and all can be measured together.</p>
+  <p>An X error lights the 1 or 2 blue faces that touch it. Find the flipped atom.</p>
+  <p class="cite">Dennis, Kitaev, Landahl & Preskill 2002; Fowler et al. 2012.</p>`},
+ {id:'2.2', ch:2, title:'Strings and endpoints', code:{kind:'surface',d:5}, noise:{type:'chain',L:[2,3],paulis:['X']}, shots:4, pass:4, tools:['match','X'],
+  brief:`<p>A <b>string</b> of X errors flips each blue face along it twice (no change), except the faces at its two ends. You only see endpoints.</p>
+  <p>Match the two defects and the shortest path between them is corrected. The path doesn't have to be the same as the real string! Error + correction just needs to form a closed loop, and every closed loop is a product of checks, which acts as the identity on the logical qubit.</p>`},
+ {id:'2.3', ch:2, title:'Edges of the world', code:{kind:'surface',d:5}, noise:{type:'edge',k:[1,2]}, shots:4, pass:4, tools:['match','X'],
+  brief:`<p>Strings can end on a <b>boundary</b>. X strings can end on the top and bottom edges (the blue bars), and Z strings on the left and right edges (orange bars).</p>
+  <p>That's where the logical operators come from. A string of X running all the way from top to bottom is <b>X<sub>L</sub></b>: it lights nothing yet flips the logical qubit. The code distance <i>d</i> is the length of the shortest such string.</p>
+  <p>Match each lone defect to the <b>nearest</b> blue bar. Matching to the far one completes a logical error.</p>`},
+ {id:'2.4', ch:2, title:'Two colours of error', code:{kind:'surface',d:5}, noise:{type:'exact',k:3,paulis:['X','Z','Y']}, shots:4, pass:4, tools:['match','X','Z','Y'], hint:true,
+  brief:`<p>Now X, Z and Y errors all appear. Blue defects come from X components, orange ones from Z components. A <b>Y</b> lights both colours around the same atom.</p>
+  <p>The two colours decode independently: blue defects pair with blue defects or blue bars, orange with orange.</p>
+  <p class="cite">Shortcut keys: <span class="kbd">M</span> match, <span class="kbd">X</span> <span class="kbd">Z</span> <span class="kbd">Y</span> Paulis, <span class="kbd">U</span> undo, <span class="kbd">H</span> hint, <span class="kbd">Enter</span> submit.</p>`},
+ {id:'2.5', ch:2, title:'Degeneracy', code:{kind:'surface',d:3}, noise:{type:'iid',p:0.07,bias:DEPOL}, shots:8, pass:6, tools:['match','X','Z','Y'], hint:true,
+  brief:`<p>Random depolarizing noise: each atom independently suffers X, Y or Z with total probability 7%.</p>
+  <p>Many different errors give the same syndrome, and corrections that differ by a closed loop are equally good. That's <b>degeneracy</b>. Your job isn't to find the exact error. It's to pick the right <i>class</i>: the one that doesn't cross the lattice.</p>
+  <p>The reveal compares you against minimum-weight perfect matching (MWPM), the workhorse decoder in surface code experiments.</p>`},
+ {id:'2.6', ch:2, title:'Threshold', code:{kind:'surface',d:5}, noise:{type:'iid',p:0.05,bias:DEPOL}, shots:6, pass:5, tools:['match','X','Z','Y'], hint:true,
+  brief:`<p>Distance 5 can fix any 2 errors. A bigger code only helps if errors are rare enough: below the <b>threshold</b> each step d → d+2 suppresses logical errors by a factor Λ. Above it, bigger codes are <i>worse</i>.</p>
+  <p>With perfect checks and independent X/Z noise, the surface code threshold under MWPM is about 10%. With realistic gate-by-gate (circuit-level) noise it's about 1%.</p>
+  <p>Harvard/QuEra reported 2.14× below-threshold performance on a neutral-atom array in 2025.</p>
+  <p class="cite">Fowler et al. 2012; Bluvstein et al. 2025.</p>`},
+
+ {id:'3.1', ch:3, title:'Erasure conversion', code:{kind:'surface',d:5}, noise:{type:'iid',p:0.01,bias:DEPOL,pe:0.16}, shots:6, pass:5, tools:['match','X','Z','Y'], hint:true,
+  brief:`<p>Encode the qubit in a metastable level of <b>¹⁷¹Yb</b>. Then most gate errors (Rydberg decay, laser scattering) knock the atom <i>out</i> of the qubit subspace. Those atoms can be imaged mid-circuit without disturbing the others. The error becomes an <b>erasure</b>: you don't know which Pauli happened, but you know <i>where</i>.</p>
+  <p>Wu et al. predict ~98% of errors can be converted, raising the circuit-level threshold from 0.94% to 4.15%. Ma et al. (2023) demonstrated mid-circuit erasure detection in Yb.</p>
+  <p>Erased atoms glow <b style="color:var(--er)">magenta</b>. Match routes through them almost for free. Even at 16% erasures, d=5 holds.</p>
+  <p class="cite">Wu, Kolkowitz, Puri & Thompson 2022; Ma et al. 2023; Scholl et al. 2023.</p>`},
+ {id:'3.2', ch:3, title:'Lost atoms', code:{kind:'surface',d:5}, noise:{type:'iid',p:0.025,bias:DEPOL,loss:0.07}, shots:5, pass:4, tools:['match','X','Z','Y'], hint:true,
+  brief:`<p>Atoms sometimes escape their tweezers: collisions with background gas, or anti-trapping while in the Rydberg state. A check touching an <b>empty tweezer</b> returns coin flips (shown as <b>?</b>).</p>
+  <p>Loss is detectable by imaging. <b>Click an empty tweezer</b> to reload a fresh atom from the reservoir. Its state is random relative to the code, but you know where it is, so it becomes an erasure.</p>
+  <p>Loss detection plus replenishment was a key ingredient of the 448-atom below-threshold architecture. Theory puts the loss threshold around 2.6%.</p>
+  <p class="cite">Bluvstein et al. 2025; Perrin, Jandura & Pupillo 2025.</p>`},
+ {id:'3.3', ch:3, title:'Noisy measurements', code:{kind:'surface',d:3}, rounds:6, auto:false, noise:{type:'iid',p:0.035,bias:DEPOL,qMeas:0.07}, shots:3, pass:2, tools:['match','X','Z','Y'], bench:false, hint:true,
+  brief:`<p>Checks are measured by atoms too, and readout sometimes lies. Now errors arrive <b>round by round</b> and each round's check results are noisy.</p>
+  <p>A defect that appears for one round and vanishes was probably a <b>measurement error</b>. A real data error stays lit. New defects are drawn <b>dashed</b>, and defects seen for two or more rounds are solid. Correct a dashed one and you may be "fixing" a ghost.</p>
+  <p>After the last round the data atoms are measured directly. That gives a perfect final syndrome, which you then clean up. Real decoders match in space <i>and</i> time.</p>
+  <p class="cite">Press <span class="kbd">Space</span> for the next round.</p>`},
+ {id:'3.4', ch:3, title:'Hook errors', code:{kind:'surface',d:3}, noise:{type:'hook1',p:0.0}, shots:6, pass:5, tools:['match','X','Z','Y'], schedChoice:true, showOrder:true, noReplay:true, hint:true,
+  sched:{X:'N',Z:'Z'},
+  brief:`<p>A check atom runs 4 CZ gates with its data atoms, one after another (the faint path in each face). A fault on the check atom <b>halfway through</b> spreads to the last two data atoms. That's a <b>hook</b>: one fault, two errors (gold edge).</p>
+  <p>If hooks run <i>along</i> the logical operator, one fault covers two steps of a logical string and the effective distance halves. Here every shot has exactly one hook.</p>
+  <p>Reorder the gates with the schedule toggles so the hooks run <b>perpendicular</b>. Remember: X<sub>L</sub> runs vertically (X hooks come from orange checks), and Z<sub>L</sub> runs horizontally (Z hooks come from blue checks).</p>
+  <p class="cite">Tomita & Svore 2014. Replays are off here: a hook-unaware MWPM decoder fails too.</p>`},
+ {id:'3.5', ch:3, title:'Biased noise', code:{kind:'surface',d:5}, noise:{type:'iid',p:0.08,bias:{x:0.04,y:0.04,z:0.92}}, shots:6, pass:5, tools:['match','X','Z','Y'], hint:true,
+  brief:`<p>Rydberg-state decay and laser phase noise mostly produce <b>Z</b> errors, so the noise is <b>biased</b>. Here 92% of errors are Z at p = 8%, which is far above where depolarizing noise would be safe.</p>
+  <p>Since almost all defects are orange, you only fight one battle. Real proposals exploit this with tailored codes (XZZX surface code, rectangular d<sub>X</sub>≠d<sub>Z</sub>). With biased erasures, Sahay et al. find an 8.2% threshold.</p>
+  <p class="cite">Cong et al. 2022; Sahay, Jin, Claes, Thompson & Puri 2023.</p>`},
+
+ {id:'4.1', ch:4, title:'Memory experiment I', code:{kind:'surface',d:3}, rounds:12, auto:true, noise:{type:'iid',p:0.018,bias:DEPOL,qMeas:0.03,erasureFrac:0.5,loss:0.006,hookRel:0.35}, shots:3, pass:2, tools:['match','X','Z','Y'], bench:false, hint:true, sched:{X:'Z',Z:'N'},
+  brief:`<p>Everything at once, in <b>real time</b>. Rounds tick at the speed set in the header (pause any time with <span class="kbd">Space</span>). Errors arrive each round: Pauli errors (half converted to erasures), measurement errors, occasional atom loss, and hooks with a good schedule.</p>
+  <p>Keep the logical qubit alive for 12 rounds, then decode the final readout.</p>`},
+ {id:'4.2', ch:4, title:'Memory experiment II', code:{kind:'surface',d:5}, rounds:15, auto:true, noise:{type:'iid',p:0.012,bias:DEPOL,qMeas:0.02,erasureFrac:0.6,loss:0.004,hookRel:0.35}, shots:3, pass:2, tools:['match','X','Z','Y'], bench:false, hint:true, sched:{X:'Z',Z:'N'},
+  brief:`<p>Distance 5, 49 atoms: 25 data and 24 check. This is the scale of the 2023 Harvard/QuEra logical processor, which ran surface codes up to d=7 on 280 atoms with transversal logical gates.</p>
+  <p class="cite">Bluvstein et al. 2024.</p>`},
+ {id:'4.3', ch:4, title:'Grand challenge: d=7', code:{kind:'surface',d:7}, rounds:20, auto:true, noise:{type:'iid',p:0.009,bias:DEPOL,qMeas:0.015,erasureFrac:0.7,loss:0.003,hookRel:0.35}, shots:2, pass:1, tools:['match','X','Z','Y'], bench:false, hint:true, sched:{X:'Z',Z:'N'},
+  brief:`<p>97 atoms, 20 rounds. Any 3 errors can be corrected, so a logical failure needs at least 4 badly placed faults. Be the decoder.</p>
+  <p>After this, the <b>Lab</b> lets you run your own experiments, buy better hardware, and chase the "below threshold" milestone.</p>`},
+];
+
+/* ================================================================
+   Global state & persistence
+   ================================================================ */
+const SPEEDS=[{n:'Slow',ms:3800},{n:'Normal',ms:2400},{n:'Fast',ms:1400},{n:'Turbo',ms:750}];
+const G = {view:'curriculum', levelIdx:0, R:null, intro:null, speed:1,
+  progress:{done:{}}, lab:null, unlockAll:false};
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({progress:G.progress, lab:G.lab, speed:G.speed, unlockAll:G.unlockAll, levelIdx:G.levelIdx})); }catch(e){} }
+function load(){
+  try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s){ G.progress=s.progress||G.progress; G.lab=s.lab||null; G.speed=s.speed??1; G.unlockAll=!!s.unlockAll; G.levelIdx=s.levelIdx||0; } }catch(e){}
+  if(!G.lab){ try{ const o=JSON.parse(localStorage.getItem(OLD_SAVE_KEY)||'null'); if(o&&o.lab){ G.lab=o.lab; G.speed=o.speed??G.speed; } }catch(e){} }
+  if(!G.lab) G.lab=newLab();
+  G.levelIdx=Math.min(G.levelIdx, LEVELS.length-1);
+}
+function unlocked(i){ return G.unlockAll || i===0 || LEVELS[i].unit!==LEVELS[i-1].unit || !!G.progress.done[LEVELS[i-1].id]; }
+
+/* ================================================================
+   Runtime: one level / lab run
+   ================================================================ */
+function newRuntime(def, mode){
+  const code = def.code.kind==='surface' ? buildSurface(def.code.d) : buildRep(def.code.n, def.code.check);
+  const R = {def, mode, code, shot:0, wins:0, fails:0, unluckies:0, pips:[], hintsUsedLevel:0,
+    tool:def.tools[0], sel:null, sched:{...(def.sched||{X:'Z',Z:'Z'})}, paused:false, timer:null, feed:[]};
+  if(mode==='lab') R.hintsLeft = def.hints||0;
+  startShot(R);
+  return R;
+}
+function startShot(R){
+  const n=R.code.n, ns=R.code.stabs.length, nz=R.def.noise;
+  clearTimeout(R.timer);
+  Object.assign(R, {E:{x:new Uint8Array(n),z:new Uint8Array(n)}, C:{x:new Uint8Array(n),z:new Uint8Array(n)},
+    erased:new Uint8Array(n), erAge:new Array(n).fill(99), lost:new Uint8Array(n),
+    meas:new Uint8Array(ns), unrel:new Uint8Array(ns), persist:new Uint8Array(ns),
+    undo:[], sel:null, hint:null, reveal:null, hookEv:[], msg:null, hintsUsed:0, t:0, feed:[]});
+  R.qMeas = nz.qMeas||0;
+  R.hookP = nz.hookRel ? nz.hookRel*(nz.p||0) : (nz.hook||0);
+  if(R.def.rounds>1){
+    R.phase='round'; R.T=R.def.rounds;
+    if(R.def.deadSite!=null) R.lost[R.def.deadSite]=1;
+    doRound(R);
+    R.msg={t:R.def.auto ? 'Rounds are running. Watch for defects that persist, then match them.' : 'Round 1 measured. Press <b>Next round</b> (Space) to continue, or correct now.'};
+    scheduleTick(R);
+  } else {
+    for(let tries=0; tries<40; tries++){
+      R.E.x.fill(0); R.E.z.fill(0); R.erased.fill(0); R.lost.fill(0); R.hookEv=[];
+      sampleShot(R);
+      refreshTrue(R);
+      const any = R.meas.some(v=>v) || R.unrel.some(v=>v) || R.erased.some(v=>v) || (R.def.code.kind==='rep' && R.E.z.some(v=>v));
+      if(any) break;
+    }
+    R.E0 = {x:R.E.x.slice(), z:R.E.z.slice()};
+    R.phase='play';
+  }
+}
+function applyPauli(E,q,P){ if(hasX(P)) E.x[q]^=1; if(hasZ(P)) E.z[q]^=1; }
+function samplePauli(b){ const r=rnd(); return r<b.x ? 'X' : r<b.x+b.y ? 'Y' : 'Z'; }
+function erase(R,q){ applyPauli(R.E,q,pick(['I','X','Y','Z'])); R.erased[q]=1; R.erAge[q]=0; }
+function hookPair(R,s){
+  const st=R.code.stabs[s], [TL,TR,BR,BL]=st.q;
+  // Z-shaped order (TL,TR,BL,BR) leaves a horizontal hook; N-shaped (TL,BL,TR,BR) a vertical one.
+  const horiz = R.sched[st.type]==='Z';
+  return horiz ? (rnd()<.5?[TL,TR]:[BL,BR]) : (rnd()<.5?[TL,BL]:[TR,BR]);
+}
+function applyHook(R,s){
+  const st=R.code.stabs[s], pair=hookPair(R,s).filter(q=>!R.lost[q]);
+  pair.forEach(q=>applyPauli(R.E,q,st.type));
+  R.hookEv.push({s, pair});
+}
+function noiseRound(R, nz){
+  const n=R.code.n;
+  let ev={er:0, loss:0};
+  for(let q=0;q<n;q++){
+    if(R.lost[q]) continue;
+    if(nz.loss && rnd()<nz.loss){ R.lost[q]=1; R.E.x[q]=R.E.z[q]=0; R.C.x[q]=R.C.z[q]=0; ev.loss++; continue; }
+    if(nz.pe && rnd()<nz.pe){ erase(R,q); ev.er++; continue; }
+    if(nz.p && rnd()<nz.p){
+      if(nz.erasureFrac && rnd()<nz.erasureFrac){ erase(R,q); ev.er++; }
+      else applyPauli(R.E,q,samplePauli(nz.bias||DEPOL));
+    }
+  }
+  if(R.hookP) R.code.stabs.forEach((st,s)=>{ if(st.q.length===4 && rnd()<R.hookP) applyHook(R,s); });
+  return ev;
+}
+function sampleShot(R){
+  const nz=R.def.noise, c=R.code, n=c.n;
+  if(nz.type==='exact'){
+    shuffle([...Array(n).keys()]).slice(0,nz.k).forEach(q=>applyPauli(R.E,q,pick(nz.paulis)));
+  } else if(nz.type==='chain'){
+    const L=pick(nz.L), P=pick(nz.paulis), d=c.d;
+    let q=Math.floor(rnd()*n); const seen=new Set([q]); applyPauli(R.E,q,P);
+    for(let k=1;k<L;k++){
+      const {r,c:cc}=c.qs[q];
+      const nb=[[r-1,cc],[r+1,cc],[r,cc-1],[r,cc+1]].filter(([a,b])=>a>=0&&a<d&&b>=0&&b<d).map(([a,b])=>a*d+b).filter(x=>!seen.has(x));
+      if(!nb.length) break; q=pick(nb); seen.add(q); applyPauli(R.E,q,P);
+    }
+  } else if(nz.type==='edge'){
+    const k=pick(nz.k), d=c.d;
+    const edge=c.qs.map((o,i)=>i).filter(i=>c.qs[i].r===0||c.qs[i].r===d-1);
+    shuffle(edge).slice(0,k).forEach(q=>applyPauli(R.E,q,'X'));
+  } else if(nz.type==='hook1'){
+    const w4=c.stabs.map((s,i)=>i).filter(i=>c.stabs[i].q.length===4);
+    applyHook(R, pick(w4));
+    if(nz.p) noiseRound(R, {p:nz.p, bias:DEPOL});
+  } else {
+    noiseRound(R, nz);
+  }
+}
+const currX = R => xor(R.E.x, R.C.x), currZ = R => xor(R.E.z, R.C.z);
+function refreshTrue(R){
+  const c=R.code, X=currX(R), Z=currZ(R);
+  c.stabs.forEach((st,s)=>{
+    const un = st.q.some(q=>R.lost[q]);
+    R.unrel[s]=un?1:0;
+    R.meas[s]= un ? 0 : synOf(c,X,Z,s);
+    R.persist[s]= R.meas[s] ? 2 : 0;
+  });
+}
+function measureAll(R){
+  const c=R.code, X=currX(R), Z=currZ(R);
+  let flips=0;
+  c.stabs.forEach((st,s)=>{
+    const un = st.q.some(q=>R.lost[q]);
+    R.unrel[s]=un?1:0;
+    let v = un ? (rnd()<.5?1:0) : synOf(c,X,Z,s);
+    if(!un && R.qMeas && rnd()<R.qMeas){ v^=1; flips++; }
+    R.meas[s]=v;
+    R.persist[s] = v&&!un ? Math.min(9,R.persist[s]+1) : 0;
+  });
+  return flips;
+}
+function reloadAtom(R,q){
+  if(!R.lost[q]) return false;
+  R.lost[q]=0; R.C.x[q]=R.C.z[q]=0;
+  R.E.x[q]=R.E.z[q]=0; erase(R,q);
+  return true;
+}
+function doRound(R){
+  R.t++;
+  const nz=R.def.noise;
+  let reloaded=0;
+  if(R.def.autoReload) for(let q=0;q<R.code.n;q++) if(reloadAtom(R,q)) reloaded++;
+  for(let q=0;q<R.code.n;q++) R.erAge[q]++;
+  if(R.def.deadSite!=null && R.t%5===0 && !R.lost[R.def.deadSite]){ R.lost[R.def.deadSite]=1; }
+  const ev = noiseRound(R, nz);
+  measureAll(R);
+  const lit=R.meas.reduce((a,v,i)=>a+(v&&!R.unrel[i]?1:0),0);
+  let line=`Round ${R.t}: ${lit} lit`;
+  if(ev.er) line+=`, ${ev.er} erasure${ev.er>1?'s':''} flagged`;
+  if(ev.loss) line+=`, ${ev.loss} atom${ev.loss>1?'s':''} lost`;
+  if(reloaded) line+=`, ${reloaded} auto-reloaded`;
+  R.feed.unshift(line);
+  R.sel=null; R.hint=null;
+}
+function scheduleTick(R){
+  clearTimeout(R.timer);
+  if(R.phase!=='round' || !R.def.auto || R.paused) return;
+  R.timer=setTimeout(()=>{ if(G.R!==R) return; advanceRound(R); }, SPEEDS[G.speed].ms);
+}
+function advanceRound(R){
+  if(R.phase!=='round') return;
+  if(R.t>=R.T) enterFinal(R);
+  else doRound(R);
+  const wrap=document.querySelector('.boardwrap'); if(wrap){ wrap.classList.remove('flash'); void wrap.offsetWidth; wrap.classList.add('flash'); }
+  rerender();
+  scheduleTick(R);
+}
+function enterFinal(R){
+  clearTimeout(R.timer);
+  R.phase='final';
+  refreshTrue(R);
+  R.feed.unshift('Final readout: data atoms imaged; syndrome is now exact.');
+  R.msg={t:'<b>Final readout.</b> The data atoms were measured directly, so these defects are real. Clear them all, then <b>Submit</b>.', c:'warn'};
+}
+const interactive = R => R.phase==='play' || R.phase==='round' || R.phase==='final';
+const erVisible = (R,q) => R.erased[q] && (R.def.rounds>1 ? R.erAge[q]<=3 : true);
+const isLit = (R,s) => R.meas[s] && !R.unrel[s];
+function wq(R){ return q => R.lost[q] ? Infinity : (erVisible(R,q) ? 0.05 : 1); }
+
+function applyCorr(R, qs, P, record=true){
+  for(const q of qs){
+    if(hasX(P)) R.C.x[q]^=1;
+    if(hasZ(P)) R.C.z[q]^=1;
+    if(R.phase==='round') for(const s of R.code.qStabs[q]){
+      const st=R.code.stabs[s];
+      if((st.type==='Z'&&hasX(P)) || (st.type==='X'&&hasZ(P))){ R.meas[s]^=1; R.persist[s]=R.meas[s]?2:0; }
+    }
+  }
+  if(record) R.undo.push({qs:[...qs], P});
+  if(R.phase!=='round') refreshTrue(R);
+  R.hint=null;
+}
+function doUndo(R){ const u=R.undo.pop(); if(!u) return; applyCorr(R,u.qs,u.P,false); R.msg={t:'Undid last correction.'}; rerender(); }
+function doReset(R){ while(R.undo.length){ const u=R.undo.pop(); applyCorr(R,u.qs,u.P,false); } R.msg={t:'All corrections removed.'}; rerender(); }
+
+/* ---------- input handlers ---------- */
+function onStab(R, s){
+  if(!interactive(R)) return;
+  const st=R.code.stabs[s];
+  if(!R.def.tools.includes('match')){ R.msg={t:'A lit check means its two neighbours disagree. Click the <b>atom</b> that flipped.'}; return rerender(); }
+  if(R.tool!=='match') R.tool='match';
+  if(R.unrel[s]){ R.msg={t:'This check touches an empty tweezer, so its result is a coin flip. Reload the missing atom first.', c:'warn'}; return rerender(); }
+  if(!isLit(R,s)){ R.msg={t:'That check is dark. Select a <b>lit</b> one (a defect).'}; R.sel=null; return rerender(); }
+  if(R.sel===null || R.sel===s){ R.sel = R.sel===s ? null : s; if(R.sel!==null) R.msg={t:`Defect selected. Click another ${st.type==='Z'?'blue':'orange'} defect, or a ${st.type==='Z'?'blue':'orange'} boundary bar.`}; return rerender(); }
+  const a=R.code.stabs[R.sel];
+  if(a.type!==st.type){ R.sel=s; R.msg={t:'Different colour: blue and orange defects never pair. Selected the new one instead.'}; return rerender(); }
+  matchTo(R, R.sel, s);
+}
+function onBound(R, label, errT){
+  if(!interactive(R)) return;
+  if(R.sel===null){ R.msg={t:'Select a defect first, then click a boundary to send its string off the edge.'}; return rerender(); }
+  if(errTypeOf(R.code.stabs[R.sel].type)!==errT){ R.msg={t:`That boundary only absorbs ${errT==='X'?'blue':'orange'} defects.`, c:'warn'}; return rerender(); }
+  matchTo(R, R.sel, 'B:'+label);
+}
+function matchTo(R, s, target){
+  const errT=errTypeOf(R.code.stabs[s].type);
+  const res=dijkstra(R.code.graph[errT], s, wq(R));
+  const path=tracePath(res, target);
+  if(!path){ R.msg={t:'No path: an empty tweezer blocks the way. Reload atoms first.', c:'warn'}; R.sel=null; return rerender(); }
+  applyCorr(R, path, errT);
+  R.sel=null;
+  R.msg={t:`Applied ${errT} on ${path.length} atom${path.length>1?'s':''}.`};
+  rerender();
+}
+function onQubit(R, q){
+  if(!interactive(R)) return;
+  if(R.lost[q]){
+    reloadAtom(R,q);
+    if(R.phase!=='round') refreshTrue(R);
+    R.msg={t:'Fresh atom loaded from the reservoir. Its state is random, so it is flagged as an <b style="color:var(--er)">erasure</b>.'+(R.phase==='round'?' Its checks become reliable next round.':'')};
+    return rerender();
+  }
+  let P=R.tool;
+  if(P==='match'){ const alt=R.def.tools.find(t=>t!=='match'); if(!alt) return; R.msg={t:`Match works on defects (faces). To flip a single atom pick a Pauli tool (${R.def.tools.filter(t=>t!=='match').join(', ')}).`}; return rerender(); }
+  applyCorr(R,[q],P);
+  R.msg={t:`Applied ${P} to atom ${q}.`};
+  rerender();
+}
+function doHint(R){
+  if(!R.def.hint || !interactive(R)) return;
+  if(R.mode==='lab'){ if(R.hintsLeft<=0){ R.msg={t:'No decoder hints left this run.', c:'warn'}; return rerender(); } R.hintsLeft--; }
+  const pairs=[];
+  for(const errT of ['X','Z']){
+    const lit=R.code.stabs.map((s,i)=>i).filter(i=>R.code.stabs[i].type===detType(errT) && isLit(R,i));
+    pairs.push(...decodeType(R.code, errT, lit, wq(R)).pairs);
+  }
+  R.hint=pairs; R.hintsUsed++; R.hintsUsedLevel++;
+  R.msg={t: (pairs.length ? 'Gold lines show the minimum-weight matching of the current defects.' : 'Nothing to match.') + (R.unrel.some(v=>v) ? ' Checks marked ? are ignored.' : '')};
+  rerender();
+}
+function doSubmit(R){
+  if(!(R.phase==='play'||R.phase==='final')) return;
+  if(R.lost.some(v=>v)){ R.msg={t:'Some tweezers are empty. Click them to reload before reading out.', c:'warn'}; return rerender(); }
+  const left=R.meas.reduce((a,v)=>a+v,0);
+  if(left){ R.msg={t:`${left} defect${left>1?'s':''} remain. Every lit check must be cleared before the logical readout.`, c:'warn'}; return rerender(); }
+  evaluate(R);
+}
+function evaluate(R){
+  const c=R.code, X=currX(R), Z=currZ(R);
+  const {fx,fz}=logicalFail(c,X,Z);
+  const ok=!fx&&!fz;
+  let bfail=null;
+  if(!(R.def.rounds>1) && R.def.bench!==false){
+    const Ex=R.E.x, Ez=R.E.z, D={x:new Uint8Array(c.n),z:new Uint8Array(c.n)};
+    const w=q=>R.erased[q]?0.05:1;
+    for(const errT of ['X','Z']){
+      const lit=c.stabs.map((s,i)=>i).filter(i=>c.stabs[i].type===detType(errT) && synOf(c,Ex,Ez,i));
+      for(const q of decodeType(c,errT,lit,w).qs) (errT==='X'?D.x:D.z)[q]^=1;
+    }
+    const b=logicalFail(c, xor(Ex,D.x), xor(Ez,D.z));
+    bfail = !!(b.fx||b.fz);
+  }
+  const unlucky = !ok && bfail===true && !R.def.noReplay && R.mode!=='lab';
+  R.reveal={ok,fx,fz,bfail,unlucky};
+  R.phase='reveal';
+  clearTimeout(R.timer);
+  let t='', cls='';
+  if(ok){ t='<b>Logical qubit intact.</b> Error + correction formed only closed loops (stabilizers).'; cls='good'; }
+  else {
+    const which=[fx?'X<sub>L</sub> (a top↔bottom X string)':'', fz?'Z<sub>L</sub> (a left↔right Z string)':''].filter(Boolean).join(' and ');
+    t=`<b>Logical error.</b> The residual (red rings) completes ${which}. It commutes with every check but flips the encoded qubit.`;
+    cls='bad';
+    if(R.def.code.kind==='rep' && R.def.code.check==='Z' && fz && !fx) t='<b>Logical phase flip.</b> The Z error was invisible to Z⊗Z checks and flipped the encoded superposition. A bit-flip code cannot protect phase.';
+  }
+  if(bfail!==null){
+    if(bfail && !ok) t+= unlucky ? '<br><span class="mut">The MWPM reference decoder would also fail here. The noise beat the code, not you. This shot is replayed.</span>' : '<br><span class="mut">MWPM also fails on this one.</span>';
+    else if(bfail && ok) t+='<br><span class="mut">You beat the MWPM reference decoder here!</span>';
+    else if(!bfail && !ok) t+='<br><span class="mut">MWPM would have succeeded. Look at which pairing it would choose (shorter total strings).</span>';
+  }
+  if(R.hookEv.length && R.def.showOrder) t+=`<br><span class="mut">Hidden hook: a check-atom fault spread to atoms ${R.hookEv.map(h=>h.pair.join('&')).join(', ')} (gold edge).</span>`;
+  R.msg={t,c:cls};
+  if(R.mode==='lab'){ labFinish(R, ok); return rerender(); }
+  if(unlucky){ R.unluckies++; R.pips.push('u'); }
+  else { R.shot++; if(ok){R.wins++;R.pips.push('w');} else {R.fails++;R.pips.push('l');} }
+  const need=R.def.pass, N=R.def.shots;
+  if(need===0){ if(R.shot>=N) levelComplete(R); }
+  else if(R.wins>=need) levelComplete(R);
+  else if(R.wins + (N-R.shot) < need) R.levelResult='fail';
+  rerender();
+}
+function levelComplete(R){
+  R.levelResult='pass';
+  const stars = 1 + (R.hintsUsedLevel===0?1:0) + (R.fails===0?1:0);
+  const id=R.def.id;
+  G.progress.done[id]=Math.max(G.progress.done[id]||0, stars);
+  save();
+}
+function nextShot(R){
+  if(R.levelResult) return;
+  startShot(R);
+  rerender();
+}
+
+/* ================================================================
+   Board rendering (SVG)
+   ================================================================ */
+function mountBoard(R, host){
+  const c=R.code, pad=1.45;
+  let vb;
+  if(c.kind==='surface') vb=[-pad,-pad,c.d-1+2*pad,c.d-1+2*pad];
+  else vb=[-1.3,-1.25,c.n-1+2.6,2.5];
+  const svg=S('svg',{viewBox:vb.join(' ')});
+  const defs=S('defs',{},svg);
+  defs.innerHTML=`<pattern id="hatch" width=".12" height=".12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width=".12" height=".12" fill="#2a3552"/><line x1="0" y1="0" x2="0" y2=".12" stroke="#8c9cc0" stroke-width=".05"/></pattern>
+  <radialGradient id="atomg"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#cfe3ff"/><stop offset="1" stop-color="#6d8fd6"/></radialGradient>
+  <radialGradient id="halo"><stop offset="0" stop-color="#bcd6ff" stop-opacity=".55"/><stop offset="1" stop-color="#bcd6ff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="haloE"><stop offset="0" stop-color="#ff4fd8" stop-opacity=".8"/><stop offset="1" stop-color="#ff4fd8" stop-opacity="0"/></radialGradient>`;
+  const L={bnd:S('g',{},svg), st:S('g',{},svg), ord:S('g',{},svg), anc:S('g',{},svg), hint:S('g',{},svg), q:S('g',{},svg), lab:S('g',{},svg)};
+  const dom={stabs:[],qmarks:[],atoms:[],halos:[],traps:[],clab:[],elab:[],rings:[],bnds:[],orders:[]};
+  // boundary bars
+  const addB=(label,errT,x,y,w,h,tx,ty,txt,rot)=>{
+    const r=S('rect',{x,y,width:w,height:h,rx:.07,class:`bnd t${detType(errT)}`},L.bnd);
+    r.addEventListener('click',()=>onBound(R,label,errT));
+    S('text',{x:tx,y:ty,class:'btxt','font-size':.17,transform:rot?`rotate(-90 ${tx} ${ty})`:''},L.bnd).textContent=txt;
+    dom.bnds.push({el:r,errT,label});
+  };
+  if(c.kind==='surface'){
+    const d=c.d;
+    addB('top','X',-0.4,-1.2,d-0.2,.16,(d-1)/2,-1.27,'X-strings end here');
+    addB('bottom','X',-0.4,d-1+1.04,d-0.2,.16,(d-1)/2,d-1+1.37,'X-strings end here');
+    addB('left','Z',-1.2,-0.4,.16,d-0.2,-1.3,(d-1)/2,'Z-strings end here',1);
+    addB('right','Z',d-1+1.04,-0.4,.16,d-0.2,d-1+1.42,(d-1)/2,'Z-strings end here',1);
+  } else {
+    const errT=errTypeOf(c.stabs[0].type);
+    addB('left',errT,-0.95,-0.45,.16,.9,-0.87,0.7,'end');
+    addB('right',errT,c.n-1+0.79,-0.45,.16,.9,c.n-1+0.87,0.7,'end');
+  }
+  // stabilizers
+  const P=q=>c.qs[q];
+  c.stabs.forEach((st,s)=>{
+    let e;
+    if(st.side===null || st.side===undefined){
+      e=S('polygon',{points:st.q.map(q=>`${P(q).x},${P(q).y}`).join(' ')},L.st);
+    } else if(st.side==='pill'){
+      const a=P(st.q[0]);
+      e=S('rect',{x:a.x+0.2,y:-0.3,width:0.6,height:0.6,rx:0.18},L.st);
+    } else {
+      const [a,b]=st.q.map(P).sort((u,v)=>u.x-v.x||u.y-v.y);
+      const sweep = (st.side==='top'||st.side==='right')?1:0;
+      e=S('path',{d:`M${a.x},${a.y} A.5,.5 0 0 ${sweep} ${b.x},${b.y} Z`},L.st);
+    }
+    e.setAttribute('class',`stab t${st.type}`);
+    e.addEventListener('click',()=>onStab(R,s));
+    dom.stabs.push(e);
+    S('circle',{cx:st.cx,cy:st.cy,r:.075,class:'anc'},L.anc);
+    const qm=S('text',{x:st.cx,y:st.cy,class:'qmark','font-size':.3},L.anc); qm.textContent=''; dom.qmarks.push(qm);
+    if(st.q.length===4){ const o=S('polyline',{class:'order'},L.ord); dom.orders.push({s,el:o}); }
+  });
+  // atoms
+  c.qs.forEach((p,q)=>{
+    dom.traps.push(S('circle',{cx:p.x,cy:p.y,r:.21,class:'trap'},L.q));
+    dom.halos.push(S('circle',{cx:p.x,cy:p.y,r:.3,class:'halo'},L.q));
+    dom.atoms.push(S('circle',{cx:p.x,cy:p.y,r:.15,class:'atom'},L.q));
+    const hit=S('circle',{cx:p.x,cy:p.y,r:.24,class:'hit'},L.q);
+    hit.addEventListener('click',()=>onQubit(R,q));
+    const cl=S('text',{x:p.x+.17,y:p.y-.15,class:'clab','font-size':.24},L.lab); dom.clab.push(cl);
+    const el=S('text',{x:p.x+.17,y:p.y+.33,class:'elab','font-size':.24},L.lab); dom.elab.push(el);
+    dom.rings.push(S('circle',{cx:p.x,cy:p.y,r:.27,class:'resring',style:'display:none'},L.lab));
+  });
+  R.dom={svg,L,dom};
+  host.appendChild(svg);
+  updateBoard(R);
+}
+function orderPoints(R,s){
+  const st=R.code.stabs[s], [TL,TR,BR,BL]=st.q, P=q=>R.code.qs[q];
+  const seq = R.sched[st.type]==='Z' ? [TL,TR,BL,BR] : [TL,BL,TR,BR];
+  return seq.map(q=>{ const p=P(q); return [st.cx+(p.x-st.cx)*.55, st.cy+(p.y-st.cy)*.55]; });
+}
+function updateBoard(R){
+  if(!R.dom) return;
+  const {dom,L}=R.dom, c=R.code, rev=R.phase==='reveal';
+  c.stabs.forEach((st,s)=>{
+    let cls=`stab t${st.type}`;
+    if(R.unrel[s]) cls+=' unrel';
+    else if(R.meas[s]) { cls+=' lit'; if(R.phase==='round' && R.persist[s]===1) cls+=' new'; }
+    if(R.sel===s) cls+=' sel';
+    dom.stabs[s].setAttribute('class',cls);
+    dom.qmarks[s].textContent = R.unrel[s] ? '?' : '';
+  });
+  const showOrd = R.def.showOrder || R.mode==='lab';
+  dom.orders.forEach(o=>{
+    if(!showOrd){ o.el.setAttribute('points',''); return; }
+    const pts=orderPoints(R,o.s);
+    o.el.setAttribute('points', pts.map(p=>p.join(',')).join(' '));
+  });
+  // hook highlight on reveal
+  [...L.ord.querySelectorAll('.orderhook')].forEach(e=>e.remove());
+  if(rev && R.hookEv.length && R.def.showOrder) R.hookEv.forEach(h=>{
+    if(h.pair.length<2) return; const [a,b]=h.pair.map(q=>c.qs[q]);
+    S('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:'orderhook'},L.ord);
+  });
+  const selT = R.sel!==null ? errTypeOf(c.stabs[R.sel].type) : null;
+  dom.bnds.forEach(b=>b.el.setAttribute('class',`bnd t${detType(b.errT)}${selT===b.errT?' cand':''}`));
+  const X=currX(R), Z=currZ(R);
+  c.qs.forEach((p,q)=>{
+    let cls='atom'; if(R.lost[q]) cls+=' lost'; else if(erVisible(R,q)) cls+=' er';
+    dom.atoms[q].setAttribute('class',cls);
+    dom.halos[q].setAttribute('class',cls.replace('atom','halo'));
+    dom.clab[q].textContent = pauliOf(R.C.x[q],R.C.z[q]);
+    dom.elab[q].textContent = rev ? pauliOf(R.E.x[q],R.E.z[q]) : '';
+    const resid = rev && (X[q]||Z[q]);
+    dom.rings[q].style.display = resid ? '' : 'none';
+    dom.rings[q].setAttribute('class','resring'+(R.reveal&&R.reveal.ok?' ok':''));
+  });
+  // hint lines
+  L.hint.innerHTML='';
+  if(R.hint){
+    const pt=t=>{
+      if(typeof t==='number') return [c.stabs[t].cx,c.stabs[t].cy];
+      return null;
+    };
+    R.hint.forEach(([a,b])=>{
+      const A=pt(a); let B=pt(b);
+      if(!B){
+        const side=b.slice(2), d=c.d;
+        if(c.kind==='surface') B = side==='top'?[A[0],-1.12]:side==='bottom'?[A[0],d-1+1.12]:side==='left'?[-1.12,A[1]]:[d-1+1.12,A[1]];
+        else B = side==='left'?[-0.87,0]:[c.n-1+0.87,0];
+      }
+      S('line',{x1:A[0],y1:A[1],x2:B[0],y2:B[1],class:'hintline'},L.hint);
+      S('circle',{cx:A[0],cy:A[1],r:.06,class:'hintdot'},L.hint);
+    });
+  }
+}
+
+/* ================================================================
+   Views
+   ================================================================ */
+function rerender(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===G.view));
+  renderSpeed();
+  const app=document.getElementById('app');
+  if(G.view==='guide'){ app.innerHTML=''; app.appendChild(renderGuide()); return; }
+  // keep the svg if same runtime, rebuild panels
+  const R=G.R;
+  if(G.view==='curriculum') renderCurriculum(app);
+  else renderLab(app);
+  if(R && R.dom) updateBoard(R);
+}
+function renderSpeed(){
+  const box=document.getElementById('speedbox'); box.innerHTML='Round speed:';
+  SPEEDS.forEach((s,i)=>box.appendChild(btn(s.n,()=>{G.speed=i;save();renderSpeed(); if(G.R) scheduleTick(G.R);}, i===G.speed?'on':'')));
+}
+function layoutShell(app){
+  if(!app.querySelector('.layout')){
+    app.innerHTML='';
+    const lay=H('div',{cls:'layout'});
+    lay.append(H('div',{id:'colL'}),H('div',{id:'colC'}),H('div',{id:'colR'}));
+    app.appendChild(lay);
+  }
+  return {L:document.getElementById('colL'), C:document.getElementById('colC'), Rt:document.getElementById('colR')};
+}
+function centerBoard(C, R, headHtml){
+  let wrap=C.querySelector('.boardwrap');
+  if(!wrap || wrap.dataset.rid!==R.rid || !R.dom || !wrap.contains(R.dom.svg)){
+    C.innerHTML='';
+    wrap=H('div',{cls:'boardwrap'});
+    R.rid = R.rid || String(Math.random());
+    wrap.dataset.rid=R.rid;
+    wrap.appendChild(H('div',{cls:'boardhead'}));
+    C.appendChild(wrap);
+    mountBoard(R, wrap);
+  }
+  wrap.querySelector('.boardhead').innerHTML=headHtml;
+}
+
+/* ---------- curriculum ---------- */
+function renderCurriculum(app){
+  const {L,C,Rt}=layoutShell(app);
+  renderCourseList(L);
+
+  const lv=LEVELS[G.levelIdx];
+  if(lv.kind){ stopRuntime(); G.R=null; KINDS[lv.kind](C,Rt,lv); return; }
+  if(!G.R || G.R.def!==lv){ stopRuntime(); G.R=newRuntime(lv,'lesson'); }
+  const R=G.R;
+  centerBoard(C,R, headFor(R));
+  Rt.innerHTML='';
+  Rt.appendChild(briefCard(lv));
+  Rt.appendChild(playPanel(R));
+}
+function headFor(R){
+  const d=R.def;
+  let s=`<span><b>${d.num||''} ${d.title}</b> · ${R.code.kind==='surface'?`surface code d=${R.code.d}`:`repetition code n=${R.code.n}`}</span>`;
+  if(d.rounds>1) s+=`<span>${R.phase==='round'?`Round <b>${R.t}/${R.T}</b>${R.def.auto?(R.paused?' · paused':' · running'):''}`:R.phase==='final'?'<b>Final readout</b>':'Done'}</span>`;
+  else s+=`<span>${R.phase==='play'?'Decode the syndrome':'Reveal'}</span>`;
+  return s;
+}
+function selectLevel(i){
+  stopRuntime(); G.levelIdx=i; G.R=null; G.intro=null; save(); rerender();
+}
+function stopRuntime(){ if(G.R){ clearTimeout(G.R.timer); G.R.dom=null; } }
+function briefCard(lv){
+  const c=H('div',{cls:'card'});
+  c.appendChild(H('h2',{},`${lv.num} · ${lv.title}`));
+  const det=H('details',{open:''});
+  det.appendChild(H('summary',{},'Briefing'));
+  det.appendChild(H('div',{cls:'brief'},lv.brief));
+  c.appendChild(det);
+  return c;
+}
+function playPanel(R){
+  const wrap=H('div',{cls:'card'});
+  const d=R.def;
+  if(R.mode==='lesson'){
+    const st=H('div');
+    st.innerHTML=`<div class="stat"><span>Goal</span><span>${d.pass>0?`${d.pass} of ${d.shots} shots`:`observe ${d.shots} shots`}</span></div>
+      <div class="stat"><span>Shots</span><span>${R.shot}/${d.shots} · <span style="color:var(--ok)">${R.wins} ✓</span> <span style="color:var(--bad)">${R.fails} ✗</span>${R.unluckies?` · ${R.unluckies} replayed`:''}</span></div>`;
+    const pips=H('div',{cls:'pips'});
+    for(let i=0;i<R.pips.length;i++) pips.appendChild(H('div',{cls:'pip '+R.pips[i]}));
+    for(let i=R.pips.filter(p=>p!=='u').length;i<d.shots;i++) pips.appendChild(H('div',{cls:'pip'}));
+    st.appendChild(pips);
+    wrap.appendChild(st);
+  } else {
+    wrap.appendChild(H('div',{},`<div class="stat"><span>Run</span><span>d=${R.code.d}, ${R.T} rounds</span></div><div class="stat"><span>Hints left</span><span>${R.hintsLeft}</span></div>`));
+  }
+  // schedule choice
+  if(d.schedChoice || R.mode==='lab' && R.phase==='setup'){
+    wrap.appendChild(H('h3',{},'Gate schedule'));
+    wrap.appendChild(schedControls(R, d.schedChoice && !R.levelResult && ((R.phase==='play' && R.undo.length===0) || R.phase==='reveal')));
+  }
+  // tools
+  if(interactive(R)){
+    wrap.appendChild(H('h3',{},'Tools'));
+    const tl=H('div',{cls:'tools'});
+    d.tools.forEach(t=>{
+      const lab = t==='match' ? 'Match' : t;
+      tl.appendChild(btn(lab,()=>{R.tool=t;R.sel=null;rerender();}, (R.tool===t?'on ':'')+'t'+t, false, t==='match'?'Pair two defects (or a defect and a boundary)':`Apply ${t} to one atom`));
+    });
+    wrap.appendChild(tl);
+    const acts=H('div',{cls:'acts'});
+    acts.appendChild(btn('Undo',()=>doUndo(R),'',!R.undo.length));
+    acts.appendChild(btn('Reset',()=>doReset(R),'',!R.undo.length));
+    if(d.hint) acts.appendChild(btn(R.mode==='lab'?`Hint (${R.hintsLeft})`:'Hint',()=>doHint(R),'',R.mode==='lab'&&R.hintsLeft<=0));
+    if(R.phase==='round'){
+      if(d.auto) acts.appendChild(btn(R.paused?'Resume':'Pause',()=>{R.paused=!R.paused;scheduleTick(R);rerender();}));
+      acts.appendChild(btn(R.t>=R.T?'Final readout':'Next round',()=>advanceRound(R),'pri'));
+    } else {
+      acts.appendChild(btn('Submit',()=>doSubmit(R),'pri'));
+    }
+    wrap.appendChild(acts);
+  } else if(R.phase==='reveal'){
+    const acts=H('div',{cls:'acts'});
+    if(R.mode==='lab') acts.appendChild(btn('Back to the lab',()=>labAfterRun(),'pri'));
+    else if(R.levelResult==='pass'){
+      acts.appendChild(H('div',{cls:'msg good',style:'width:100%'},`<b>Level complete!</b> ${'★'.repeat(G.progress.done[d.id]||1)}`));
+      if(G.levelIdx<LEVELS.length-1) acts.appendChild(btn('Next lesson →',()=>selectLevel(G.levelIdx+1),'pri'));
+      else acts.appendChild(btn('Open the Lab →',()=>{G.view='lab';stopRuntime();G.R=null;rerender();},'pri'));
+      acts.appendChild(btn('Replay level',()=>selectLevel(G.levelIdx)));
+    } else if(R.levelResult==='fail'){
+      acts.appendChild(H('div',{cls:'msg bad',style:'width:100%'},'Not enough successful shots left. Try the level again.'));
+      acts.appendChild(btn('Retry level',()=>selectLevel(G.levelIdx),'pri'));
+    } else acts.appendChild(btn('Next shot',()=>nextShot(R),'pri'));
+    wrap.appendChild(acts);
+  }
+  if(R.msg) wrap.appendChild(H('div',{cls:'msg '+(R.msg.c||'')},R.msg.t));
+  if(d.rounds>1 && R.feed.length){
+    wrap.appendChild(H('h3',{},'Activity'));
+    wrap.appendChild(H('div',{cls:'feed'},R.feed.slice(0,30).map(x=>`<div>${x}</div>`).join('')));
+  }
+  wrap.appendChild(legend(R));
+  return wrap;
+}
+function schedControls(R, enabled){
+  const box=H('div');
+  for(const t of ['X','Z']){
+    const row=H('div',{cls:'opt'});
+    row.appendChild(H('span',{cls:'small',style:`width:110px;color:var(--${t})`},`${t}-checks (${t==='X'?'orange':'blue'})`));
+    for(const o of ['Z','N']){
+      const desc = o==='Z' ? 'Z-order ↔ hooks' : 'N-order ↕ hooks';
+      row.appendChild(btn(desc,()=>{ R.sched[t]=o; if(R.mode==='lab') G.lab.sched[t]=o, save(); if(R.phase==='play'){ startShot(R); } rerender(); }, R.sched[t]===o?'on':'', !enabled));
+    }
+    box.appendChild(row);
+  }
+  if(R.mode!=='lab' && R.def.schedChoice) box.appendChild(H('div',{cls:'small mut'},'Changing the schedule redraws the shot. Locked once you start correcting.'));
+  return box;
+}
+function legend(R){
+  const det=H('details');
+  det.appendChild(H('summary',{},'Legend & controls'));
+  det.appendChild(H('div',{cls:'legend'},`
+   <div class="sw" style="background:var(--Z)"></div><div>Z-check: lit = odd number of X/Y errors around it</div>
+   <div class="sw" style="background:var(--X)"></div><div>X-check: lit = odd number of Z/Y errors around it</div>
+   <div class="sw" style="background:url(#none);border:1px dashed #fff"></div><div>Dashed: new this round (could be a measurement error)</div>
+   <div class="sw" style="background:#2a3552"></div><div>? : touches an empty tweezer, so the result is random</div>
+   <div class="sw" style="background:var(--er);border-radius:50%"></div><div>Erasure: location known, Pauli unknown</div>
+   <div class="sw" style="border:1px dashed #7d93c2;border-radius:50%"></div><div>Empty tweezer: click to reload</div>
+   <div style="color:var(--ok);font-weight:700">X</div><div>Your correction on that atom</div>
+   <div style="color:var(--bad);font-weight:700">X</div><div>Reveal: the actual error</div>`));
+  det.appendChild(H('div',{cls:'small mut',style:'margin-top:6px'},'<span class="kbd">M</span> match · <span class="kbd">X</span>/<span class="kbd">Z</span>/<span class="kbd">Y</span> tools · <span class="kbd">U</span> undo · <span class="kbd">H</span> hint · <span class="kbd">Enter</span> submit / next · <span class="kbd">Space</span> next round / pause'));
+  return det;
+}
+
+/* ---------- intro level ---------- */
+function renderIntro(C, Rt, lv){
+  stopRuntime(); G.R=null;
+  if(!G.intro) G.intro={th:0, n0:0, n1:0, sup:0, last:null, log:[]};
+  const I=G.intro;
+  C.innerHTML='';
+  const wrap=H('div',{cls:'boardwrap'});
+  wrap.appendChild(H('div',{cls:'boardhead'},`<span><b>${lv.num} ${lv.title}</b></span><span>Equal superpositions measured: <b>${I.sup}/8</b></span>`));
+  const svg=S('svg',{viewBox:'-3 -1.8 6 3.6'});
+  svg.innerHTML=`<defs><radialGradient id="ag2"><stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#cfe3ff"/><stop offset="1" stop-color="#6d8fd6"/></radialGradient>
+    <radialGradient id="tw"><stop offset="0" stop-color="#ff5a5a55"/><stop offset="1" stop-color="#ff5a5a00"/></radialGradient></defs>`;
+  // tweezer beam
+  S('ellipse',{cx:-1.3,cy:0,rx:.35,ry:1.5,fill:'url(#tw)'},svg);
+  const bright = I.last===1;
+  S('circle',{cx:-1.3,cy:0,r:bright?.32:.18,fill:I.last===null?'url(#ag2)':bright?'#fff':'#33415f',style:bright?'filter:drop-shadow(0 0 .25px #fff)':''},svg);
+  S('text',{x:-1.3,y:1.35,fill:'#8b9bb8','font-size':'.2','text-anchor':'middle'},svg).textContent = I.last===null?'atom in tweezer':I.last?'BRIGHT → measured 1':'dark → measured 0';
+  // Bloch circle (x–z plane)
+  const cx=1.4, cy=0, r=1.05;
+  S('circle',{cx,cy,r,fill:'none',stroke:'#3a4f7c','stroke-width':.02},svg);
+  S('line',{x1:cx,y1:cy-r,x2:cx,y2:cy+r,stroke:'#22304d','stroke-width':.015},svg);
+  S('line',{x1:cx-r,y1:cy,x2:cx+r,y2:cy,stroke:'#22304d','stroke-width':.015},svg);
+  [['|0⟩',cx,cy-r-.12],['|1⟩',cx,cy+r+.24],['|+⟩',cx+r+.22,cy+.06],['|−⟩',cx-r-.22,cy+.06]].forEach(([t,x,y])=>{ const e=S('text',{x,y,fill:'#8b9bb8','font-size':'.18','text-anchor':'middle'},svg); e.textContent=t; });
+  const ex=cx+Math.sin(I.th)*r, ey=cy-Math.cos(I.th)*r;
+  S('line',{x1:cx,y1:cy,x2:ex,y2:ey,stroke:'#ffd25a','stroke-width':.05,'stroke-linecap':'round'},svg);
+  S('circle',{cx:ex,cy:ey,r:.07,fill:'#ffd25a'},svg);
+  const p1=Math.sin(I.th/2)**2;
+  S('text',{x:cx,y:cy+r+.55,fill:'#dfe8f7','font-size':'.17','text-anchor':'middle'},svg).textContent=`P(1) = ${(p1*100).toFixed(0)}%`;
+  wrap.appendChild(svg);
+  C.appendChild(wrap);
+
+  Rt.innerHTML='';
+  Rt.appendChild(briefCard(lv));
+  const card=H('div',{cls:'card'});
+  card.appendChild(H('h3',{},'Lasers'));
+  const tl=H('div',{cls:'tools'});
+  const norm=()=>{ I.th=((I.th%(2*Math.PI))+2*Math.PI)%(2*Math.PI); };
+  tl.appendChild(btn('Prepare |0⟩',()=>{I.th=0;I.last=null;I.log.unshift('Optical pumping → |0⟩');rerender();}));
+  tl.appendChild(btn('π/2 pulse',()=>{I.th+=Math.PI/2;norm();I.last=null;I.log.unshift('π/2 pulse: rotate a quarter turn');rerender();}));
+  tl.appendChild(btn('π pulse (X)',()=>{I.th+=Math.PI;norm();I.last=null;I.log.unshift('π pulse = X gate (a bit flip)');rerender();}));
+  tl.appendChild(btn('Measure',()=>{
+    const p=Math.sin(I.th/2)**2, out=rnd()<p?1:0;
+    if(Math.abs(p-0.5)<0.01){ I.sup++; out?I.n1++:I.n0++; I.log.unshift(`Measured superposition → ${out}  (collapsed!)`); }
+    else I.log.unshift(`Measured → ${out}${p<0.01||p>0.99?' (certain: state was definite)':''}`);
+    I.th = out?Math.PI:0; I.last=out;
+    if(I.sup>=8 && !G.progress.done[lv.id]){ G.progress.done[lv.id]=3; save(); }
+    rerender();
+  },'pri'));
+  card.appendChild(tl);
+  card.appendChild(H('div',{cls:'stat'},`<span>Superposition outcomes</span><span>0: <b>${I.n0}</b> · 1: <b>${I.n1}</b></span>`));
+  let m='Try: <b>Prepare |0⟩ → π/2 pulse → Measure</b>. Then measure again without re-preparing: the result repeats, because the superposition is gone.';
+  if(I.sup>=8) m=`<b>Done!</b> ${I.n0} zeros and ${I.n1} ones: genuinely random, with no hidden value. That's why error correction can only measure <i>parities</i> between atoms, never the atoms themselves.`;
+  card.appendChild(H('div',{cls:'msg '+(I.sup>=8?'good':'')},m));
+  if(I.sup>=8){ const a=H('div',{cls:'acts'}); a.appendChild(btn('Next lesson →',()=>selectLevel(G.levelIdx+1),'pri')); card.appendChild(a); }
+  card.appendChild(H('div',{cls:'feed',style:'margin-top:8px'},I.log.slice(0,10).map(x=>`<div>${x}</div>`).join('')));
+  Rt.appendChild(card);
+}
+
+/* ================================================================
+   Lab mode
+   ================================================================ */
+const HW={
+  cz:{name:'Rydberg CZ gates', tiers:[
+    {v:.03,c:0,d:'97% fidelity'},{v:.02,c:80,d:'98%: optimized pulses'},{v:.014,c:160,d:'98.6%: time-optimal gates'},
+    {v:.01,c:280,d:'99.0%: laser noise suppression'},{v:.007,c:450,d:'99.3%: better atom cooling'},{v:.005,c:700,d:'99.5%: state of the art (Evered 2023)'}],
+    fmt:v=>`p = ${pct(v)} per atom per round`},
+  meas:{name:'Check-atom readout', tiers:[{v:.05,c:0,d:'Slow camera'},{v:.03,c:70,d:'EMCCD + better optics'},{v:.015,c:160,d:'High-NA objective'},{v:.008,c:300,d:'State-selective fast imaging'}],
+    fmt:v=>`q = ${pct(v)} misread`},
+  erasure:{name:'Erasure conversion', tiers:[{v:0,c:0,d:'Alkali hyperfine qubits: errors are silent'},{v:.5,c:220,d:'¹⁷¹Yb metastable qubits + mid-circuit imaging'},{v:.8,c:380,d:'Faster leakage detection'},{v:.95,c:650,d:'Near-ideal conversion (Wu 2022 predicts ~98%)'}],
+    fmt:v=>`${Math.round(v*100)}% of errors flagged`},
+  vacuum:{name:'Vacuum & trap lifetime', tiers:[{v:.006,c:0,d:'Room-temperature cell'},{v:.003,c:100,d:'Bake-out & ion pump'},{v:.0012,c:220,d:'Cryogenic radiation shield'}],
+    fmt:v=>`loss ${pct(v,2)} per round`},
+  reservoir:{name:'Atom reservoir', tiers:[{v:0,c:0,d:'Manual reload'},{v:1,c:200,d:'Continuous replenishment (Bluvstein 2025)'}],
+    fmt:v=>v?'auto-reload each round':'click to reload'},
+  array:{name:'Tweezer array', tiers:[{v:3,c:0,d:'17 sites'},{v:5,c:260,d:'49 sites: second AOD pair'},{v:7,c:620,d:'97 sites: new SLM'}],
+    fmt:v=>`up to d = ${v}`},
+  decoder:{name:'Decoder co-processor', tiers:[{v:0,c:0,d:'You are the decoder'},{v:2,c:110,d:'FPGA matching'},{v:5,c:260,d:'GPU decoder farm'}],
+    fmt:v=>`${v} hints per run`},
+};
+const MILESTONES=[
+  {id:'first', n:'First light', d:'Keep a logical qubit alive through a full run.', r:40},
+  {id:'marathon', n:'Marathon', d:'Succeed on a 30-round run.', r:60},
+  {id:'erasure', n:'Erasure era', d:'Succeed with ≥50% erasure conversion.', r:60},
+  {id:'breakeven', n:'Break-even', d:'Measured logical error per round < physical p (≥3 runs at one distance).', r:120},
+  {id:'below', n:'Below threshold', d:'ε(d=5) < ε(d=3), with ≥3 runs at each.', r:250},
+  {id:'scaling', n:'Exponential suppression', d:'ε(d=7) < ε(d=5) < ε(d=3), with ≥3 runs each.', r:400},
+  {id:'grand', n:'Grand challenge', d:'d=7, 30 rounds, success, no hints.', r:500},
+];
+function newLab(){ return {money:60, runs:0, hw:{cz:0,meas:0,erasure:0,vacuum:0,reservoir:0,array:0,decoder:0}, sched:{X:'Z',Z:'Z'}, d:3, T:10, stats:{}, ms:{}, mods:{}, last:null, log:[]}; }
+const hwv = k => HW[k].tiers[G.lab.hw[k]].v;
+const runCost = (d,T) => Math.round(4 + d*d*T/25);
+const runPay = (d,T) => Math.round(d*d*T*0.45);
+function labDef(){
+  const L=G.lab, m=L.mods||{}, d=Math.min(L.d, hwv('array'));
+  const p=hwv('cz')*(m.pMult||1);
+  return {id:'', title:'Lab run', code:{kind:'surface',d}, rounds:L.T, auto:true, shots:1, pass:1,
+    noise:{type:'iid', p, bias: m.zBias?{x:.15,y:.15,z:.7}:DEPOL, erasureFrac:hwv('erasure'), loss:hwv('vacuum')*(m.lossMult||1), hookRel:0.35, qMeas:hwv('meas')*(m.measMult||1)},
+    autoReload: !!hwv('reservoir'), tools:['match','X','Z','Y'], hint:true, hints:hwv('decoder')+(m.hints||0),
+    sched:{...L.sched}, bench:false, deadSite: m.dead ? Math.floor((d*d)/2) : null};
+}
+function epsFor(d){ const s=G.lab.stats[d]; if(!s||!s.runs) return null; return {runs:s.runs, eps:(s.fails)/s.rounds, rounds:s.rounds, fails:s.fails}; }
+function renderLab(app){
+  const {L,C,Rt}=layoutShell(app);
+  const lab=G.lab;
+  // left: lab status
+  L.innerHTML='';
+  const c1=H('div',{cls:'card'});
+  c1.appendChild(H('h2',{},'Your lab'));
+  c1.appendChild(H('div',{cls:'money'},`$${lab.money}k`));
+  c1.appendChild(H('div',{cls:'small mut'},`${lab.runs} experiments run · grant money`));
+  c1.appendChild(H('h3',{},'Hardware'));
+  const running = G.R && G.R.mode==='lab' && G.R.phase!=='reveal';
+  for(const k in HW){
+    const h=HW[k], lvl=lab.hw[k], cur=h.tiers[lvl], nx=h.tiers[lvl+1];
+    const row=H('div',{cls:'hw'});
+    const top=H('div',{cls:'top'},`<span>${h.name}</span>`);
+    if(nx) top.appendChild(btn(`$${nx.c}k`,()=>buyHW(k), '', lab.money<nx.c || running, `Upgrade: ${nx.d}`));
+    else top.appendChild(H('span',{cls:'small',style:'color:var(--gold)'},'max'));
+    row.appendChild(top);
+    row.appendChild(H('div',{cls:'v'},`${h.fmt(cur.v)} · ${cur.d||''}${nx?`<br>next: ${nx.d||h.fmt(nx.v)}`:''}`));
+    c1.appendChild(row);
+  }
+  L.appendChild(c1);
+
+  // center
+  const R=G.R && G.R.mode==='lab' ? G.R : null;
+  if(R){ centerBoard(C,R,headFor(R)); }
+  else { C.innerHTML=''; C.appendChild(labSetup()); }
+  // right
+  Rt.innerHTML='';
+  if(R) Rt.appendChild(playPanel(R));
+  Rt.appendChild(labStatsCard());
+}
+function buyHW(k){
+  const lab=G.lab, nx=HW[k].tiers[lab.hw[k]+1]; if(!nx||lab.money<nx.c) return;
+  lab.money-=nx.c; lab.hw[k]++; lab.log.unshift(`Bought: ${HW[k].name}: ${nx.d||HW[k].fmt(nx.v)}`); save(); rerender();
+}
+function labSetup(){
+  const lab=G.lab, card=H('div',{cls:'card'});
+  card.appendChild(H('h2',{},'Plan a memory experiment'));
+  card.appendChild(H('p',{cls:'small mut'},'Prepare a logical qubit, run rounds of syndrome extraction while you decode in real time, then read it out. Success pays for better hardware. Track your logical error rate per distance and chase <b>below threshold</b>.'));
+  const dmax=hwv('array');
+  card.appendChild(H('h3',{},'Code distance'));
+  const dr=H('div',{cls:'opt'});
+  [3,5,7].forEach(d=>dr.appendChild(btn(`d = ${d}`,()=>{lab.d=d;save();rerender();}, lab.d===d?'on':'', d>dmax)));
+  card.appendChild(dr);
+  card.appendChild(H('h3',{},'Rounds'));
+  const tr=H('div',{cls:'opt'});
+  [10,20,30].forEach(T=>tr.appendChild(btn(`${T}`,()=>{lab.T=T;save();rerender();}, lab.T===T?'on':'')));
+  card.appendChild(tr);
+  card.appendChild(H('h3',{},'Gate schedule (hook direction)'));
+  const fakeR={sched:lab.sched, mode:'lab', phase:'setup', def:{}};
+  card.appendChild(schedControls(fakeR,true));
+  const d=Math.min(lab.d,dmax), def=labDef(), nz=def.noise;
+  card.appendChild(H('h3',{},'Expected noise this run'));
+  const m=lab.mods||{};
+  card.appendChild(H('div',{cls:'small'},`
+    <div class="stat"><span>Pauli errors / atom / round</span><span>${pct(nz.p,2)}${m.zBias?' <span style="color:var(--X)">(Z-biased)</span>':''}</span></div>
+    <div class="stat"><span>…of which flagged as erasures</span><span>${pct(nz.erasureFrac,0)}</span></div>
+    <div class="stat"><span>Hook faults / check / round</span><span>${pct(nz.p*nz.hookRel,2)}</span></div>
+    <div class="stat"><span>Check misread</span><span>${pct(nz.qMeas,1)}</span></div>
+    <div class="stat"><span>Atom loss / round</span><span>${pct(nz.loss,2)}${def.autoReload?' · auto-reload':''}</span></div>
+    ${m.dead?'<div class="stat"><span>Dead SLM pixel</span><span style="color:var(--bad)">centre site drops every 5 rounds</span></div>':''}
+    ${m.payMult?`<div class="stat"><span>Payout bonus</span><span style="color:var(--gold)">×${m.payMult}${m.needD?` if d ≥ ${m.needD}`:''}</span></div>`:''}`));
+  const cost=runCost(d,lab.T), pay=runPay(d,lab.T);
+  card.appendChild(H('div',{cls:'stat',style:'margin-top:8px'},`<span>Run cost / payout on success</span><span>$${cost}k / <b style="color:var(--gold)">$${pay}k</b></span>`));
+  const acts=H('div',{cls:'acts'});
+  if(lab.money<cost){
+    acts.appendChild(btn('Apply for a seed grant (+$40k)',()=>{lab.money+=40;lab.log.unshift('Seed grant: +$40k');save();rerender();},'pri'));
+  } else acts.appendChild(btn(`Start run (−$${cost}k)`,()=>startLabRun(),'pri'));
+  card.appendChild(acts);
+  if(lab.last) card.appendChild(H('div',{cls:'msg '+(lab.last.ok?'good':'bad')},lab.last.t));
+  if(lab.log.length){ card.appendChild(H('h3',{},'Lab notebook')); card.appendChild(H('div',{cls:'feed'},lab.log.slice(0,20).map(x=>`<div>${x}</div>`).join(''))); }
+  return card;
+}
+function startLabRun(){
+  const lab=G.lab, def=labDef(), cost=runCost(def.code.d,def.rounds);
+  lab.money-=cost; save();
+  stopRuntime();
+  G.R=newRuntime(def,'lab');
+  rerender();
+}
+function labFinish(R, ok){
+  const lab=G.lab, d=R.code.d, T=R.T, m=lab.mods||{};
+  let pay=runPay(d,T);
+  if(m.payMult && (!m.needD || d>=m.needD)) pay=Math.round(pay*m.payMult);
+  pay = ok ? pay : Math.round(pay*0.15);
+  lab.money+=pay; lab.runs++;
+  const s=lab.stats[d]||(lab.stats[d]={runs:0,rounds:0,fails:0});
+  s.runs++; s.rounds+=T; if(!ok) s.fails++;
+  const got=[];
+  const grant=id=>{ if(!lab.ms[id]){ lab.ms[id]=1; const M=MILESTONES.find(x=>x.id===id); lab.money+=M.r; got.push(`${M.n} (+$${M.r}k)`); } };
+  if(ok) grant('first');
+  if(ok && T>=30) grant('marathon');
+  if(ok && R.def.noise.erasureFrac>=0.5) grant('erasure');
+  const p=hwv('cz');
+  for(const dd of [3,5,7]){ const e=epsFor(dd); if(e && e.runs>=3 && e.eps < p) grant('breakeven'); }
+  const e3=epsFor(3), e5=epsFor(5), e7=epsFor(7);
+  if(e3&&e5&&e3.runs>=3&&e5.runs>=3&&e5.eps<e3.eps) grant('below');
+  if(e3&&e5&&e7&&e3.runs>=3&&e5.runs>=3&&e7.runs>=3&&e7.eps<e5.eps&&e5.eps<e3.eps) grant('scaling');
+  if(ok && d===7 && T>=30 && R.hintsUsed===0) grant('grand');
+  const t = (ok?`<b>Run ${lab.runs}: logical qubit survived</b> d=${d}, ${T} rounds. +$${pay}k.`:`<b>Run ${lab.runs}: logical error</b> at d=${d}. Partial data: +$${pay}k.`)+(got.length?`<br>Milestone: ${got.join(', ')}`:'');
+  lab.last={ok,t};
+  lab.log.unshift(t.replace(/<[^>]+>/g,''));
+  R.msg.t += `<br>${ok?`+$${pay}k grant money.`:`+$${pay}k for the data.`}${got.length?`<br><b style="color:var(--gold)">Milestone: ${got.join(', ')}</b>`:''}`;
+  lab.mods={};
+  save();
+}
+function labAfterRun(){
+  stopRuntime(); G.R=null;
+  if(rnd()<0.5) showEvent(pick(EVENTS.filter(e=>!e.ok || e.ok())));
+  rerender();
+}
+function labStatsCard(){
+  const lab=G.lab, card=H('div',{cls:'card'});
+  card.appendChild(H('h2',{},'Logical error rate'));
+  let rows='<table class="st"><tr><th>d</th><th>runs</th><th>rounds</th><th>fails</th><th>ε<sub>L</sub>/round</th></tr>';
+  for(const d of [3,5,7]){ const e=epsFor(d); rows+= e ? `<tr><td>${d}</td><td>${e.runs}</td><td>${e.rounds}</td><td>${e.fails}</td><td>${e.fails?pct(e.eps,2):`&lt;${pct(1/e.rounds,2)}`}</td></tr>` : `<tr><td>${d}</td><td colspan="4" class="mut">no data</td></tr>`; }
+  rows+='</table>';
+  card.appendChild(H('div',{},rows));
+  const e3=epsFor(3), e5=epsFor(5);
+  if(e3&&e5&&e5.fails) card.appendChild(H('div',{cls:'small',style:'margin-top:6px'},`Λ<sub>3/5</sub> ≈ ${(e3.eps/e5.eps).toFixed(2)} ${e3.eps>e5.eps?'<span style="color:var(--ok)">(below threshold)</span>':'<span style="color:var(--bad)">(above threshold)</span>'}`));
+  card.appendChild(H('div',{cls:'small mut',style:'margin-top:4px'},`Physical p = ${pct(hwv('cz'),1)}. You are the decoder, so your skill is part of the measurement.`));
+  card.appendChild(H('h3',{},'Milestones'));
+  MILESTONES.forEach(M=>card.appendChild(H('div',{cls:'ms'},`<span class="ck">${lab.ms[M.id]?'✅':'⬜'}</span><span><b>${M.n}</b> <span class="mut">($${M.r}k)</span><br><span class="mut small">${M.d}</span></span>`)));
+  card.appendChild(H('div',{style:'margin-top:8px'})).appendChild(btn('Reset lab',()=>{ if(confirm('Erase all lab progress?')){ stopRuntime(); G.R=null; G.lab=newLab(); save(); rerender(); } },'small'));
+  return card;
+}
+/* ---------- events between runs ---------- */
+const EVENTS=[
+  {t:'Rydberg laser phase noise', d:'The Rydberg laser lock is drifting. Laser phase noise during the Rydberg excitation dephases the atoms: extra <b>Z</b> errors, a strongly biased channel (Cong et al. 2022).',
+   o:[{l:'Recalibrate the lock',c:35,f:()=>{}},{l:'Run anyway: next run is Z-biased with p ×1.3',f:m=>{m.zBias=1;m.pMult=(m.pMult||1)*1.3;}}]},
+  {t:'Vacuum hiccup', d:'The ion pump current is creeping up. More background-gas collisions mean atoms get kicked out of their tweezers.',
+   o:[{l:'Emergency bake-out',c:45,f:()=>{}},{l:'Live with it: atom loss ×3 next run',f:m=>{m.lossMult=3;}}]},
+  {t:'Conference deadline', d:'A big conference wants your latest memory data. A distance-5 result would make a splash.', ok:()=>hwv('array')>=5,
+   o:[{l:'Go for it: payout ×2 next run if d ≥ 5',f:m=>{m.payMult=2;m.needD=5;}},{l:'Skip this one',f:()=>{}}]},
+  {t:'Group-meeting demo', d:'Your PI wants a live demo for visiting funders.', ok:()=>hwv('array')<5,
+   o:[{l:'Run the demo: payout ×1.6 next run',f:m=>{m.payMult=1.6;}},{l:'Politely decline',f:()=>{}}]},
+  {t:'Theory visitor', d:'A theorist offers to bring their erasure-aware decoder for a week.',
+   o:[{l:'Host them (+3 hints next run)',c:15,f:m=>{m.hints=(m.hints||0)+3;}},{l:'Not this week',f:()=>{}}]},
+  {t:'Hot viewport', d:'The vacuum window near the objective is warming up. Blackbody radiation drives Rydberg atoms to nearby levels, raising gate errors.',
+   o:[{l:'Install a cooling shroud',c:40,f:()=>{}},{l:'Ignore it: p ×1.25 next run',f:m=>{m.pMult=(m.pMult||1)*1.25;}}]},
+  {t:'Dead SLM pixel', d:'A spot on the spatial light modulator is failing. The centre tweezer will keep dropping its atom.',
+   o:[{l:'Replace the SLM panel',c:60,f:()=>{}},{l:'Map around it: the centre site drops every 5 rounds next run',f:m=>{m.dead=1;}}]},
+  {t:'Camera calibration drift', d:'Readout thresholds have drifted; some bright atoms read dark.',
+   o:[{l:'Recalibrate',c:20,f:()=>{}},{l:'Run anyway: misreads ×2 next run',f:m=>{m.measMult=2;}}]},
+  {t:'Overnight grad-student run', d:'A grad student offers to run calibration scans overnight and sell the data to a collaboration.',
+   o:[{l:'Let them (+$30k, but p ×1.15 next run: something got bumped)',f:m=>{G.lab.money+=30;m.pMult=(m.pMult||1)*1.15;}},{l:'Keep the machine for yourself',f:()=>{}}]},
+  {t:'Grant renewal', d:'The funding agency asks for a progress report.',
+   o:[{l:'Submit your milestone list',f:()=>{const k=Object.keys(G.lab.ms).length; G.lab.money+=30+25*k; G.lab.log.unshift(`Grant renewal: +$${30+25*k}k`);}}]},
+];
+function showEvent(ev){
+  const box=document.getElementById('modal');
+  const card=H('div',{cls:'card'});
+  card.appendChild(H('div',{cls:'small mut'},'Lab event'));
+  card.appendChild(H('h2',{},ev.t));
+  card.appendChild(H('p',{},ev.d));
+  const opts=H('div',{cls:'opts'});
+  ev.o.forEach(o=>{
+    const can=!o.c || G.lab.money>=o.c;
+    opts.appendChild(btn(o.l+(o.c?` (−$${o.c}k)`:''),()=>{
+      if(o.c) G.lab.money-=o.c;
+      G.lab.mods=G.lab.mods||{}; o.f(G.lab.mods);
+      G.lab.log.unshift(`${ev.t}: ${o.l}`);
+      box.innerHTML=''; save(); rerender();
+    },'',!can));
+  });
+  card.appendChild(opts);
+  box.innerHTML=''; const m=H('div',{cls:'modal'}); m.appendChild(card); box.appendChild(m);
+}
+
+/* ================================================================
+   Field guide
+   ================================================================ */
+function renderGuide(){
+  const g=H('div',{cls:'guide'});
+  g.innerHTML=`
+  <div class="card"><h2>How a Rydberg-atom quantum computer works</h2>
+  <p><b>Qubits.</b> Individual neutral atoms (Rb, Cs, Sr, Yb) are trapped in arrays of optical tweezers formed by acousto-optic deflectors or spatial light modulators. The qubit lives in two long-lived states: hyperfine levels in alkalis, nuclear-spin levels of a metastable state in ¹⁷¹Yb.</p>
+  <p><b>Gates.</b> Single-qubit gates use microwave or Raman pulses. Two-qubit CZ gates briefly excite atoms to Rydberg states. Within the blockade radius (a few µm), two atoms can't both be excited, and that conditional phase is the gate. Parallel CZ fidelities reached 99.5% in 2023.</p>
+  <p><b>Connectivity.</b> Tweezers can move atoms mid-circuit, so check atoms can be shuttled next to their data atoms. This "zoned" design underlies the logical-processor experiments.</p>
+  <p><b>Readout.</b> Fluorescence imaging: bright vs. dark. Mid-circuit readout of check atoms gives the syndrome.</p></div>
+
+  <div class="card"><h2>The surface code in one paragraph</h2>
+  <p>Data atoms sit on a d×d grid. Check atoms measure four-body parities, X⊗X⊗X⊗X or Z⊗Z⊗Z⊗Z. These operators all commute, so the logical information (spread non-locally over the grid) is untouched. An error string lights checks only at its endpoints. A decoder pairs endpoints and applies corrections. If error + correction forms closed loops, nothing happened. If it stretches across the lattice, it's a logical operator and the qubit is flipped. Below threshold, logical errors drop exponentially with d.</p></div>
+
+  <div class="card"><h2>What the game models, and what it simplifies</h2>
+  <p><b>Modelled:</b> stochastic Pauli errors (depolarizing or biased); erasures with known location and a uniformly random Pauli; atom loss making checks random until reloaded; measurement errors on check atoms; hook errors from check-atom faults mid-schedule, with direction set by gate order; MWPM decoding (exact for ≤16 defects) as the reference.</p>
+  <p><b>Simplified:</b> noise is phenomenological (independent per-round data errors + readout flips + hooks), not a full gate-by-gate circuit simulation. Correlated multi-qubit errors from transport, leakage dynamics, and coherent errors are not modelled. Corrections are applied physically, whereas real systems track a Pauli frame in software. You decode in space with a visual time history, rather than full space-time matching.</p>
+  <p><b>Randomness:</b> every error, erasure, loss and misread is drawn fresh with <code>Math.random()</code>. Some shots are genuinely uncorrectable. That isn't a bug: it's the logical error rate.</p></div>
+
+  ${COURSE_REFS}
+  <div class="card"><h2>Reading list: error correction</h2>
+  <p class="ref">Dennis, Kitaev, Landahl & Preskill, "Topological quantum memory," <i>J. Math. Phys.</i> 43, 4452 (2002). <a href="https://arxiv.org/abs/quant-ph/0110143" target="_blank">arXiv:quant-ph/0110143</a></p>
+  <p class="ref">Fowler, Mariantoni, Martinis & Cleland, "Surface codes: Towards practical large-scale quantum computation," <i>PRA</i> 86, 032324 (2012). <a href="https://arxiv.org/abs/1208.0928" target="_blank">arXiv:1208.0928</a></p>
+  <p class="ref">Tomita & Svore, "Low-distance surface codes under realistic quantum noise," <i>PRA</i> 90, 062320 (2014). Gate ordering and hook errors. <a href="https://arxiv.org/abs/1404.3747" target="_blank">arXiv:1404.3747</a></p>
+  <p class="ref">Auger, Bergamini, Browne, "Blueprint for fault-tolerant quantum computation with Rydberg atoms," <i>PRA</i> 96, 052320 (2017). <a href="https://arxiv.org/abs/1708.09504" target="_blank">arXiv:1708.09504</a></p>
+  <p class="ref">Cong et al., "Hardware-efficient, fault-tolerant quantum computation with Rydberg atoms," <i>PRX</i> 12, 021049 (2022). Rydberg decay, leakage, biased errors. <a href="https://arxiv.org/abs/2105.13501" target="_blank">arXiv:2105.13501</a></p>
+  <p class="ref">Wu, Kolkowitz, Puri & Thompson, "Erasure conversion for fault-tolerant quantum computing in alkaline earth Rydberg atom arrays," <i>Nat. Commun.</i> 13, 4657 (2022). ~98% erasure conversion; threshold 0.937% → 4.15%. <a href="https://arxiv.org/abs/2201.03540" target="_blank">arXiv:2201.03540</a></p>
+  <p class="ref">Sahay, Jin, Claes, Thompson & Puri, "High-threshold codes for neutral-atom qubits with biased erasure errors," <i>PRX</i> 13, 041013 (2023). XZZX code, 8.2% threshold. <a href="https://arxiv.org/abs/2302.03063" target="_blank">arXiv:2302.03063</a></p>
+  <p class="ref">Ma et al., "High-fidelity gates and mid-circuit erasure conversion in an atomic qubit," <i>Nature</i> 622, 279 (2023). <a href="https://arxiv.org/abs/2305.05493" target="_blank">arXiv:2305.05493</a></p>
+  <p class="ref">Scholl et al., "Erasure conversion in a high-fidelity Rydberg quantum simulator," <i>Nature</i> 622, 273 (2023).</p>
+  <p class="ref">Evered et al., "High-fidelity parallel entangling gates on a neutral-atom quantum computer," <i>Nature</i> 622, 268 (2023). 99.5% CZ.</p>
+  <p class="ref">Bluvstein et al., "Logical quantum processor based on reconfigurable atom arrays," <i>Nature</i> 626, 58 (2024). 280 atoms, surface codes d=3→7. <a href="https://arxiv.org/abs/2312.03982" target="_blank">arXiv:2312.03982</a></p>
+  <p class="ref">Perrin, Jandura & Pupillo, "Quantum error correction resilient against atom loss," <i>Quantum</i> 9, 1884 (2025). ~2.6% loss threshold. <a href="https://arxiv.org/abs/2412.07841" target="_blank">arXiv:2412.07841</a></p>
+  <p class="ref">Bluvstein et al., "Architectural mechanisms of a universal fault-tolerant quantum computer" (2025); published in <i>Nature</i> as "A fault-tolerant neutral-atom architecture for universal quantum computation." 448 atoms, loss detection, 2.14× below threshold. <a href="https://arxiv.org/abs/2506.20661" target="_blank">arXiv:2506.20661</a></p>
+  </div>`;
+  return g;
+}
+
+/* ================================================================
+   Boot & keyboard
+   ================================================================ */
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  if(G.view===t.dataset.v) return;
+  stopRuntime(); G.R=null; G.view=t.dataset.v; document.getElementById('app').innerHTML=''; rerender();
+}));
+document.addEventListener('keydown',e=>{
+  const R=G.R; if(!R || e.target.tagName==='INPUT' || document.querySelector('.modal')) return;
+  const k=e.key.toLowerCase();
+  if(interactive(R)){
+    if(k==='m' && R.def.tools.includes('match')){ R.tool='match'; rerender(); }
+    else if(['x','z','y'].includes(k) && R.def.tools.includes(k.toUpperCase())){ R.tool=k.toUpperCase(); R.sel=null; rerender(); }
+    else if(k==='u'){ doUndo(R); }
+    else if(k==='h'){ doHint(R); }
+    else if(k==='escape'){ R.sel=null; rerender(); }
+    else if(k===' '){ e.preventDefault(); if(R.phase==='round'){ if(R.def.auto && !(R.t>=R.T)){ R.paused=!R.paused; scheduleTick(R); rerender(); } else advanceRound(R); } }
+    else if(k==='enter'){ e.preventDefault(); if(R.phase==='round' && !R.def.auto) advanceRound(R); else doSubmit(R); }
+  } else if(R.phase==='reveal' && k==='enter'){
+    e.preventDefault();
+    if(R.mode==='lab') labAfterRun();
+    else if(R.levelResult==='pass' && G.levelIdx<LEVELS.length-1) selectLevel(G.levelIdx+1);
+    else if(!R.levelResult) nextShot(R);
+  }
+});
+window.addEventListener('load',()=>{ load(); rerender(); });
+</script>
+<script src="course.js"></script>
+</body>
+</html>

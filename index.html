@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arcade Shelf</title>
+<meta name="description" content="Games and apps I've made. Play them in your browser or download them.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <h1 id="site-title">Arcade Shelf</h1>
+    <p>Games and apps I've made. Most run right in your browser. Every one can also be downloaded.</p>
+  </header>
+  <main class="grid" id="grid"><p class="empty">Loading…</p></main>
+</div>
+<footer class="site"><div class="wrap">Saves are kept in your browser, so your progress stays on your device.</div></footer>
+
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtSize = b => b == null ? "" : b > 1e6 ? (b / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1e3)) + " KB";
+const fmtDate = d => d ? new Date(d + "T12:00:00").toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+
+function card(g) {
+  const buttons = [];
+  if (g.play) buttons.push(`<a class="btn" href="play/${esc(g.id)}/">▶ Play</a>`);
+  if (g.guide) buttons.push(`<a class="btn" href="${esc(g.guide)}">Setup guide</a>`);
+  if (g.download) buttons.push(`<a class="btn ghost" href="downloads/${esc(g.id)}.zip" download>⬇ Download${g.size ? " · " + fmtSize(g.size) : ""}</a>`);
+  const meta = g.version ? `Version ${g.version} · updated ${fmtDate(g.updated)}` : "";
+  return `<article class="card" style="--accent:${esc(g.accent || "#888")}">
+    <div class="cover">${esc(g.icon || "🎮")}${g.image ? `<img src="${esc(g.image)}" alt="">` : ""}</div>
+    <div class="body">
+      <h2>${esc(g.title)}</h2>
+      <div class="tags">${(g.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+      <p class="tagline">${esc(g.tagline)}</p>
+      <p class="desc">${esc(g.description)}</p>
+      ${g.downloadNote ? `<p class="note">${esc(g.downloadNote)}</p>` : ""}
+      <div class="meta">${meta}</div>
+      <div class="actions">${buttons.join("")}</div>
+    </div>
+  </article>`;
+}
+
+fetch("games.json", { cache: "no-cache" })
+  .then(r => r.json())
+  .then(data => {
+    if (data.siteTitle) { document.title = data.siteTitle; document.getElementById("site-title").textContent = data.siteTitle; }
+    const games = (data.games || []).filter(g => g.version > 0);
+    document.getElementById("grid").innerHTML = games.length ? games.map(card).join("") : `<p class="empty">Nothing published yet.</p>`;
+  })
+  .catch(() => { document.getElementById("grid").innerHTML = `<p class="empty">Couldn't load the game list.</p>`; });
+</script>
+</body>
+</html>

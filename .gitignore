@@ -1,0 +1,9 @@
+# Never commit these, even by accident
+config.json
+*.db
+*.vault
+*.log
+data/
+__pycache__/
+.claude/
+Thumbs.db

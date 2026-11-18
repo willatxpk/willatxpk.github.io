@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kerdos Setup Guide</title>
+<meta name="description" content="How to install Kerdos, connect your bank accounts, use it from your phone, and add a local AI model.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body style="--accent:#d4b040">
+<main class="wrap guide">
+  <a class="back" href="./">← All games</a>
+  <h1>💰 Kerdos setup guide</h1>
+  <p class="lede">Kerdos is a personal finance app that runs on your own Windows PC. Your data stays on your computer and is never uploaded anywhere.</p>
+  <p><a class="btn" href="downloads/kerdos.zip" download>⬇ Download Kerdos</a></p>
+
+  <div class="toc"><b>Steps</b>
+    <ol>
+      <li><a href="#install">Install and start it</a></li>
+      <li><a href="#accounts">Connect your accounts</a></li>
+      <li><a href="#phone">Use it from your phone</a></li>
+      <li><a href="#ai">Add a local AI model (optional)</a></li>
+      <li><a href="#alerts">Phone and email alerts (optional)</a></li>
+      <li><a href="#update">Update to a new version</a></li>
+    </ol>
+  </div>
+
+  <h2 id="install">1. Install and start it</h2>
+  <ol>
+    <li>Install <b>Python 3.12</b> from <a href="https://www.python.org/downloads/windows/">python.org</a>. In the installer, tick <b>"Add python.exe to PATH"</b>. Kerdos uses only Python's built-in parts, so there's nothing else to install.</li>
+    <li>Download <code>kerdos.zip</code> above, right-click it and choose <b>Extract All</b>. Put the folder somewhere it can stay, such as <code>Documents\Kerdos</code>.</li>
+    <li>Open the folder and double-click <code>run.bat</code>. A console window opens, and your browser opens <b>http://localhost:8765</b>.</li>
+    <li>Create a password the first time it asks. You'll sign in with it from then on, and it locks itself after 30 minutes of inactivity.</li>
+  </ol>
+  <h3>Make it start automatically (recommended)</h3>
+  <p>Right-click <code>install_autostart.ps1</code> and choose <b>Run with PowerShell</b>. Kerdos then runs quietly in the background whenever you sign in to Windows, with no window. Open it any time at <b>http://localhost:8765</b> or with the <b>Open Kerdos</b> shortcut in the folder. To turn this off, run <code>uninstall_autostart.ps1</code>.</p>
+  <div class="callout"><b>Windows warning?</b> If Windows says it can't run the script, open PowerShell in the folder and run <code>powershell -ExecutionPolicy Bypass -File .\install_autostart.ps1</code>. This affects only that one run.</div>
+  <h3>Encrypt your data</h3>
+  <p>Go to <b>Accounts → Encrypt my data</b>. You'll get a one-time <b>recovery code</b>. Save it in a password manager or on paper, because without it a forgotten password can't be recovered.</p>
+
+  <h2 id="accounts">2. Connect your accounts</h2>
+  <p>Pick <b>one</b> of the two options below. If you just want to look around first, use the demo data on the welcome screen.</p>
+
+  <h3>Option A: automatic sync through Plaid</h3>
+  <p>Plaid is the service most budgeting apps use to connect to banks. You sign in to your bank in Plaid's own window, so Kerdos never sees your bank password.</p>
+  <ol>
+    <li>Make a free account at <a href="https://dashboard.plaid.com/signup">dashboard.plaid.com/signup</a>.</li>
+    <li>In the Kerdos folder, copy <code>config.example.json</code> and rename the copy to <code>config.json</code>.</li>
+    <li>In the Plaid dashboard, open <b>Developers → Keys</b>. Paste your <b>client_id</b> and <b>secret</b> into <code>config.json</code>.</li>
+    <li>Leave <code>"env": "sandbox"</code> at first. Sandbox uses fake test banks, which you sign in to with <code>user_good</code> / <code>pass_good</code>, so you can check it works.</li>
+    <li>For your real accounts, request <b>Production</b> access in the Plaid dashboard. Personal projects can usually get a small number of free live connections. Then change <code>"env"</code> to <code>"production"</code> and paste in the production secret.</li>
+    <li>Restart Kerdos and click <b>Accounts → Connect a bank</b>.</li>
+  </ol>
+  <p>Kerdos syncs every 6 hours while it's running, and whenever you click <b>Sync now</b>. When it starts, it encrypts the secret in <code>config.json</code> so only your Windows account can read it.</p>
+  <div class="callout"><b>Keep <code>config.json</code> private.</b> It holds your Plaid secret. Never share it or upload it anywhere.</div>
+
+  <h3>Option B: import CSV files (no Plaid)</h3>
+  <p>On each bank's website, download your transactions as a CSV file. Then use <b>Accounts → Import a CSV</b>. Importing a file that overlaps an earlier one won't create duplicates.</p>
+
+  <h2 id="phone">3. Use it from your phone</h2>
+  <p>This uses <b>Tailscale</b>, a free private network between your own devices. Your phone reaches your PC from anywhere, and <b>nothing is opened up to the public internet</b>.</p>
+  <ol>
+    <li><b>On your PC:</b> install Tailscale from <a href="https://tailscale.com/download/windows">tailscale.com/download</a> and sign in. A Google, Microsoft or Apple account is easiest.</li>
+    <li><b>On your phone:</b> install the <b>Tailscale</b> app (App Store or Google Play), sign in with the <b>same account</b>, and allow the VPN when it asks. Leave it switched on.</li>
+    <li><b>On your PC,</b> open PowerShell and run:
+      <pre><code>tailscale serve --bg 8765</code></pre>
+      It prints your PC's private address, which looks like <code>https://your-pc.tail1234.ts.net</code>. The first time, it may print a link to turn on HTTPS. Open the link, click Enable, then run the command again.</li>
+    <li><b>In Kerdos on your PC:</b> go to <b>Accounts → Phone access → Allow my Tailscale address</b>. The address is filled in for you. Click OK.</li>
+    <li><b>On your phone,</b> open the browser (Safari on iPhone), go to that <code>https://…ts.net</code> address, and sign in with your Kerdos password.</li>
+    <li>Tap <b>Share → Add to Home Screen</b>. Kerdos now opens like an app, with its own icon.</li>
+  </ol>
+  <div class="callout">
+    <ul style="margin:0">
+      <li>Your PC has to be on and awake. To stop it sleeping while plugged in: <b>Settings → System → Power → Sleep → Never</b> (when plugged in).</li>
+      <li>Only devices signed in to <i>your</i> Tailscale account can reach it. <b>Never use <code>tailscale funnel</code></b>, which would make it public.</li>
+      <li>To turn phone access off, run <code>tailscale serve reset</code> and remove the address under Accounts → Phone access.</li>
+    </ul>
+  </div>
+
+  <h2 id="ai">4. Add a local AI model (optional)</h2>
+  <p>Kerdos sorts most transactions on its own. For the few it isn't sure about, an AI model running <b>on your own computer</b> can suggest a category. Nothing is sent to the internet, and suggestions only appear on the Sort page. They're never applied without you.</p>
+  <ol>
+    <li>Install <b>Ollama</b> from <a href="https://ollama.com/download">ollama.com/download</a> and start it. It sits in the system tray.</li>
+    <li>Open PowerShell and download a small model (about 2 GB):
+      <pre><code>ollama pull qwen2.5:3b</code></pre>
+      Other models work too, such as <code>llama3.2:3b</code> or <code>gemma3:4b</code>. Bigger models sort better but run slower.</li>
+    <li>In Kerdos, go to <b>Settings → Sorting help from a local AI model</b>. Tick <b>"Ask the local model about transactions the app can't call"</b> and pick your model.</li>
+  </ol>
+  <p>Your PC may slow down for a few seconds while the model thinks. Kerdos unloads the model from memory as soon as it's done.</p>
+
+  <h2 id="alerts">5. Phone and email alerts (optional)</h2>
+  <p>Kerdos can warn you before bills are charged, when a price changes, or when an account is running low.</p>
+  <ul>
+    <li><b>Phone:</b> install the free <b>ntfy</b> app and subscribe to a long, random topic name such as <code>kd-8e2kq93nd0x</code>. Anyone who knows the name can read it, so make it hard to guess. In <code>config.json</code>, set <code>"ntfy_url": "https://ntfy.sh/your-topic-name"</code>.</li>
+    <li><b>Email:</b> in <code>config.json</code>, set <code>notify.email.enabled</code> to <code>true</code> and fill in your mail server details. For Gmail, use an <a href="https://myaccount.google.com/apppasswords">App Password</a>, not your normal password.</li>
+  </ul>
+  <p>Restart Kerdos, then click <b>Bills &amp; Alerts → Send test alert</b>.</p>
+
+  <h2 id="update">6. Update to a new version</h2>
+  <ol>
+    <li>Close Kerdos. Run <code>uninstall_autostart.ps1</code>, or end <code>pythonw.exe</code> in Task Manager.</li>
+    <li>Download the new <code>kerdos.zip</code> and extract it <b>over</b> your existing folder, replacing the files. Your <code>data</code> folder and <code>config.json</code> aren't in the download, so they're left alone.</li>
+    <li>Start it again with <code>install_autostart.ps1</code> or <code>run.bat</code>.</li>
+  </ol>
+
+  <h2>Forgot your password?</h2>
+  <p>Close Kerdos first (see above). Then open PowerShell in the Kerdos folder:</p>
+  <ul>
+    <li><b>With encryption on:</b> run <code>py -3.12 main.py --recover</code> and enter your recovery code.</li>
+    <li><b>Without encryption:</b> run <code>py -3.12 main.py --reset-password</code>. Your data is untouched.</li>
+  </ul>
+
+  <div class="callout">Kerdos's investing plan is an educational tool, not personal financial advice. It doesn't know your full tax situation. For big decisions, consider a fee-only fiduciary advisor.</div>
+</main>
+</body>
+</html>

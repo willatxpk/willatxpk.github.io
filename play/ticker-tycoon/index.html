@@ -1,0 +1,2388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ticker Tycoon</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0b0f17; --panel: #121826; --panel2: #182033; --line: #253049; --text: #dbe3f4; --dim: #7f8aa6;
+    --up: #2ecc71; --down: #ff5c5c; --accent: #4da3ff; --gold: #f5c542; --warn: #ffb347;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 "Segoe UI", system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: #1d4f91; border-color: #2c6bc0; }
+  button.buy { background: #145c35; border-color: #1f8a4f; }
+  button.sell { background: #6b1f25; border-color: #a23039; }
+  button.on { border-color: var(--accent); background: #1b2c4a; }
+  input, select { font: inherit; color: var(--text); background: #0e1420; border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
+  input:disabled { opacity: .4; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 0 0 6px; }
+  .up { color: var(--up); } .down { color: var(--down); } .dim { color: var(--dim); } .gold { color: var(--gold); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 3px 5px; border-bottom: 1px solid #1a2236; white-space: nowrap; }
+  th { color: var(--dim); font-weight: 500; text-align: left; font-size: 11px; }
+
+  header { display: flex; align-items: center; gap: 16px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 16px; }
+  #clock { font-variant-numeric: tabular-nums; min-width: 150px; }
+  #clock .bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 2px; }
+  #clock .bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  .speed button { padding: 3px 8px; }
+  .stat label { display: block; font-size: 10px; color: var(--dim); text-transform: uppercase; }
+  .stat b { font-size: 15px; font-variant-numeric: tabular-nums; }
+  #liveBadge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #2a1f10; color: var(--warn); }
+  #liveBadge.live { background: #0f2a1c; color: var(--up); }
+  header .spacer { flex: 1; }
+
+  main { flex: 1; display: grid; grid-template-columns: 300px 1fr 340px; gap: 8px; padding: 8px; min-height: 0; }
+  main > section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; min-height: 0; overflow: auto; }
+  #watchTable tr { cursor: pointer; }
+  #watchTable tr:hover td { background: #172036; }
+  #watchTable tr.sel td { background: #1b2c4a; }
+  #watchTable .tk { font-weight: 700; }
+  #watchTable .nm { font-size: 10px; color: var(--dim); display: block; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+  #watchTable .flash-up td { animation: fu .8s; } #watchTable .flash-down td { animation: fd .8s; }
+  @keyframes fu { from { background: #14482b; } } @keyframes fd { from { background: #4d1a1e; } }
+  .halt { font-size: 9px; padding: 0 4px; border-radius: 4px; background: #5a1a1f; color: #fff; margin-left: 3px; }
+  .earn { font-size: 10px; margin-left: 3px; color: var(--gold); }
+  #watchTable tr.sec td { background: #121a2c; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); padding-top: 6px; position: sticky; top: 0; }
+table.sortable th[data-psort], table.sortable th [data-psort] { cursor: pointer; user-select: none; }
+table.sortable th[data-psort]:hover { color: var(--gold, #f5c542); }
+  #watchTable tr.sec:hover td { background: #172036; }
+  .staff .btns { display: flex; gap: 4px; flex-shrink: 0; }
+  .held { font-size: 10px; padding: 0 4px; border-radius: 4px; background: #24314d; margin-left: 3px; }
+  #indexLine { display: flex; justify-content: space-between; margin-bottom: 6px; padding: 6px; background: var(--panel2); border-radius: 6px; }
+
+  #goals { margin-top: 10px; }
+  #goals li { margin: 3px 0; list-style: none; }
+  #goals ul { padding: 0; margin: 0; }
+  #goals .done { color: var(--dim); text-decoration: line-through; }
+  .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .progress i { display: block; height: 100%; background: var(--gold); }
+
+  #center { display: flex; flex-direction: column; gap: 8px; }
+  .tabs { display: flex; gap: 6px; }
+  .tab { display: none; flex: 1; min-height: 0; }
+  .tab.on { display: flex; flex-direction: column; gap: 8px; }
+  #chartHead { display: flex; align-items: baseline; gap: 12px; }
+  #chartHead .big { font-size: 22px; font-weight: 700; }
+  #chartRange button { padding: 2px 8px; font-size: 11px; }
+  #chart { width: 100%; height: 230px; display: block; background: #0d1320; border-radius: 6px; }
+  .row2 { display: grid; grid-template-columns: 330px 1fr; gap: 8px; }
+  .card { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+  .field { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+  .field label { width: 80px; color: var(--dim); }
+  .field input, .field select { flex: 1; min-width: 0; }
+  .seg { display: flex; } .seg button { flex: 1; border-radius: 0; } .seg button:first-child { border-radius: 6px 0 0 6px; } .seg button:last-child { border-radius: 0 6px 6px 0; }
+  .preview { font-size: 12px; color: var(--dim); min-height: 34px; margin: 6px 0; }
+  .x { padding: 1px 6px; font-size: 11px; }
+
+  .news-item { padding: 7px 4px; border-bottom: 1px solid #1a2236; }
+  .news-item.fresh { animation: nf 2.5s; }
+  @keyframes nf { from { background: #233a63; } }
+  .news-item a { color: var(--text); text-decoration: none; }
+  .news-item a:hover { text-decoration: underline; }
+  .news-meta { font-size: 10px; color: var(--dim); margin-top: 3px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .tag { font-size: 10px; padding: 0 5px; border-radius: 4px; background: #24314d; color: var(--text); cursor: pointer; }
+  .tag.up { background: #123b25; color: var(--up); } .tag.down { background: #45181c; color: var(--down); }
+  .sim { font-size: 9px; padding: 0 4px; border: 1px solid var(--dim); border-radius: 3px; }
+  #picksCard { margin-bottom: 4px; padding: 8px; }
+  #autoCfg { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); font-size: 12px; }
+  #autoCfg input[type=number] { width: 70px; }
+  .pick { padding: 5px 4px; border-bottom: 1px solid #1f2940; font-size: 12px; cursor: pointer; }
+  .pick:hover { background: #1b2c4a; }
+  #newsCol { display: flex; flex-direction: column; }
+
+  .clickers { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 8px; }
+  #clkPitch { cursor: default; font-size: 13px; padding: 8px; }
+  .angles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+  .angles button small, .meet small { display: block; color: var(--dim); font-size: 11px; }
+  .meet { padding: 8px 0; border-bottom: 1px solid #1f2940; }
+  .meet .opts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+  .meet .opts button { font-size: 12px; }
+  .warn { border: 1px dashed var(--down); border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; font-size: 12px; }
+  .warn button { margin-top: 4px; }
+  .branch { margin: 10px 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+  .locked { opacity: .55; }
+  .tip { background: #1d2a17; border: 1px solid #3f6b2a; border-radius: 8px; padding: 7px 10px; font-size: 12px; }
+  .clicker { padding: 12px 8px; text-align: center; font-size: 14px; border-radius: 10px; user-select: none; }
+  .clicker small { display: block; font-size: 11px; color: var(--dim); margin-top: 4px; }
+  .clicker:active:not(:disabled) { transform: scale(.97); }
+  .firm-stats { display: flex; gap: 18px; flex-wrap: wrap; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .staff, .upg { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1f2940; }
+  .staff p, .upg p { margin: 0; font-size: 11px; color: var(--dim); }
+  .sat { width: 70px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; }
+  .sat i { display: block; height: 100%; }
+  .req { font-size: 11px; color: var(--warn); }
+  .owned { color: var(--up); font-size: 12px; }
+
+  @media (max-width: 1150px) {
+    body { height: auto; overflow: auto; }
+    main { grid-template-columns: 1fr; }
+    main > section { max-height: none; overflow: visible; }
+    #watch { max-height: 420px; overflow: auto; }
+    .row2 { grid-template-columns: 1fr 1fr; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) { .row2, .clickers { grid-template-columns: 1fr; } }
+  footer { height: 26px; padding: 4px 14px; font-size: 12px; color: var(--dim); background: var(--panel); border-top: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #toasts { position: fixed; right: 16px; bottom: 36px; display: flex; flex-direction: column; gap: 6px; z-index: 20; width: 320px; }
+  .toast { background: #1b2540; border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 8px 10px; border-radius: 6px; font-size: 12px; box-shadow: 0 4px 16px #0008; animation: tin .25s; }
+  .toast.good { border-left-color: var(--up); } .toast.bad { border-left-color: var(--down); } .toast.gold { border-left-color: var(--gold); }
+  @keyframes tin { from { transform: translateX(30px); opacity: 0; } }
+  .modal-bg { position: fixed; inset: 0; background: #000a; display: flex; align-items: center; justify-content: center; z-index: 30; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 22px; width: 520px; max-width: 92vw; }
+  .modal h1 { margin: 0 0 8px; font-size: 22px; }
+  .modal ul { padding-left: 18px; color: var(--dim); }
+  .floater { position: fixed; pointer-events: none; font-weight: 700; color: var(--gold); animation: fl 0.9s forwards; z-index: 40; }
+  @keyframes fl { to { transform: translateY(-40px); opacity: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">📈 <span id="firmName">Ticker Tycoon</span></div>
+  <div id="clock">Day 1 · 09:30<div class="bar"><i></i></div></div>
+  <div class="speed" id="speed">
+    <button data-speed="0" title="Pause (space)">⏸</button><button data-speed="1" title="Normal speed">▶</button><button data-speed="3" title="3× speed">▶▶</button><button data-speed="10" title="10× speed">⏩</button>
+  </div>
+  <label class="dim" title="How long one trading day lasts in real time at normal speed">1 day = <select id="dayLen"></select></label>
+  <div class="stat" title="Your stake in the fund plus the firm account"><label>Net worth</label><b id="netWorth">–</b></div>
+  <div class="stat" title="Cash in the fund that you can trade with: your money plus your clients'"><label>Fund cash (tradable)</label><b id="cash">–</b></div>
+  <div class="stat" title="The firm's own money: fees come in; salaries, rent, hires, offices and the shop go out"><label>Firm account</label><b id="firmCash">–</b></div>
+  <div class="stat" title="The fund's return today, and what it made or lost for your own stake"><label>Fund today</label><b id="dayPnl">–</b></div>
+  <div class="stat"><label>Rank</label><b id="rank">–</b></div>
+  <div class="spacer"></div>
+  <span id="liveBadge">loading data…</span>
+  <button id="newGameBtn">New game</button>
+</header>
+
+<main>
+  <section id="watch">
+    <h2>Market</h2>
+    <div id="indexLine"></div>
+    <table id="watchTable"></table>
+    <div id="goals"></div>
+  </section>
+
+  <section id="center">
+    <nav class="tabs">
+      <button data-tab="trade" class="on">📊 Trading desk</button>
+      <button data-tab="firm">🏢 Your firm <span id="firmAlert" class="gold"></span></button>
+      <button data-tab="research">🔬 Research &amp; shop <span id="researchAlert" class="gold"></span></button>
+    </nav>
+
+    <div id="tab-trade" class="tab on">
+      <div class="card">
+        <div id="chartHead"></div>
+        <canvas id="chart"></canvas>
+      </div>
+      <div class="row2">
+        <div class="card" id="ticket">
+          <div class="seg" id="ticketMode"><button data-mode="stock" class="on">Stock</button><button data-mode="option">Options</button><button data-mode="basket">Basket</button></div>
+          <div id="stockTicket">
+            <div class="field"><label>Symbol</label><select id="tkSym"></select></div>
+            <div class="field"><label>Side</label><div class="seg" style="flex:1" id="tkSide"><button data-side="buy" class="on">Buy</button><button data-side="sell">Sell / Short</button></div></div>
+            <div class="field"><label>Order type</label><select id="tkType"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option></select></div>
+            <div class="field"><label>Quantity</label><input id="tkQty" type="number" min="1" value="10"><button class="x" id="tkMax" title="Largest quantity cash allows">Max</button></div>
+            <div class="field"><label>Price</label><input id="tkPrice" type="number" step="0.01" disabled placeholder="at market"></div>
+            <div class="preview" id="tkPreview"></div>
+            <button class="primary" id="tkSubmit" style="width:100%">Place order</button>
+          </div>
+          <div id="optionTicket" style="display:none">
+            <div class="field"><label>Symbol</label><select id="opSym"></select></div>
+            <div class="field"><label>Type</label><div class="seg" style="flex:1" id="opKind"><button data-kind="call" class="on">Call ▲</button><button data-kind="put">Put ▼</button></div></div>
+            <div class="field"><label>Expires in</label><select id="opExp"><option value="2">2 days</option><option value="5" selected>5 days</option><option value="10">10 days</option></select></div>
+            <div class="field"><label>Strike</label><select id="opStrike"></select></div>
+            <div class="field"><label>Contracts</label><input id="opQty" type="number" min="1" value="1"></div>
+            <div class="preview" id="opPreview"></div>
+            <button class="buy" id="opSubmit" style="width:100%">Buy to open</button>
+          </div>
+          <div id="basketTicket" style="display:none">
+            <div class="field"><label>Stocks</label><select id="bkSet"></select></div>
+            <div class="field"><label>Amount $</label><input id="bkAmt" type="number" min="1000" step="1000" value="10000"><button class="x" id="bkMax" title="All the fund's free cash">Max</button></div>
+            <div class="preview" id="bkPreview"></div>
+            <div style="display:flex;gap:4px"><button class="buy" id="bkBuy" style="flex:1">Buy basket</button><button class="sell" id="bkSell" style="flex:1">Sell from basket</button></div>
+            <div class="preview" style="margin-top:6px"><label><input type="checkbox" id="bkAuto"> Auto-invest idle cash</label> into this basket, keeping
+              <input id="bkKeep" type="number" min="0" max="100" value="20" style="width:46px">% of the fund in cash. Checks every hour.</div>
+          </div>
+        </div>
+        <div class="card" id="book" style="overflow:auto"></div>
+      </div>
+    </div>
+
+    <div id="tab-firm" class="tab">
+      <div class="tip" id="firmTip"></div>
+      <div class="card"><div class="firm-stats" id="firmStats"></div></div>
+      <div class="card"><h2>💲 Fee level</h2><div id="feeTiers" class="seg"></div><p class="dim" id="feeNote" style="font-size:11px;margin:6px 0 0"></p></div>
+      <div class="card" id="acctCard"><h2>🏦 Accounts</h2><div id="accounts"></div>
+        <div class="field" style="margin-bottom:0"><input id="xferAmt" type="number" min="1" step="1000" placeholder="amount" style="max-width:130px">
+          <button data-xfer="out">Fund stake → firm account</button><button data-xfer="in">Firm account → fund</button></div></div>
+      <div class="clickers">
+        <button class="clicker" id="clkCall">📞 Cold call<small id="clkCallSub"></small></button>
+        <div class="clicker card" id="clkPitch"></div>
+        <button class="clicker" id="clkResearch">📚 Research<small id="clkResearchSub"></small></button>
+      </div>
+      <div class="card"><h2>📅 Client meetings <span id="meetCount" class="gold" style="text-transform:none;letter-spacing:0"></span></h2><div id="meetList"></div></div>
+      <div class="grid2">
+        <div class="card"><h2>Staff</h2><div id="staffList"></div></div>
+        <div class="card" style="overflow:auto;max-height:520px"><h2>Clients</h2>
+          <div class="dim" style="font-size:11px;margin-bottom:6px">Minimum investment $<input id="minInv" type="number" min="0" step="10000" style="width:90px"> <button class="x" id="dropBelow">Drop all below it</button><br>Leads who'd invest less are turned away before anyone pitches them.<br><label><input type="checkbox" id="overbook"> Let sales associates sign clients past the office's seats</label></div>
+          <div id="clientList"></div></div>
+      </div>
+      <div class="card"><h2>📡 Risk radar</h2><div id="radar"></div></div>
+    </div>
+
+    <div id="tab-research" class="tab">
+      <div class="grid2">
+        <div class="card"><h2>Research projects <span id="rpLabel" class="gold"></span></h2><div id="researchList"></div></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="card"><h2>🛒 Shop</h2><div id="shopList"></div></div>
+          <div class="card"><h2>Office</h2><div id="officeList"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="newsCol">
+    <h2>News wire</h2>
+    <div class="card" id="picksCard"><div id="picks"></div><div id="autoCfg"></div></div>
+    <h2 style="margin-top:8px">Headlines</h2>
+    <div id="news"></div>
+  </section>
+</main>
+<footer id="log">Welcome to Ticker Tycoon.</footer>
+<div id="toasts"></div>
+
+<script>
+"use strict";
+// ---------- constants ----------
+const TPD = 78;                 // ticks per trading day (5-minute bars, 9:30–16:00)
+const NEWS_EVERY = 9;           // ticks between headlines
+const VOL_MULT = 1.3;           // game is a bit livelier than the real market
+const START_CASH = 50000;
+const START_FIRM = 10000;       // of the starting money, this much sits in the firm account; the rest is your stake in the fund
+const SAVE_KEY = "tickerTycoon.save";
+const AGENT = new URLSearchParams(location.search).has("agent");
+const DAYLENS = [[30, "30 sec"], [60, "1 min"], [120, "2 min"], [300, "5 min"], [600, "10 min"]].map(([v, l]) => `<option value="${v}" ${v === 60 ? "selected" : ""}>${l}</option>`).join("");
+
+// Real companies. Prices/vols are replaced by live Yahoo data when the server is running.
+const COMPANIES = [
+  { t: "AAPL", n: "Apple", s: "Tech", p: 344.63, v: 0.19, k: ["apple", "iphone", "tim cook", "ipad", "macbook", "app store"] },
+  { t: "MSFT", n: "Microsoft", s: "Tech", p: 521.91, v: 0.23, k: ["microsoft", "azure", "windows", "nadella", "xbox", "copilot"] },
+  { t: "GOOGL", n: "Alphabet", s: "Tech", p: 279.84, v: 0.37, k: ["google", "alphabet", "youtube", "gemini", "waymo", "pichai"] },
+  { t: "AMZN", n: "Amazon", s: "Tech", p: 240.35, v: 0.29, k: ["amazon", "aws", "jassy", "bezos"] },
+  { t: "META", n: "Meta", s: "Tech", p: 614.99, v: 0.44, k: ["meta", "facebook", "instagram", "zuckerberg", "whatsapp"] },
+  { t: "NFLX", n: "Netflix", s: "Media", p: 62.08, v: 0.35, k: ["netflix"] },
+  { t: "RDDT", n: "Reddit", s: "Tech", p: 150, v: 0.7, k: ["reddit"] },
+  { t: "TSLA", n: "Tesla", s: "Auto", p: 399.81, v: 0.40, k: ["tesla", "musk", "elon", "cybertruck", "robotaxi"] },
+  { t: "NVDA", n: "Nvidia", s: "Chips", p: 204.64, v: 0.36, k: ["nvidia", "jensen huang", "blackwell"] },
+  { t: "AMD", n: "AMD", s: "Chips", p: 504.8, v: 0.60, k: ["amd", "advanced micro", "lisa su"] },
+  { t: "INTC", n: "Intel", s: "Chips", p: 65.76, v: 0.80, k: ["intel"] },
+  { t: "JPM", n: "JPMorgan", s: "Finance", p: 337.04, v: 0.16, k: ["jpmorgan", "jp morgan", "dimon"] },
+  { t: "GS", n: "Goldman Sachs", s: "Finance", p: 894.55, v: 0.26, k: ["goldman"] },
+  { t: "COIN", n: "Coinbase", s: "Crypto", p: 143.54, v: 0.73, k: ["coinbase", "bitcoin", "crypto", "binance", "ether", "ethereum", "stablecoin"] },
+  { t: "XOM", n: "Exxon Mobil", s: "Energy", p: 187.25, v: 0.24, k: ["exxon"] },
+  { t: "CVX", n: "Chevron", s: "Energy", p: 235.52, v: 0.23, k: ["chevron"] },
+  { t: "BA", n: "Boeing", s: "Industrial", p: 171.55, v: 0.38, k: ["boeing", "737", "spirit aerosystems"] },
+  { t: "DIS", n: "Disney", s: "Media", p: 110.94, v: 0.24, k: ["disney", "espn", "pixar", "marvel", "hulu"] },
+  { t: "WMT", n: "Walmart", s: "Consumer", p: 123.51, v: 0.28, k: ["walmart"] },
+  { t: "KO", n: "Coca-Cola", s: "Consumer", p: 94.08, v: 0.17, k: ["coca-cola", "coke"] },
+  { t: "HSY", n: "Hershey", s: "Consumer", p: 165.61, v: 0.24, k: ["hershey", "chocolate", "cocoa", "halloween"] },
+  { t: "LLY", n: "Eli Lilly", s: "Health", p: 1417.54, v: 0.32, k: ["eli lilly", "lilly", "zepbound", "mounjaro", "weight-loss", "glp-1"] },
+  { t: "PFE", n: "Pfizer", s: "Health", p: 30.52, v: 0.20, k: ["pfizer"] },
+  { t: "ORCL", n: "Oracle", s: "Tech", p: 230, v: 0.38, k: ["oracle", "larry ellison"] },
+  { t: "CRM", n: "Salesforce", s: "Tech", p: 250, v: 0.30, k: ["salesforce", "benioff"] },
+  { t: "ADBE", n: "Adobe", s: "Tech", p: 340, v: 0.30, k: ["adobe", "photoshop"] },
+  { t: "IBM", n: "IBM", s: "Tech", p: 290, v: 0.25, k: ["ibm"] },
+  { t: "PLTR", n: "Palantir", s: "Tech", p: 180, v: 0.65, k: ["palantir", "alex karp"] },
+  { t: "CSCO", n: "Cisco", s: "Tech", p: 72, v: 0.20, k: ["cisco"] },
+  { t: "UBER", n: "Uber", s: "Tech", p: 95, v: 0.35, k: ["uber"] },
+  { t: "AVGO", n: "Broadcom", s: "Chips", p: 340, v: 0.45, k: ["broadcom", "hock tan"] },
+  { t: "QCOM", n: "Qualcomm", s: "Chips", p: 170, v: 0.32, k: ["qualcomm", "snapdragon"] },
+  { t: "MU", n: "Micron", s: "Chips", p: 210, v: 0.50, k: ["micron", "memory chips", "hbm"] },
+  { t: "TSM", n: "TSMC", s: "Chips", p: 290, v: 0.35, k: ["tsmc", "taiwan semiconductor"] },
+  { t: "BAC", n: "Bank of America", s: "Finance", p: 52, v: 0.22, k: ["bank of america", "bofa"] },
+  { t: "MS", n: "Morgan Stanley", s: "Finance", p: 160, v: 0.24, k: ["morgan stanley"] },
+  { t: "V", n: "Visa", s: "Finance", p: 340, v: 0.18, k: ["visa inc", "visa and mastercard", "mastercard"] },
+  { t: "PYPL", n: "PayPal", s: "Finance", p: 68, v: 0.35, k: ["paypal", "venmo"] },
+  { t: "MSTR", n: "Strategy", s: "Crypto", p: 300, v: 0.85, k: ["microstrategy", "michael saylor", "saylor"] },
+  { t: "COP", n: "ConocoPhillips", s: "Energy", p: 92, v: 0.26, k: ["conocophillips"] },
+  { t: "F", n: "Ford", s: "Auto", p: 12, v: 0.33, k: ["ford motor", "ford's", "f-150"] },
+  { t: "GM", n: "General Motors", s: "Auto", p: 70, v: 0.30, k: ["general motors", "chevrolet", "cadillac"] },
+  { t: "RIVN", n: "Rivian", s: "Auto", p: 14, v: 0.60, k: ["rivian"] },
+  { t: "CAT", n: "Caterpillar", s: "Industrial", p: 560, v: 0.28, k: ["caterpillar"] },
+  { t: "LMT", n: "Lockheed Martin", s: "Industrial", p: 480, v: 0.22, k: ["lockheed", "f-35", "pentagon"] },
+  { t: "DAL", n: "Delta Air Lines", s: "Industrial", p: 60, v: 0.38, k: ["delta air", "delta airlines", "delta's"] },
+  { t: "SPOT", n: "Spotify", s: "Media", p: 650, v: 0.40, k: ["spotify"] },
+  { t: "COST", n: "Costco", s: "Consumer", p: 920, v: 0.18, k: ["costco"] },
+  { t: "MCD", n: "McDonald's", s: "Consumer", p: 300, v: 0.17, k: ["mcdonald's", "mcdonalds"] },
+  { t: "NKE", n: "Nike", s: "Consumer", p: 68, v: 0.35, k: ["nike"] },
+  { t: "SBUX", n: "Starbucks", s: "Consumer", p: 85, v: 0.30, k: ["starbucks"] },
+  { t: "TGT", n: "Target", s: "Consumer", p: 95, v: 0.32, k: ["target corp", "target stores", "target's sales"] },
+  { t: "JNJ", n: "Johnson & Johnson", s: "Health", p: 190, v: 0.16, k: ["johnson & johnson", "j&j"] },
+  { t: "UNH", n: "UnitedHealth", s: "Health", p: 330, v: 0.40, k: ["unitedhealth", "health insurer", "health insurers"] },
+  { t: "MRNA", n: "Moderna", s: "Health", p: 27, v: 0.60, k: ["moderna"] },
+];
+// Approximate annual dividend yields; stocks not listed pay none.
+const DIVIDENDS = { KO: 0.03, XOM: 0.034, CVX: 0.042, JNJ: 0.031, PFE: 0.065, JPM: 0.02, BAC: 0.024, MS: 0.028, GS: 0.019, MCD: 0.024, IBM: 0.024,
+  CSCO: 0.024, WMT: 0.009, COST: 0.005, HSY: 0.03, LLY: 0.007, COP: 0.033, CAT: 0.012, LMT: 0.028, V: 0.007, AVGO: 0.012, QCOM: 0.021, MSFT: 0.007,
+  AAPL: 0.004, UNH: 0.025, TGT: 0.045, SBUX: 0.028, NKE: 0.022, F: 0.05, GM: 0.01, ORCL: 0.008, DAL: 0.01, TSM: 0.012, MU: 0.004, GOOGL: 0.004,
+  META: 0.003, DIS: 0.009, CRM: 0.006 };
+const CASH_RATE = 0.04;   // interest on the fund's idle cash, per year
+const borrowRate = t => 0.005 + Math.max(0, S.stocks[t].vol - 0.3) * 0.15;   // yearly fee to borrow shares for a short: hard-to-borrow names cost more
+const earnMove = t => S.stocks[t].vol * Math.sqrt(1 / 252) * 2.8;           // typical size of an earnings-day gap
+const halted = t => S.tick < (S.haltUntil || 0) || (S.stocks[t].halt || 0) > S.tick;
+const SECTOR_KW = {
+  Tech: ["tech", "technology", "software", "cloud", "ai", "artificial intelligence", "big tech", "magnificent seven", "social media", "cybersecurity"],
+  Chips: ["chip", "chips", "chipmaker", "chipmakers", "semiconductor", "semiconductors", "gpu", "gpus", "data center", "data centers"],
+  Auto: ["ev", "evs", "electric vehicle", "electric vehicles", "automaker", "automakers", "car sales"],
+  Finance: ["bank", "banks", "banking", "lender", "lenders", "credit", "wall street banks", "private credit"],
+  Crypto: ["crypto", "bitcoin", "cryptocurrency", "token", "tokens", "blockchain"],
+  Energy: ["oil", "crude", "opec", "gasoline", "natural gas", "energy", "drilling", "iran"],
+  Industrial: ["airline", "airlines", "aerospace", "faa", "manufacturing", "factory", "defense"],
+  Media: ["streaming", "box office", "hollywood", "media"],
+  Consumer: ["retail", "retailer", "retailers", "shoppers", "consumer", "consumers", "holiday sales", "grocery", "snack", "candy"],
+  Health: ["drug", "drugs", "drugmaker", "fda", "vaccine", "pharma", "biotech", "medicare", "obesity"],
+};
+const MACRO_KW = ["fed", "federal reserve", "powell", "warsh", "interest rate", "interest rates", "rates", "inflation", "cpi", "jobs report",
+  "payrolls", "unemployment", "gdp", "recession", "tariff", "tariffs", "s&p 500", "s&p", "dow", "nasdaq", "wall street", "stocks",
+  "stock market", "treasury", "yields", "shutdown", "economy", "selloff", "sell-off", "rally"];
+const POS_W = "beat beats surge surges surged soar soars soaring jump jumps jumped rally rallies record gain gains rise rises rising climb climbs growth profit profits upgrade upgrades upgraded strong stronger boost boosts approve approves approval approved deal deals win wins winning winner winners expand expands bullish outperform raises raised breakthrough rebound rebounds recover recovers recovery tops exceed exceeds higher golden best boom booming joins optimistic upbeat hot hits likes buy demand".split(" ");
+const NEG_W = "miss misses missed plunge plunges plunged fall falls fell drop drops slump slumps tumble tumbles cut cuts layoff layoffs lawsuit sue sues probe investigation fine fined recall downgrade downgraded weak weaker loss losses decline declines worst crash crashes selloff sell-off bankrupt bankruptcy hack hacked heist breach tariff tariffs strike warn warns warning concern concerns fear fears slows slowing lower slide slides sink sinks wipeout jitters bubble rough risk risks shortage delay delays halt halts ban bans theft stolen fraud scandal crisis recession hiking pinch pricier spooks overdrive lawsuit losers".split(" ");
+const PHRASES = [
+  [/\brate cuts?\b|\bcut(s|ting)? (interest )?rates\b/, 1.6], [/\bhik(e|es|ing) (interest )?rates\b|\brate hikes?\b/, -1.6],
+  [/\bbeats? (estimates|expectations|forecasts)\b/, 1.6], [/\bmiss(es|ed)? (estimates|expectations|forecasts)\b/, -1.6],
+  [/\bworst day\b/, -2], [/\bbest day\b/, 2], [/\bwinners and losers\b/, 0], [/\bprice target\b/, 0.3],
+  [/\brevised downward\b|\bcuts? (its )?(outlook|guidance|forecast)\b/, -2], [/\braises? (its )?(outlook|guidance|forecast)\b/, 2],
+];
+const SECTORS = Object.keys(SECTOR_KW);
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const wordsRe = list => new RegExp("(^|[^a-z0-9])(" + list.map(escRe).join("|") + ")(?![a-z0-9])", "i");
+COMPANIES.forEach(c => c.re = wordsRe(c.k));
+const SECTOR_RE = Object.fromEntries(SECTORS.map(s => [s, wordsRe(SECTOR_KW[s])]));
+const MACRO_RE = wordsRe(MACRO_KW);
+const POS_SET = new Set(POS_W), NEG_SET = new Set(NEG_W);
+const CO = Object.fromEntries(COMPANIES.map(c => [c.t, c]));
+
+// Hire price rises 12% for each person already in that role.
+const STAFF = {
+  intern: { name: "Intern", icon: "🧑‍🎓", hire: 800, salary: 35, desc: "Makes cold calls: about 6 leads a day. Leads still need pitching, so pair interns with a Sales associate." },
+  assoc: { name: "Sales associate", icon: "💼", hire: 2500, salary: 90, desc: "Pitches your leads automatically, about 6 a day, using the angle that fits each lead." },
+  rm: { name: "Relationship manager", icon: "☕", hire: 3000, salary: 110, desc: "Looks after 8 clients: answers all their meetings for you (the safe answer) and keeps them happy." },
+  analyst: { name: "Analyst", icon: "🧮", hire: 4000, salary: 140, desc: "6 research points a day, one more stock pick on the Analyst desk, and slightly sharper picks." },
+  quant: { name: "Quant", icon: "📐", hire: 15000, salary: 600, desc: "+3% accuracy on every analyst pick (up to 4 quants), and spots flash crashes before they happen.", need: "risklab" },
+  security: { name: "Security engineer", icon: "🛡️", hire: 9000, salary: 400, desc: "Cuts the chance of cyber attacks and IT outages.", need: "cyber" },
+  compliance: { name: "Compliance officer", icon: "⚖️", hire: 9000, salary: 400, desc: "Cuts the chance and size of regulator fines and lawsuits.", need: "manual" },
+  quanttrader: { name: "Quant trader", icon: "🤖", hire: 20000, salary: 700, desc: "Runs the auto-trader: trades the analyst picks, and scans the market every hour for its own same-day signals. 6 trades a day each.", need: "algodesk" },
+  researcher: { name: "Quant researcher", icon: "🔭", hire: 12000, salary: 500, desc: "12 research points a day and +2% pick accuracy (up to 5 researchers).", need: "models" },
+  riskofficer: { name: "Risk officer", icon: "🧯", hire: 10000, salary: 450, desc: "Sells 25% of your long positions just before a flash crash (50% with two), and halves rogue-trader losses.", need: "risklab" },
+  marketer: { name: "Marketer", icon: "📣", hire: 6000, salary: 300, desc: "+2 leads and +0.3 reputation a day. Shields you from bad press.", need: "brand" },
+};
+// Research tree: each project needs the one listed in `need`.
+const RESEARCH = [
+  { id: "scanner", br: "Market intel", name: "Sentiment scanner", cost: 8, desc: "Each headline shows which stocks it should move, which way, and how hard." },
+  { id: "models", br: "Market intel", name: "Earnings models", cost: 40, need: "scanner", desc: "+5% analyst pick accuracy." },
+  { id: "satellite", br: "Market intel", name: "Satellite data", cost: 120, need: "models", desc: "+5% accuracy, and picks show a price target." },
+  { id: "altdata", br: "Market intel", name: "Alt-data feeds", cost: 300, need: "satellite", desc: "+2 analyst picks a day, refreshed at midday too." },
+  { id: "ai", br: "Market intel", name: "AI forecasting", cost: 700, need: "altdata", desc: "+6% accuracy, and headlines the market will shrug off get flagged." },
+  { id: "greeks", br: "Trading", name: "Quant toolkit", cost: 10, desc: "The option ticket shows delta, breakeven and a payoff estimate." },
+  { id: "router", br: "Trading", name: "Smart order router", cost: 15, need: "greeks", desc: "Commission $4.95 → $0.99 and half the spread." },
+  { id: "algodesk", br: "Trading", name: "Algo trading desk", cost: 80, need: "router", desc: "Lets you hire Quant traders, who trade the analyst picks for you automatically." },
+  { id: "longopts", br: "Trading", name: "LEAPS desk", cost: 35, need: "greeks", desc: "Option expiries of 20 and 40 days." },
+  { id: "risklab", br: "Trading", name: "Risk lab", cost: 60, need: "router", desc: "Lets you hire Quants. Every position shows its worst likely day." },
+  { id: "margin", br: "Trading", name: "Prime brokerage", cost: 90, need: "risklab", desc: "Shorting needs 120% cash margin instead of 150%." },
+  { id: "stopbot", br: "Trading", name: "Stop-loss bot", cost: 150, need: "risklab", desc: "Automatically sells any stock position that falls 8% below your average price." },
+  { id: "darkpool", br: "Trading", name: "Dark pool access", cost: 400, need: "margin", desc: "No spread and no commission on stock trades." },
+  { id: "script", br: "Sales", name: "Sales script", cost: 12, desc: "+15% pitch success." },
+  { id: "algo", br: "Sales", name: "Autodialer", cost: 25, need: "script", desc: "Interns make twice as many calls." },
+  { id: "crm", br: "Sales", name: "CRM software", cost: 30, need: "script", desc: "Client satisfaction decays half as fast; meetings wait twice as long." },
+  { id: "brand", br: "Sales", name: "Brand studio", cost: 50, need: "crm", desc: "Lets you hire Marketers and run ad campaigns in the Shop." },
+  { id: "referral", br: "Sales", name: "Referral program", cost: 80, need: "crm", desc: "Happy clients refer friends twice as often." },
+  { id: "institutional", br: "Sales", name: "Institutional sales", cost: 200, need: "referral", desc: "Pensions and endowments show up 3× as often (they invest 4× more)." },
+  { id: "license", br: "Sales", name: "Wealth management license", cost: 500, need: "institutional", desc: "Every new client brings 50% more money." },
+  { id: "manual", br: "Operations", name: "Compliance manual", cost: 20, desc: "Lets you hire Compliance officers. Regulator fines halved." },
+  { id: "cyber", br: "Operations", name: "Cyber hygiene", cost: 30, desc: "Lets you hire Security engineers. Cyber attack chance −30%." },
+  { id: "backup", br: "Operations", name: "Disaster recovery", cost: 70, need: "cyber", desc: "Outages and ransomware no longer shut down the firm for the day." },
+  { id: "hr", br: "Operations", name: "HR department", cost: 100, need: "manual", desc: "Salaries −15%. Rival firms can't poach your staff." },
+  { id: "legal", br: "Operations", name: "In-house legal", cost: 180, need: "hr", desc: "Lawsuits and fines cost 60% less." },
+];
+const BRANCHES = ["Market intel", "Trading", "Sales", "Operations"];
+// Ongoing research: levels you can keep buying, each 60% dearer than the last.
+const LABS = [
+  { id: "signal", name: "Signal refinement", base: 60, max: 10, desc: l => `+${l}% pick accuracy, and the accuracy cap rises to ${85 + l}%.` },
+  { id: "capacity", name: "Execution capacity", base: 50, max: 20, desc: l => `Each quant trader makes ${6 + 2 * l} trades a day.` },
+  { id: "coverage", name: "Market coverage", base: 70, max: 8, desc: l => `+${l} analyst pick${l === 1 ? "" : "s"} a day.` },
+  { id: "pitchlab", name: "Sales science", base: 40, max: 10, desc: l => `+${2 * l}% pitch success.` },
+  { id: "retention", name: "Client psychology", base: 50, max: 8, desc: l => `Every client gains ${l} satisfaction a day.` },
+  { id: "leadgen", name: "Lead scoring", base: 40, max: 10, desc: l => `Interns and marketers find ${10 * l}% more leads.` },
+];
+const lab = id => S.firm.labs?.[id] || 0;
+const labCost = L => Math.round(L.base * Math.pow(1.6, lab(L.id)));
+// Shop: upgrades bought with cash. Leveled items cost `mult` times more per level.
+const SHOP = [
+  { id: "perks", icon: "☕", name: "Office perks", cost: 3000, mult: 3.5, max: 5, desc: l => `Staff work ${l * 10}% faster.` },
+  { id: "terminal", icon: "🖥️", name: "Data terminals", cost: 12000, mult: 3.5, max: 5, desc: l => `+${l} analyst pick${l === 1 ? "" : "s"} and +${l * 2}% accuracy.` },
+  { id: "firewall", icon: "🧱", name: "Network security", cost: 8000, mult: 3, max: 5, desc: l => `Cyber attack and outage chance −${l * 15}%.` },
+  { id: "audit", icon: "📋", name: "Outside auditors", cost: 8000, mult: 3, max: 5, desc: l => `Regulator and rogue-trader risk −${l * 15}%.` },
+  { id: "ads", icon: "📺", name: "Ad campaign", cost: 10000, mult: 1, max: 99, once: true, need: "brand", desc: () => "One-off: +8 leads now and +4 reputation." },
+  { id: "gala", icon: "🥂", name: "Charity gala", cost: 50000, mult: 1, max: 99, once: true, desc: () => "One-off: +12 reputation, and every client +10 satisfaction." },
+  { id: "car", icon: "🚗", name: "Company car", cost: 60000, mult: 1, max: 1, desc: () => "+5 reputation. Clients like a nice ride." },
+  { id: "art", icon: "🖼️", name: "Lobby art collection", cost: 750000, mult: 1, max: 1, desc: () => "+30 reputation." },
+  { id: "jet", icon: "🛩️", name: "Private jet", cost: 8e6, mult: 1, max: 1, desc: () => "+80 reputation. Institutions take your calls." },
+  { id: "island", icon: "🏝️", name: "Private island retreat", cost: 60e6, mult: 1, max: 1, desc: () => "+200 reputation. The ultimate flex." },
+];
+const OFFICES = [
+  { name: "Garage", cost: 0, rent: 0, staff: 3, clients: 5, mult: 1 },
+  { name: "Coworking desk", cost: 5000, rent: 40, staff: 6, clients: 12, mult: 1.5 },
+  { name: "Small office", cost: 25000, rent: 150, staff: 12, clients: 25, mult: 2.5 },
+  { name: "Downtown suite", cost: 120000, rent: 600, staff: 22, clients: 45, mult: 3.5 },
+  { name: "Midtown floor", cost: 500000, rent: 2000, staff: 40, clients: 80, mult: 5 },
+  { name: "Wall Street tower", cost: 2e6, rent: 6000, staff: 70, clients: 140, mult: 7 },
+  { name: "Glass skyscraper HQ", cost: 8e6, rent: 20000, staff: 120, clients: 250, mult: 9.5 },
+  { name: "Global campus", cost: 35e6, rent: 70000, staff: 250, clients: 500, mult: 13 },
+];
+const RANKS = [[0, "Rookie Trader"], [75000, "Day Trader"], [150000, "Prop Trader"], [400000, "Portfolio Manager"], [1e6, "Fund Manager"], [3e6, "Hedge Fund Boss"],
+  [10e6, "Wall Street Titan"], [40e6, "Market Legend"], [150e6, "Billionaire-in-waiting"], [1e9, "Master of the Universe"]];
+const GOALS = [
+  { id: "trade", text: "Make your first stock trade", reward: { rp: 2 } },
+  { id: "client", text: "Land your first client (Your firm tab)", reward: { rep: 3 } },
+  { id: "hire", text: "Hire a staff member", reward: { rp: 2 } },
+  { id: "limit", text: "Place a limit or stop order", reward: { rp: 2 } },
+  { id: "meeting", text: "Handle a client meeting", reward: { rep: 2 } },
+  { id: "option", text: "Buy an option contract", reward: { rp: 3 } },
+  { id: "scanner", text: "Research the Sentiment scanner", reward: { rep: 2 } },
+  { id: "pick", text: "Profit from an analyst pick", reward: { rp: 4 } },
+  { id: "clients5", text: "Have 5 clients at once", reward: { rep: 5 } },
+  { id: "office", text: "Upgrade your office", reward: { rep: 5 } },
+  { id: "shop", text: "Buy something in the Shop", reward: { rp: 3 } },
+  { id: "nw100", text: "Reach a $100,000 net worth", reward: { rep: 10 } },
+  { id: "defend", text: "Survive a catastrophe", reward: { rp: 10 } },
+  { id: "clients25", text: "Have 25 clients at once", reward: { rep: 15 } },
+  { id: "branch", text: "Finish a whole research branch", reward: { rep: 15 } },
+  { id: "nw1m", text: "Reach a $1M net worth", reward: { rep: 25 } },
+  { id: "rival", text: "Pass Halloran Partners in net worth", reward: { rep: 25 } },
+  { id: "staff50", text: "Employ 50 people", reward: { rp: 50 } },
+  { id: "tower", text: "Move into the Wall Street tower", reward: { rep: 40 } },
+  { id: "nw10m", text: "Reach a $10M net worth", reward: { rep: 50 } },
+  { id: "allres", text: "Finish every research project", reward: { rep: 60 } },
+  { id: "nw100m", text: "Reach a $100M net worth", reward: { rep: 100 } },
+];
+// Clients come in three temperaments; pitching with the matching angle helps.
+const PROFILES = {
+  safe: { icon: "🛡️", label: "Cautious", who: ["retired teacher", "dentist saving for retirement", "small-business owner", "nervous heir"], angle: "safety" },
+  balanced: { icon: "⚖️", label: "Balanced", who: ["doctor", "family office", "engineer", "lawyer"], angle: "balance" },
+  growth: { icon: "🚀", label: "Aggressive", who: ["tech founder", "crypto early adopter", "pro athlete", "startup exec"], angle: "growth" },
+};
+const ANGLES = { safety: "🛡️ Safety first", balance: "⚖️ Steady growth", growth: "🚀 Big returns" };
+// What clients pay the firm account: a sign-up fee on every deposit, a daily management fee, a flat daily account fee,
+// and a performance fee on gains above their previous high.
+const FEES = { signup: 0.02, mgmt: 0.001, account: 25, perf: 0.2 };
+// Fee levels: you pick one. Bigger, better-known firms can charge more; higher fees win fewer pitches and wear on clients unless you beat the market.
+// mgmt and signup scale the base fees above; pitch is added to pitch odds; sat is the daily satisfaction drift.
+const FEE_TIERS = [
+  { name: "Discount", mgmt: 0.6, perf: 0.10, pitch: 0.10, sat: 0.5, office: 0, rep: 0 },
+  { name: "Standard", mgmt: 1, perf: 0.20, pitch: 0, sat: 0, office: 0, rep: 0 },
+  { name: "Premium", mgmt: 1.3, perf: 0.20, pitch: -0.07, sat: -0.5, office: 2, rep: 40 },
+  { name: "Elite", mgmt: 1.7, perf: 0.22, pitch: -0.12, sat: -1, office: 4, rep: 120 },
+  { name: "Legendary", mgmt: 2.2, perf: 0.25, pitch: -0.18, sat: -1.5, office: 6, rep: 300 },
+];
+const RIVAL = "Halloran Partners";
+const MENTOR = "Sam Okafor";
+const FIRST = "Avery Blake Casey Dana Eli Frankie Gale Harper Indy Jordan Kai Logan Morgan Noor Oakley Parker Quinn Remy Sage Taylor Uma Val Wren Yael Zion Priya Mateo Hana Omar Lena".split(" ");
+const LAST = "Nguyen Patel Okafor Schmidt Rossi Kim Garcia Cohen Haddad Silva Novak Tanaka Murphy Fischer Moreau Ali Brooks Chen Lindqvist Reyes".split(" ");
+const INSTITUTIONS = ["Pinecrest Family Office", "Harbor Teachers' Fund", "Bluegate Endowment", "Northwind Foundation", "Copperleaf Trust", "Riverside Pension Plan"];
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+function randn() { let u = 0; while (!u) u = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random()); }
+const money = (n, d = 2) => (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const money0 = n => money(n, 0);
+const short$ = n => Math.abs(n) >= 1e9 ? (n < 0 ? "-$" : "$") + (Math.abs(n) / 1e9).toFixed(2) + "B" : Math.abs(n) >= 1e6 ? (n < 0 ? "-$" : "$") + (Math.abs(n) / 1e6).toFixed(2) + "M" : Math.abs(n) >= 1e4 ? (n < 0 ? "-$" : "$") + (Math.abs(n) / 1e3).toFixed(1) + "k" : money0(n);
+const pct = (x, d = 2) => (x >= 0 ? "+" : "") + (x * 100).toFixed(d) + "%";
+const cls = x => x > 0 ? "up" : x < 0 ? "down" : "dim";
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clockStr = tick => { const m = 570 + tick * 5; return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
+function erf(x) { const s = Math.sign(x); x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x);
+  return s * (1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)); }
+const ncdf = x => 0.5 * (1 + erf(x / Math.SQRT2));
+
+// ---------- news analysis ----------
+const norm = s => (s || "").toLowerCase().replace(/[’‘]/g, "'").replace(/[“”]/g, '"');
+function sentiment(text) {
+  let raw = 0;
+  for (const [re, w] of PHRASES) if (re.test(text)) { raw += w; text = text.replace(re, " "); }
+  for (const w of text.split(/[^a-z\-]+/)) { if (POS_SET.has(w)) raw += 1; if (NEG_SET.has(w)) raw -= 1; }
+  return Math.tanh(raw / 1.5);
+}
+function analyze(item) {
+  const title = norm(item.title), desc = norm(item.desc);
+  let tickers = COMPANIES.filter(c => c.re.test(title)).map(c => c.t), viaDesc = false;
+  if (!tickers.length) { tickers = COMPANIES.filter(c => c.re.test(desc)).map(c => c.t).slice(0, 2); viaDesc = tickers.length > 0; }
+  const sectors = SECTORS.filter(s => SECTOR_RE[s].test(title));
+  const macro = MACRO_RE.test(title);
+  const sent = clamp(sentiment(title) + 0.25 * sentiment(desc), -1, 1);
+  const a = Math.abs(sent), dir = a < 0.12 ? 0 : Math.sign(sent);
+  const est = {};
+  const add = (t, x) => { if (Math.abs(x) > Math.abs(est[t] || 0)) est[t] = x; };
+  for (const t of tickers) add(t, dir ? dir * (0.018 + 0.035 * a) * (viaDesc ? 0.5 : 1) : 0);
+  for (const s of sectors) for (const c of COMPANIES) if (c.s === s && !tickers.includes(c.t)) add(c.t, dir * 0.35 * (0.012 + 0.02 * a));
+  if (macro && dir) for (const c of COMPANIES) add(c.t, dir * (0.004 + 0.01 * a) * (c.s === "Consumer" || c.s === "Health" ? 0.6 : 1.1));
+  // The market doesn't always agree with the headline: realized moves are noisy and sometimes reversed.
+  const surprise = Math.random() < 0.15 ? -0.5 : rand(0.7, 1.3);
+  const actual = {};
+  for (const t in est) actual[t] = est[t] ? est[t] * surprise : 0;
+  for (const t of tickers) if (!est[t]) actual[t] = randn() * 0.01;  // neutral headline about a company still moves it a little
+  return { tickers, sectors, macro, sent: +sent.toFixed(2), est, actual };
+}
+const SIM_TEMPLATES = {
+  good: ["{n} beats estimates on strong demand", "{n} shares jump after analysts raise price target", "{n} announces major partnership deal", "{n} unveils new product to upbeat reviews", "{n} raises its outlook for the year"],
+  bad: ["{n} misses estimates as costs climb", "{n} faces federal probe over business practices", "{n} announces layoffs amid weak outlook", "{n} cuts its outlook, shares slide", "{n} hit with lawsuit over data breach"],
+  macro: ["Fed signals rate cuts could come sooner than expected", "Inflation report hotter than expected; Fed officials warn of rate hikes", "Jobs report shows surprisingly strong hiring", "Oil prices surge as OPEC trims output", "Recession fears grow after weak factory data", "Chip demand boom lifts semiconductor stocks", "Bitcoin slides as crypto selloff deepens", "Retailers see record holiday sales forecast", "Airlines rally as fuel costs drop", "FDA approval wave lifts drugmakers"],
+};
+function simHeadline() {
+  let title;
+  if (Math.random() < 0.35) title = pick(SIM_TEMPLATES.macro);
+  else title = pick(Math.random() < 0.5 ? SIM_TEMPLATES.good : SIM_TEMPLATES.bad).replace("{n}", pick(COMPANIES).n);
+  return { title, desc: "", link: "", source: "Simulated wire", time: Date.now(), sim: true };
+}
+
+// ---------- state ----------
+let S = null;
+let net = { live: false, quotesLive: false, lastPoll: 0 };
+let selected = "NVDA", chartRange = "1D", ticketMode = "stock", tkSide = "buy", opKind = "call";
+const seenKeys = new Set();
+const newsKey = it => norm(it.title).replace(/\W+/g, "").slice(0, 80);
+
+function freshState(name) {
+  const stocks = {};
+  for (const c of COMPANIES) stocks[c.t] = { price: c.p, open: c.p, prev: c.p, hist: [c.p], daily: (c.closes || [c.p]).slice(), vol: c.v, imp: [], bump: 1, news: [], earn: 2 + Math.floor(Math.random() * 40) };
+  return migrate({
+    v: 3, name, day: 1, tick: 0, cash: START_CASH - START_FIRM, units: START_CASH - START_FIRM, myUnits: START_CASH - START_FIRM, npuOpen: 1, stocks, pos: {}, opts: [], orders: [], nextId: 1,
+    base: Object.fromEntries(COMPANIES.map(c => [c.t, c.base])), news: [], queue: [], nextNews: 3, equityOpen: START_CASH, idx0: null,
+    firm: { cash: START_FIRM, rep: 0, leads: 0, leadProg: 0, rp: 0, rpProg: 0, pitchProg: 0, office: 0, staff: {}, clients: [], research: {}, fees: 0, lastDay: null },
+    goals: {}, stats: { trades: 0, options: 0, clicks: 0, pitches: 0, wins: 0, lost: 0, reqDone: 0, reqFail: 0, best: START_CASH },
+    history: [{ day: 0, nw: START_CASH }],
+  });
+}
+// Fills in everything newer versions added, so old saves keep working.
+function migrate(s) {
+  const f = s.firm;
+  for (const k in STAFF) f.staff[k] = f.staff[k] || 0;
+  f.shop = f.shop || {};
+  f.meetings = f.meetings || [];
+  f.nextLead = f.nextLead || null;
+  f.downUntil = f.downUntil || 0;
+  for (const c of f.clients) { c.prof = c.prof || pick(Object.keys(PROFILES)); c.hwm = c.hwm || c.aum; }
+  if (f.research.wire) { delete f.research.wire; f.rp += 20; }   // the early wire was replaced by the Analyst desk
+  s.dayLen = s.dayLen || 60;
+  s.picks = s.picks || [];
+  s.pickLog = s.pickLog || [];
+  s.events = s.events || { pending: [], warn: [], log: [], story: {} };
+  s.rival = s.rival || { nw: 180000 };
+  s.insured = s.insured || false;
+  if (s.units == null) {
+    // v2 saves had one pot of money and clients whose money was only a number: split off a firm account and pool the clients' money into the fund
+    const nav = s.cash + Object.entries(s.pos).reduce((a, [t, p]) => a + p.qty * s.stocks[t].price, 0);
+    f.cash = Math.max(0, Math.round(s.cash * 0.2)); s.cash -= f.cash;
+    s.myUnits = Math.max(1, nav - f.cash); s.units = s.myUnits;
+    for (const c of f.clients) { c.units = c.aum; s.units += c.aum; s.cash += c.aum; }
+    s.npuOpen = 1;
+  }
+  f.cash = f.cash || 0;
+  s.auto = s.auto || { on: false, conf: 70, size: 100, unit: "shares", used: 0 };
+  if (s.auto.fill === undefined) s.auto.fill = true; s.auto.pnlAll = s.auto.pnlAll || 0; s.auto.pnl = s.auto.pnl || 0; s.auto.n = s.auto.n || 0;
+  s.fundHist = s.fundHist || []; s.fundDaily = s.fundDaily || [];
+  for (const t in s.stocks) if (!s.stocks[t].earn) s.stocks[t].earn = s.day + 2 + Math.floor(Math.random() * 40);
+  if (f.feeTier == null) f.feeTier = 1;
+  f.labs = f.labs || {}; f.minInv = f.minInv || 0;
+  s.basket = s.basket || { auto: false, keep: 20, set: "all" };
+  s.foot = s.foot || {};
+  s.v = 3;
+  return s;
+}
+
+// ---------- market math ----------
+const sigmaOf = t => S.stocks[t].vol * VOL_MULT;
+// ---------- the fund ----------
+// One pooled trading account. You and every client own units in it, so a unit's price moves with your trading.
+// equity() is the whole fund; your net worth is your units plus the firm account.
+const npu = () => S.units > 1e-9 ? Math.max(1e-4, equity() / S.units) : 1;
+const myStake = () => S.myUnits * npu();
+const netWorth = () => myStake() + S.firm.cash;
+const syncAum = () => { const p = npu(); for (const c of S.firm.clients) c.aum = c.units * p; };
+function fundIn(amt, c) {
+  if (c) { const fee = Math.round(amt * FEES.signup * feeTier().mgmt * (1 - (c.disc || 0))); S.firm.cash += fee; S.firm.fees += fee; amt -= fee; }
+  const u = amt / npu();
+  S.cash += amt; S.units += u;
+  if (c) { c.units = (c.units || 0) + u; c.aum = c.units * npu(); c.hwm = (c.hwm || 0) + amt; } else S.myUnits += u;
+}
+// Pays money out of the fund, selling stock first if there isn't enough cash. Returns what was paid.
+function fundOut(amt, c) {
+  const p = npu(), have = (c ? c.units : S.myUnits) * p;
+  amt = Math.min(amt, have); if (amt <= 0) return 0;
+  raiseCash(amt);
+  const u = amt / p;
+  S.cash -= amt; S.units -= u;
+  if (c) { c.hwm = (c.hwm || 0) * (1 - amt / have); c.units -= u; c.aum = c.units * p; } else S.myUnits -= u;
+  return amt;
+}
+function raiseCash(amt) {
+  const need = amt - S.cash; if (need <= 0) return;
+  const longs = Object.entries(S.pos).filter(([, p]) => p.qty > 0), total = longs.reduce((a, [t, p]) => a + p.qty * S.stocks[t].price, 0);
+  let sold = 0;
+  if (total > 0) for (const [t, p] of longs) {
+    const qty = Math.min(p.qty, Math.ceil(p.qty * Math.min(1, need * 1.02 / total))), px = S.stocks[t].price;
+    if (qty > 0 && fill(t, "sell", qty, px * 0.998, "Forced sale: ").ok) sold += qty * px;
+  }
+  for (const o of S.opts.slice()) { if (S.cash >= amt) break; sellOption(o.id, true); }
+  if (sold) toast(`💸 Sold ${short$(sold)} of stock to pay out of the fund: there wasn't enough cash.`, "bad", 7000);
+}
+function equity() {
+  let e = S.cash;
+  for (const t in S.pos) e += S.pos[t].qty * S.stocks[t].price;
+  for (const o of S.opts) e += optMid(o) * 100 * o.n;
+  return e;
+}
+const shortValue = () => Object.entries(S.pos).reduce((a, [t, p]) => a + (p.qty < 0 ? -p.qty * S.stocks[t].price : 0), 0);
+function indexValue() {
+  let r = 0; for (const c of COMPANIES) r += S.stocks[c.t].price / c.base;
+  return 5000 * r / COMPANIES.length;
+}
+function yearsLeft(expDay) { return Math.max(0, (expDay - S.day) + (TPD - S.tick) / TPD) / 252; }
+function bs(Sp, K, T, sig, kind) {
+  if (T <= 1e-6) return Math.max(0, kind === "call" ? Sp - K : K - Sp);
+  const r = 0.04, sq = sig * Math.sqrt(T), d1 = (Math.log(Sp / K) + (r + sig * sig / 2) * T) / sq, d2 = d1 - sq;
+  return kind === "call" ? Sp * ncdf(d1) - K * Math.exp(-r * T) * ncdf(d2) : K * Math.exp(-r * T) * ncdf(-d2) - Sp * ncdf(-d1);
+}
+function delta(Sp, K, T, sig, kind) {
+  if (T <= 1e-6) return kind === "call" ? +(Sp > K) : -(Sp < K);
+  const d1 = (Math.log(Sp / K) + (0.04 + sig * sig / 2) * T) / (sig * Math.sqrt(T));
+  return kind === "call" ? ncdf(d1) : ncdf(d1) - 1;
+}
+function optSig(t, exp) {
+  const T = Math.max(1e-6, yearsLeft(exp)), e = S.stocks[t].earn, sig = sigmaOf(t);
+  return e > S.day && e <= exp ? Math.sqrt(sig * sig + earnMove(t) ** 2 / T) : sig;
+}
+const optMid = o => bs(S.stocks[o.t].price, o.strike, yearsLeft(o.exp), optSig(o.t, o.exp), o.kind);
+const strikeStep = p => p < 25 ? 1 : p < 100 ? 2.5 : p < 250 ? 5 : p < 600 ? 10 : p < 1200 ? 25 : 50;
+function strikesFor(t) {
+  const p = S.stocks[t].price, st = strikeStep(p), atm = Math.round(p / st) * st;
+  return [-3, -2, -1, 0, 1, 2, 3].map(i => +(atm + i * st).toFixed(2)).filter(k => k > 0);
+}
+const commission = () => S.firm.research.darkpool ? 0 : S.firm.research.router ? 0.99 : 4.95;
+const spread = () => S.firm.research.darkpool ? 0 : S.firm.research.router ? 0.0005 : 0.001;
+const marginReq = () => S.firm.research.margin ? 1.2 : 1.5;
+
+// ---------- trading ----------
+function log(msg) { $("log").textContent = `Day ${S.day} ${clockStr(S.tick)} · ${msg}`; }
+function toast(msg, kind = "", ms = 4000) {
+  if (AGENT) { window.__tycoonToasts = (window.__tycoonToasts || []).concat(msg).slice(-30); }
+  const el = document.createElement("div"); el.className = "toast " + kind; el.innerHTML = msg;
+  $("toasts").prepend(el); setTimeout(() => el.remove(), ms);
+  while ($("toasts").children.length > 3) $("toasts").lastChild.remove();
+}
+function goal(id) {
+  if (S.goals[id]) return;
+  const g = GOALS.find(g => g.id === id); if (!g) return;
+  S.goals[id] = true;
+  if (g.reward.rp) S.firm.rp += g.reward.rp;
+  if (g.reward.rep) S.firm.rep += g.reward.rep;
+  toast(`🏆 Goal complete: <b>${g.text}</b><br>+${g.reward.rp ? g.reward.rp + " research points" : g.reward.rep + " reputation"}`, "gold", 5000);
+}
+
+// Executes a fill against the current price. Returns {ok, msg}.
+// Big orders move the price against you: about 1% per $15M on a calm big-cap stock, more on jumpy ones (max 6%).
+const liquidity = t => 1.5e9 * 0.2 / Math.max(0.12, S.stocks[t].vol);
+const impactOf = (t, notional) => Math.min(0.06, notional / liquidity(t));
+function fill(t, side, qty, px, label = "") {
+  const st = S.stocks[t], p = S.pos[t] || { qty: 0, avg: 0 }, prev = p.qty;
+  const imp = impactOf(t, qty * px);
+  px *= 1 + (side === "buy" ? imp : -imp);
+  const fee = commission();
+  const signed = side === "buy" ? qty : -qty;
+  const cashAfter = S.cash - signed * px - fee;
+  const newQty = p.qty + signed;
+  const shortAfter = shortValue() - (p.qty < 0 ? -p.qty * st.price : 0) + (newQty < 0 ? -newQty * st.price : 0);
+  if (cashAfter < 0 && signed > 0) return { ok: false, msg: `Not enough fund cash: need ${money(signed * px + fee)}, the fund has ${money(S.cash)}. Trades use fund cash only` +
+    (S.firm.cash > 1000 ? `; you could move some of the firm account's ${money0(S.firm.cash)} into the fund (Accounts card), but the firm needs it for salaries and rent.` : `; sell something or buy fewer shares.`) };
+  if (shortAfter > 0 && cashAfter < marginReq() * shortAfter) return { ok: false, msg: `Margin: shorting needs cash of ${marginReq() * 100}% of the short value (${money0(marginReq() * shortAfter)}).` };
+  // average price: only changes when adding to a position in the same direction
+  if (p.qty === 0 || Math.sign(p.qty) === Math.sign(signed)) p.avg = (Math.abs(p.qty) * p.avg + qty * px) / (Math.abs(p.qty) + qty);
+  else if (Math.sign(newQty) !== Math.sign(p.qty) && newQty !== 0) p.avg = px;   // flipped through zero
+  p.qty = newQty;
+  S.cash = cashAfter;
+  // a big order runs through the move the pick was waiting for: the rest of the market reprices before you profit
+  const eat = Math.min(0.8, 12 * qty * px / liquidity(t));
+  if (eat > 0.01) for (const im of st.imp) if (Math.sign(im.per) === Math.sign(signed)) im.per *= 1 - eat;
+  if (imp > 0.0005) {
+    // half the impact shows up in the price right away, then fades over about half a day as other traders step in
+    const push = (side === "buy" ? imp : -imp) / 2, L = Math.round(TPD / 2);
+    st.price *= 1 + push; st.imp.push({ per: -Math.log(1 + push) / L, left: L });
+    const before = Math.abs(S.foot[t] || 0); S.foot[t] = (S.foot[t] || 0) + push;
+    const now = Math.abs(S.foot[t]);
+    for (const lv of [0.04, 0.08]) if (before < lv && now >= lv) {
+      S.events.tainted = (S.events.tainted || 0) + (lv > 0.05 ? 2 : 1);
+      toast(`⚖️ <b>Compliance:</b> your orders have pushed ${t} ${pct(S.foot[t], 1)} today. Moving a price on purpose is market manipulation, and the SEC is now ${lv > 0.05 ? "very " : ""}likely to audit you.`, "bad", 9000);
+    }
+  }
+  if (p.qty === 0) delete S.pos[t]; else S.pos[t] = p;
+  S.stats.trades++;
+  goal("trade");
+  const verb = side === "buy" ? (prev < 0 ? "Covered" : "Bought") : (prev > 0 ? "Sold" : "Shorted");
+  return { ok: true, msg: `${label}${verb} ${qty.toLocaleString()} ${t} @ ${money(px)}${imp > 0.002 ? ` (${(imp * 100).toFixed(1)}% price impact)` : ""}` };
+}
+function placeOrder({ t, side, qty, type = "market", price }) {
+  qty = Math.floor(+qty);
+  if (!CO[t]) return { ok: false, msg: `Unknown symbol ${t}.` };
+  if (!(qty > 0)) return { ok: false, msg: "Quantity must be at least 1." };
+  if (S.tick >= TPD) return { ok: false, msg: "Market is closed." };
+  if (halted(t)) return { ok: false, msg: S.tick < (S.haltUntil || 0) ? "Trading is halted by a circuit breaker. Wait for it to reopen." : `Trading in ${t} is halted for a few minutes after a big swing.` };
+  const st = S.stocks[t];
+  if (type === "market") {
+    const px = st.price * (1 + (side === "buy" ? 1 : -1) * spread() / 2);
+    const r = fill(t, side, qty, px);
+    toast(r.msg, r.ok ? (side === "buy" ? "good" : "bad") : "bad");
+    if (r.ok) log(r.msg);
+    return r;
+  }
+  price = +price;
+  if (!(price > 0)) return { ok: false, msg: "Enter a price for limit and stop orders." };
+  const o = { id: S.nextId++, t, side, qty, type, price, placed: `D${S.day} ${clockStr(S.tick)}` };
+  S.orders.push(o);
+  goal("limit");
+  const msg = `${type === "limit" ? "Limit" : "Stop"} ${side} ${qty} ${t} @ ${money(price)} placed (#${o.id})`;
+  toast(msg); log(msg);
+  return { ok: true, msg, id: o.id };
+}
+function cancelOrder(id) {
+  const i = S.orders.findIndex(o => o.id === +id); if (i < 0) return { ok: false, msg: "No such order." };
+  S.orders.splice(i, 1); log(`Order #${id} cancelled`); return { ok: true, msg: `Order #${id} cancelled.` };
+}
+function processOrders() {
+  for (const o of S.orders.slice()) {
+    if (halted(o.t)) continue;
+    const px = S.stocks[o.t].price;
+    const hit = o.type === "limit" ? (o.side === "buy" ? px <= o.price : px >= o.price) : (o.side === "buy" ? px >= o.price : px <= o.price);
+    if (!hit) continue;
+    S.orders.splice(S.orders.indexOf(o), 1);
+    const r = fill(o.t, o.side, o.qty, o.type === "limit" ? (o.side === "buy" ? Math.min(px, o.price) : Math.max(px, o.price)) : px, `${o.type === "limit" ? "Limit" : "Stop"} filled: `);
+    toast(r.ok ? r.msg : `Order #${o.id} rejected: ${r.msg}`, r.ok ? "good" : "bad"); log(r.ok ? r.msg : `Order #${o.id} rejected`);
+  }
+}
+function buyOption({ t, kind, strike, days, n }) {
+  n = Math.floor(+n); days = +days; strike = +strike;
+  if (!CO[t]) return { ok: false, msg: `Unknown symbol ${t}.` };
+  if (!(n > 0)) return { ok: false, msg: "Contracts must be at least 1." };
+  if (S.tick >= TPD) return { ok: false, msg: "Market is closed." };
+  if (halted(t)) return { ok: false, msg: `Trading in ${t} is halted right now.` };
+  if (!strikesFor(t).includes(strike)) strike = strikesFor(t).reduce((a, b) => Math.abs(b - strike) < Math.abs(a - strike) ? b : a);
+  const exp = S.day + (days || 5);
+  const ask = optAsk(t, kind, strike, exp);
+  const cost = ask * 100 * n + 0.65 * n;
+  if (cost > S.cash) return { ok: false, msg: `Not enough cash: ${n} contract(s) cost ${money(cost)}.` };
+  S.cash -= cost;
+  S.opts.push({ id: S.nextId++, t, kind, strike, exp, n, cost });
+  S.stats.options++; goal("option");
+  const msg = `Bought ${n} ${t} ${money(strike)} ${kind}${n > 1 ? "s" : ""} expiring day ${exp} for ${money(cost)}`;
+  toast(msg, "good"); log(msg);
+  return { ok: true, msg };
+}
+const optAsk = (t, kind, strike, exp) => Math.max(0.01, bs(S.stocks[t].price, strike, yearsLeft(exp), optSig(t, exp), kind) * 1.03 + 0.02);
+function sellOption(id, forced = false) {
+  const i = S.opts.findIndex(o => o.id === +id); if (i < 0) return { ok: false, msg: "No such option." };
+  if (S.tick >= TPD && !forced) return { ok: false, msg: "Market is closed." };
+  if (!forced && halted(S.opts[i].t)) return { ok: false, msg: `Trading in ${S.opts[i].t} is halted right now.` };
+  const o = S.opts[i], bid = Math.max(0, optMid(o) * 0.97 - 0.02), proceeds = bid * 100 * o.n - 0.65 * o.n;
+  S.cash += proceeds; S.opts.splice(i, 1);
+  const msg = `Sold ${o.n} ${o.t} ${money(o.strike)} ${o.kind} for ${money(proceeds)} (P&L ${money(proceeds - o.cost)})`;
+  toast(msg, proceeds >= o.cost ? "good" : "bad"); log(msg);
+  return { ok: true, msg };
+}
+// Baskets: split money evenly across every stock in a set (the whole market or one sector), like a homemade index fund.
+const basketSet = set => COMPANIES.filter(c => set === "all" || c.s === set);
+const basketValue = set => basketSet(set).reduce((a, c) => a + Math.max(0, S.pos[c.t]?.qty || 0) * S.stocks[c.t].price, 0);
+function basketTrade(side, amt, set = "all", quiet = false) {
+  amt = Math.floor(+amt);
+  if (!(amt > 0)) return { ok: false, msg: "Enter an amount." };
+  if (S.tick >= TPD) return { ok: false, msg: "Market is closed." };
+  const cos = basketSet(set).filter(c => !halted(c.t)), label = set === "all" ? "whole-market" : set;
+  if (!cos.length) return { ok: false, msg: "Every stock in that basket is halted." };
+  let done = 0, n = 0, skip = 0;
+  if (side === "buy") {
+    if (amt > S.cash) return { ok: false, msg: `The fund only has ${money0(S.cash)} of cash.` };
+    // equal dollars per stock; whatever rounding leaves over buys single shares of the cheapest skipped names
+    const each = amt / cos.length, qs = {};
+    let left = amt;
+    for (const c of cos) { const px = S.stocks[c.t].price * (1 + spread() / 2), q = Math.floor((each - commission()) / px); qs[c.t] = Math.max(0, q); left -= q > 0 ? q * px + commission() : 0; }
+    for (const c of cos.filter(c => !qs[c.t]).sort((a, b) => S.stocks[a.t].price - S.stocks[b.t].price)) {
+      const px = S.stocks[c.t].price * (1 + spread() / 2); if (px + commission() > left) break; qs[c.t] = 1; left -= px + commission();
+    }
+    for (const c of cos) {
+      const q = qs[c.t], px = S.stocks[c.t].price * (1 + spread() / 2);
+      if (!q) { skip++; continue; }
+      const r = fill(c.t, "buy", q, px); if (r.ok) { done += q * px; n++; } else skip++;
+    }
+  } else {
+    const have = basketValue(set); if (have <= 0) return { ok: false, msg: `You don't own any ${label} stocks.` };
+    const frac = Math.min(1, amt / have);
+    for (const c of cos.slice().sort((a, b) => (S.pos[b.t]?.qty || 0) * S.stocks[b.t].price - (S.pos[a.t]?.qty || 0) * S.stocks[a.t].price)) {
+      const p = S.pos[c.t]; if (!p || p.qty <= 0 || done >= amt) continue;
+      const q = frac >= 0.999 ? p.qty : Math.min(p.qty, Math.max(1, Math.round(p.qty * frac))); 
+      const px = S.stocks[c.t].price * (1 - spread() / 2), r = fill(c.t, "sell", q, px); if (r.ok) { done += q * px; n++; }
+    }
+  }
+  const msg = `🧺 ${side === "buy" ? "Bought" : "Sold"} ${money0(done)} of a ${label} basket across ${n} stock${n === 1 ? "" : "s"}${skip ? ` (${skip} skipped: one share costs more than the slice)` : ""}.`;
+  if (!quiet) toast(msg, side === "buy" ? "good" : "bad");
+  return { ok: n > 0, msg: n ? msg : "Nothing traded: the amount is too small to buy one share of each stock." };
+}
+function renderBasket() {
+  const set = $("bkSet").value || "all", cos = basketSet(set), amt = +$("bkAmt").value || 0;
+  setH("bkPreview", `${cos.length} stocks · about ${money0(amt / cos.length)} each, plus ${money0(commission() * cos.length)} in commissions.<br>You hold ${money0(basketValue(set))} of these now. Fund cash: ${short$(S.cash)}.`);
+}
+function closePosition(t) {
+  const p = S.pos[t]; if (!p) return { ok: false, msg: `No ${t} position.` };
+  return placeOrder({ t, side: p.qty > 0 ? "sell" : "buy", qty: Math.abs(p.qty), type: "market" });
+}
+
+// ---------- price simulation ----------
+function stepPrices() {
+  const dt = 1 / (252 * TPD), mz = randn(), sz = Object.fromEntries(SECTORS.map(s => [s, randn()]));
+  for (const c of COMPANIES) {
+    const st = S.stocks[c.t], sig = st.vol * VOL_MULT * st.bump;
+    if ((st.halt || 0) > S.tick) { st.hist.push(st.price); continue; }   // halted stocks don't trade
+    const z = 0.5 * mz + 0.35 * sz[c.s] + 0.79 * randn();
+    let r = -0.5 * sig * sig * dt + sig * Math.sqrt(dt) * z;
+    for (const im of st.imp) { r += im.per; im.left--; }
+    st.imp = st.imp.filter(im => im.left > 0);
+    st.bump = 1 + (st.bump - 1) * 0.93;
+    st.price = Math.max(0.5, st.price * Math.exp(r));
+    st.hist.push(st.price);
+    if (st.hist.length > TPD * 5) st.hist.shift();
+  }
+}
+function reportEarnings(c, st) {
+  const before = st.price, z = randn(), jump = Math.sign(z || 1) * Math.max(0.35, Math.abs(z)) * earnMove(c.t);
+  st.price *= Math.exp(jump); st.bump = Math.max(st.bump, 1.4);
+  st.earn = S.day + 60 + Math.floor(Math.random() * 8);
+  const beat = jump > 0, big = Math.abs(jump) > earnMove(c.t) * 1.3;
+  const n = { title: `${c.n} ${beat ? (big ? "crushes" : "beats") : (big ? "badly misses" : "misses")} quarterly earnings estimates; shares ${beat ? "jump" : "slide"} ${pct(Math.exp(jump) - 1, 1)} at the open`,
+    desc: "", link: "", source: "Earnings report", time: Date.now(), sim: true, tickers: [c.t], sectors: [], macro: false, sent: Math.sign(jump), est: { [c.t]: jump }, actual: {},
+    id: S.nextId++, day: S.day, tick: 0, p0: { [c.t]: before } };
+  S.news.unshift(n); S.news = S.news.slice(0, 60);
+  st.news.push({ day: S.day, tick: 0, dir: Math.sign(jump), id: n.id });
+  const held = S.pos[c.t] || S.opts.some(o => o.t === c.t);
+  if (held) toast(`📊 <b>${c.t} earnings:</b> ${beat ? "beat" : "miss"}, ${pct(Math.exp(jump) - 1, 1)} at the open. You hold it.`, beat === ((S.pos[c.t]?.qty || 0) >= 0) ? "good" : "bad", 8000);
+}
+// Market-wide circuit breakers (a 7% or 13% drop pauses trading 15 minutes; 20% ends the day) and single-stock pauses after a 10% swing in 30 minutes.
+function checkHalts() {
+  const drop = indexValue() / S.idxOpen - 1, lv = drop <= -0.2 ? 3 : drop <= -0.13 ? 2 : drop <= -0.07 ? 1 : 0;
+  if (lv > (S.cbLevel || 0)) {
+    S.cbLevel = lv; S.haltUntil = lv === 3 ? TPD : S.tick + 3;
+    toast(`⛔ <b>Circuit breaker, level ${lv}:</b> the market is down ${pct(drop, 1)}. ${lv === 3 ? "Trading is halted for the rest of the day." : "All trading pauses for 15 minutes."}`, "bad", 10000);
+    log(`Circuit breaker level ${lv}`);
+  }
+  for (const c of COMPANIES) {
+    const st = S.stocks[c.t], h = st.hist, n = h.length;
+    if ((st.halt || 0) > S.tick || n < 2) continue;
+    const ref = S.tick >= 6 ? h[n - 7] : st.open, mv = h[n - 1] / ref - 1;
+    if (Math.abs(mv) > 0.1) {
+      st.halt = S.tick + 2; log(`${c.t} halted after a ${pct(mv, 1)} swing`);
+      if (S.pos[c.t] || c.t === selected) toast(`⏸ <b>${c.t} halted</b> for 10 minutes after a ${pct(mv, 1)} swing.`, "bad", 6000);
+    }
+  }
+}
+function applyNews(n) {
+  for (const t in n.actual) {
+    const I = n.actual[t]; if (!I) continue;
+    const st = S.stocks[t];
+    st.imp.push({ per: I * 0.2, left: 2 }, { per: I * 0.6 / 14, left: 14 });  // a fast reaction, then a slower drift
+    st.bump = Math.max(st.bump, 1 + Math.min(0.6, Math.abs(I) * 10));
+    if (n.tickers.includes(t)) st.news.push({ day: S.day, tick: S.tick, dir: Math.sign(I), id: n.id });
+    st.news = st.news.filter(x => x.day > S.day - 5);
+  }
+}
+function releaseNews() {
+  let item = S.queue.shift();
+  if (!item) item = simHeadline();
+  const n = { ...item, ...analyze(item), id: S.nextId++, day: S.day, tick: S.tick };
+  n.p0 = Object.fromEntries(n.tickers.map(t => [t, S.stocks[t].price]));
+  n.fade = Object.keys(n.est).some(t => n.est[t] && Math.sign(n.actual[t]) !== Math.sign(n.est[t]));
+  applyNews(n);
+  S.news.unshift(n);
+  S.news = S.news.slice(0, 60);
+  renderNews(n.id);
+}
+
+// ---------- firm ----------
+// Office client seats are a comfort limit, not a wall: past it, every client gets less attention and less happy each day.
+const clientLoad = () => S.firm.clients.length / office().clients;
+const overloadHit = () => { const L = clientLoad(); return L > 1 ? Math.min(25, 15 * (L - 1)) : 0; };
+const office = () => S.unlimited ? { ...OFFICES[S.firm.office], staff: Infinity, clients: Infinity } : OFFICES[S.firm.office];
+const capTxt = n => n === Infinity ? "∞" : n;
+const staffCount = () => Object.values(S.firm.staff).reduce((a, b) => a + b, 0);
+const hireCost = role => Math.round(STAFF[role].hire * Math.pow(1.08, S.firm.staff[role] || 0));
+const salaryOf = role => STAFF[role].salary * (S.firm.research.hr ? 0.85 : 1);
+const payroll = () => Object.entries(S.firm.staff).reduce((a, [k, n]) => a + n * salaryOf(k), 0);
+const workRate = () => S.firm.down ? 0 : 1 + 0.1 * (S.firm.shop.perks || 0);
+const leadCap = () => 10 + 5 * S.firm.office;
+const clientAUM = () => S.firm.clients.reduce((a, c) => a + c.aum, 0);
+const resName = id => RESEARCH.find(r => r.id === id)?.name || id;
+const bumpSat = (c, d) => { c.sat = clamp(c.sat + d, 0, 100); };
+const spend = amt => { S.firm.cash -= amt; };
+const addLeads = n => { S.firm.leads = Math.min(leadCap(), S.firm.leads + n); };
+function floater(el, text) {
+  if (!el || AGENT) return;
+  const r = el.getBoundingClientRect(), f = document.createElement("div");
+  f.className = "floater"; f.textContent = text; f.style.left = (r.left + r.width / 2 + rand(-30, 20)) + "px"; f.style.top = (r.top + 5) + "px";
+  document.body.appendChild(f); setTimeout(() => f.remove(), 900);
+}
+// The lead at the top of the list: who they are decides which pitch angle works.
+function nextLead() {
+  const f = S.firm;
+  if (f.leads < 1) return f.nextLead = null;
+  if (!f.nextLead) {
+    const inst = Math.random() < (f.research.institutional ? 0.36 : 0.12) * (f.shop.jet ? 1.5 : 1), prof = inst ? "safe" : pick(Object.keys(PROFILES));
+    f.nextLead = { prof, inst, who: inst ? "institution" : pick(PROFILES[prof].who), name: inst ? pick(INSTITUTIONS) : `${pick(FIRST)} ${pick(LAST)}` };
+  }
+  if (!f.nextLead.amt) f.nextLead.amt = clientAmt(f.nextLead.inst);
+  return f.nextLead;
+}
+function pitchChance(angle) {
+  const f = S.firm, L = f.leads ? nextLead() : null;
+  let p = 0.45 + Math.min(0.25, f.rep * 0.004) + (f.research.script ? 0.15 : 0) + feeTier().pitch + 0.02 * lab("pitchlab");
+  if (angle && L) { const want = PROFILES[L.prof].angle; p += angle === want ? 0.2 : angle === "balance" || want === "balance" ? -0.05 : -0.25; }
+  return clamp(p, 0.05, 0.95);
+}
+function coldCall(manual = true) {
+  if (manual) S.stats.clicks++;
+  if (S.firm.leads >= leadCap()) return { ok: false, msg: `Your lead list is full (${leadCap()}). Pitch your leads first.` };
+  S.firm.leadProg += manual ? 0.25 : 1;
+  let got = 0;
+  while (S.firm.leadProg >= 1) { S.firm.leadProg -= 1; S.firm.leads++; got++; }
+  if (manual) floater($("clkCall"), got ? "+1 lead!" : "ring…");
+  return { ok: true, msg: got ? `Got a lead! You have ${S.firm.leads} lead(s).` : `Dialing… lead progress ${Math.round(S.firm.leadProg * 100)}%.` };
+}
+const clientAmt = inst => Math.round(rand(20000, 80000) * office().mult * (1 + Math.min(S.firm.rep, 300) / 150) * (inst ? 4 : 1) * (S.firm.research.license ? 1.5 : 1) / 1000) * 1000;
+// Turns away leads below the minimum investment (no pitch, no reputation hit).
+function screenLeads() {
+  const f = S.firm; let n = 0;
+  while (f.minInv > 0 && f.leads > 0 && nextLead().amt < f.minInv && n < 50) { f.leads--; f.nextLead = null; n++; }
+  if (n) f.turned = (f.turned || 0) + n;
+  return n;
+}
+function newClient(lead) {
+  const f = S.firm, inst = !!lead?.inst;
+  const name = lead?.name || `${pick(FIRST)} ${pick(LAST)}`;
+  const amt = lead?.amt || clientAmt(inst);
+  const c = { id: S.nextId++, name, prof: inst ? "safe" : lead?.prof || "balanced", inst, units: 0, aum: 0, hwm: 0, sat: 70, req: null, since: S.day };
+  fundIn(amt, c);   // their money lands in the fund as cash you can trade
+  return c;
+}
+function pitch(manual = true, angle) {
+  const f = S.firm;
+  if (manual) S.stats.clicks++;
+  if (f.leads < 1) return { ok: false, msg: "No leads to pitch. Make cold calls first." };
+  const lead = nextLead();
+  if (!ANGLES[angle]) angle = manual ? "balance" : PROFILES[lead.prof].angle;   // staff read the lead; a blind pitch plays it safe
+  const p = pitchChance(angle);
+  f.leads--; f.nextLead = null; S.stats.pitches++;
+  if (Math.random() < p) {
+    const c = newClient(lead); f.clients.push(c); f.rep += 1; S.stats.wins++;
+    goal("client"); if (f.clients.length >= 5) goal("clients5"); if (f.clients.length >= 25) goal("clients25");
+    if (manual) toast(`🤝 New client: <b>${esc(c.name)}</b> put ${short$(c.aum)} into your fund`, "good");
+    if (manual) floater($("clkPitch"), "Signed!");
+    return { ok: true, msg: `Pitch succeeded: ${c.name} invested ${money0(c.aum)}.` };
+  }
+  if (manual) floater($("clkPitch"), "No thanks");
+  return { ok: true, msg: `${lead.name} said no (${Math.round(p * 100)}% chance with "${ANGLES[angle]}"). ${f.leads} lead(s) left.` };
+}
+function doResearch(manual = true) {
+  if (manual) S.stats.clicks++;
+  S.firm.rpProg += manual ? 1 / 6 : 1;
+  let got = 0;
+  while (S.firm.rpProg >= 1 - 1e-9) { S.firm.rpProg -= 1; S.firm.rp++; got++; }
+  if (manual) floater($("clkResearch"), got ? "+1 RP" : "📖");
+  autoFirstResearch();
+  return { ok: true, msg: got ? `+1 research point (${S.firm.rp} RP).` : `Researching… ${Math.round(S.firm.rpProg * 100)}%.` };
+}
+
+// ---------- client meetings ----------
+// Clients ask for meetings; each is a small decision. Unanswered ones annoy them, unless an RM answers (the safe way).
+const addMoney = (c, frac) => { const add = Math.round(c.aum * frac / 1000) * 1000; fundIn(add, c); bumpSat(c, 5); return `They added ${short$(add)} to the fund (+5).`; };
+const leave = c => { const out = fundOut(c.aum, c); S.units -= c.units; c.units = 0; S.firm.clients.splice(S.firm.clients.indexOf(c), 1); return out; };
+const MEETINGS = [
+  { id: "worried", w: c => c.sat < 55 || (S.firm.lastDay?.ret ?? 0) < -0.01 ? 3 : 0, text: () => "is worried about recent losses and wants to hear your plan.",
+    opts: [
+      { l: "Walk them through your plan", safe: 1, fx: c => (bumpSat(c, c.prof === "safe" ? 10 : 8), "They feel calmer (+8 satisfaction).") },
+      { l: "Waive their fees this week", fx: c => { const cost = Math.round(c.aum * 0.0025); spend(cost); bumpSat(c, 20); return `Cost ${money0(cost)}. They're relieved (+20).`; } },
+      { l: "Promise the fund will be up by the weekend", fx: c => { bumpSat(c, 12); c.req = { type: "green", base: npu(), due: S.day + 3, text: `expects the fund to be up from today at the close of day ${S.day + 3}` }; return "They'll hold you to it (+12, new request)."; } },
+    ] },
+  { id: "topup", w: c => c.sat >= 60 ? 2 : 0, text: () => "is thinking about investing more money with you.",
+    opts: [
+      { l: "Pitch your boldest ideas", fx: c => Math.random() < (c.prof === "growth" ? 0.75 : c.prof === "safe" ? 0.3 : 0.5) ? addMoney(c, 0.35) : (bumpSat(c, -6), "Too risky for their taste. No new money (−6).") },
+      { l: "Suggest a modest top-up", safe: 1, fx: c => addMoney(c, 0.1) },
+      { l: "Tell them to keep a cash cushion", fx: c => (bumpSat(c, c.prof === "safe" ? 12 : 3), "They appreciate the honesty.") },
+    ] },
+  { id: "withdraw", w: c => c.sat < 40 ? 4 : 0, text: () => "wants to pull half their money out.",
+    opts: [
+      { l: "Let them, gracefully", safe: 1, fx: c => { const out = fundOut(c.aum / 2, c); bumpSat(c, 15); return `They withdrew ${short$(out)} from the fund but trust you more (+15).`; } },
+      { l: "Offer a two-week fee holiday", fx: c => { const cost = Math.round(c.aum * 0.005); spend(cost); if (Math.random() < 0.7) { bumpSat(c, 12); return `Cost ${money0(cost)}. They stay fully invested (+12).`; } fundOut(c.aum / 2, c); return `Cost ${money0(cost)}, and they withdrew half anyway.`; } },
+      { l: "Talk them out of it", fx: c => { if (Math.random() < 0.4 + Math.min(0.3, S.firm.rep * 0.002)) { bumpSat(c, 5); return "You convinced them to stay (+5)."; } c.sat = 0; return "They got angry and are leaving at the close."; } },
+    ] },
+  { id: "tip", w: () => 1, data: () => ({ t: pick(COMPANIES).t }), text: (c, m) => `heard a rumor about ${CO[m.data.t].n} (${m.data.t}) and wants you to buy it for them.`,
+    opts: [
+      { l: "Buy it for them by tomorrow", fx: (c, m) => { const amt = Math.max(2000, Math.round(equity() * 0.05 / 1000) * 1000); bumpSat(c, 6); c.req = { type: "stock", t: m.data.t, amt, due: S.day + 1, text: `wants at least ${short$(amt)} of ${m.data.t} by the close of day ${S.day + 1}` }; return "New request (+6)."; } },
+      { l: "Explain you don't trade on rumors", safe: 1, fx: c => (bumpSat(c, c.prof === "safe" ? 6 : c.prof === "growth" ? -4 : 2), "They grumble but accept it.") },
+      { l: "Laugh it off", fx: c => (bumpSat(c, c.prof === "growth" ? -10 : -3), "They didn't think it was funny.") },
+    ] },
+  { id: "golf", w: () => 1.5, text: () => "invites you to golf at their club.",
+    opts: [
+      { l: "Go", cost: () => 300 * office().mult, fx: c => { spend(300 * office().mult); bumpSat(c, 15); if (Math.random() < 0.35) { addLeads(1); return "Great round (+15), and they introduced you to a friend (+1 lead)."; } return "Great round (+15)."; } },
+      { l: "Send a gift basket", safe: 1, cost: () => 100 * office().mult, fx: c => (spend(100 * office().mult), bumpSat(c, 6), "They liked the basket (+6).") },
+      { l: "Decline politely", fx: c => (bumpSat(c, -4), "They were a little hurt (−4).") },
+    ] },
+  { id: "fees", w: c => c.disc ? 0 : 1, text: () => "says your fees are too high.",
+    opts: [
+      { l: "Show them your track record", safe: 1, fx: c => { const ld = S.firm.lastDay; if (ld && ld.ret >= ld.idxRet) { bumpSat(c, 8); return "The numbers speak for themselves (+8)."; } bumpSat(c, -6); return "Yesterday's numbers didn't help (−6)."; } },
+      { l: "Give them a permanent 25% discount", fx: c => (c.disc = 0.25, bumpSat(c, 18), "They're delighted (+18), but pay you less from now on.") },
+      { l: "Hold firm: you're worth it", fx: c => (bumpSat(c, c.prof === "growth" ? 2 : -10), c.prof === "growth" ? "They respect the confidence." : "They didn't like that (−10).") },
+    ] },
+  { id: "risk", w: c => c.prof === "growth" ? 2 : 0, text: () => "thinks you're too cautious and wants some options exposure.",
+    opts: [
+      { l: "Buy some options this week", fx: c => { bumpSat(c, 8); c.req = { type: "opt", due: S.day + 2, text: `wants you holding at least one option contract by the close of day ${S.day + 2}` }; return "New request (+8)."; } },
+      { l: "Explain your risk rules", safe: 1, fx: c => (bumpSat(c, -3), S.firm.rep += 1, "They sigh, but the story gets around (+1 rep).") },
+      { l: "Refer them to a wilder fund", fx: c => { const out = leave(c); S.firm.rep += 2; return `They left on good terms and took ${short$(out)} (+2 rep).`; } },
+    ] },
+  { id: "avoid", w: () => 1, data: () => ({ s: pick(SECTORS) }), text: (c, m) => `doesn't want their money in ${m.data.s} stocks any more.`,
+    opts: [
+      { l: "Agree to drop the sector", safe: 1, fx: (c, m) => { bumpSat(c, 6); c.req = { type: "avoid", sector: m.data.s, due: S.day + 2, text: `wants you holding no ${m.data.s} stocks at the close of day ${S.day + 2}` }; return "New request (+6)."; } },
+      { l: "Refuse: it's your strategy", fx: c => (bumpSat(c, -10), "They're unhappy (−10).") },
+    ] },
+];
+// Each relationship manager covers 8 clients, biggest first, and answers their meetings on the spot.
+const rmCover = 8;
+const rmCovered = () => new Set(S.firm.clients.slice().sort((a, b) => b.aum - a.aum).slice(0, S.firm.staff.rm * 8).map(c => c.id));
+function newMeetings() {
+  const f = S.firm, busy = new Set(f.meetings.map(m => m.cid)), covered = rmCovered();
+  for (const c of f.clients.slice().sort(() => Math.random() - 0.5)) {
+    if (f.meetings.length >= 6) break;
+    if (busy.has(c.id) || c.since >= S.day || Math.random() > (c.sat < 45 ? 0.2 : 0.09)) continue;
+    const ws = MEETINGS.map(t => [t, t.w(c)]).filter(x => x[1] > 0);
+    let r = Math.random() * ws.reduce((a, x) => a + x[1], 0), t = ws[0][0];
+    for (const [tt, w] of ws) { r -= w; if (r <= 0) { t = tt; break; } }
+    const m = { id: S.nextId++, cid: c.id, kind: t.id, due: S.day + (f.research.crm ? 2 : 1), data: t.data ? t.data(c) : null };
+    if (covered.has(c.id)) { (t.opts.find(o => o.safe) || t.opts[0]).fx(c, m); f.rmHandled = (f.rmHandled || 0) + 1; continue; }
+    f.meetings.push(m);
+  }
+}
+let dropArm = null, dropLowArm = false;   // drops need a second click to confirm
+// Firing a client gets around: it costs reputation, more for a well-known firm. Turning away a lead before signing is free.
+const dropRep = () => Math.max(3, Math.round(S.firm.rep * 0.02));
+const dropLowRep = n => Math.max(dropRep(), Math.round(dropRep() * n * 0.6));
+function declineLead() {
+  const f = S.firm; if (f.leads < 1) return { ok: false, msg: "No leads to turn away." };
+  const L = nextLead(); f.leads--; f.nextLead = null; f.turned = (f.turned || 0) + 1;
+  return { ok: true, msg: `Turned away ${L.name} (${short$(L.amt)}). No harm done.` };
+}
+function dropBelowMin() {
+  const f = S.firm, low = f.clients.filter(c => c.aum < f.minInv);
+  if (!f.minInv) return { ok: false, msg: "Set a minimum investment first." };
+  if (!low.length) return { ok: false, msg: `Every client has at least ${short$(f.minInv)} in the fund.` };
+  if (!dropLowArm) { dropLowArm = true; return { ok: true, msg: `Click again to drop ${low.length} client${low.length > 1 ? "s" : ""} for −${dropLowRep(low.length)} reputation.` }; }
+  dropLowArm = false;
+  const cost = dropLowRep(low.length);
+  let out = 0; for (const c of low) { out += leave(c); f.meetings = f.meetings.filter(m => m.cid !== c.id); }
+  f.rep = Math.max(0, f.rep - cost);
+  toast(`👋 Dropped ${low.length} client${low.length > 1 ? "s" : ""} below ${short$(f.minInv)} and returned ${short$(out)} (−${cost} rep).`, "bad");
+  return { ok: true, msg: `Dropped ${low.length} small clients (−${cost} rep).` };
+}
+function dropClient(id) {
+  const c = S.firm.clients.find(x => x.id === +id); if (!c) return { ok: false, msg: "That client already left." };
+  if (dropArm !== c.id) { dropArm = c.id; return { ok: true, msg: `Click "Confirm drop" to let ${c.name} go (−${dropRep()} rep).` }; }
+  dropArm = null;
+  const cost = dropRep(), out = leave(c); S.firm.rep = Math.max(0, S.firm.rep - cost); S.firm.meetings = S.firm.meetings.filter(m => m.cid !== c.id);
+  toast(`👋 You dropped <b>${esc(c.name)}</b> and returned ${short$(out)} from the fund (−${cost} rep).`, "bad");
+  return { ok: true, msg: `Dropped ${c.name}; returned ${money0(out)}.` };
+}
+function answerMeeting(id, i) {
+  const f = S.firm, m = f.meetings.find(x => x.id === +id);
+  if (!m) return { ok: false, msg: "That meeting is over." };
+  const c = f.clients.find(x => x.id === m.cid), o = MEETINGS.find(x => x.id === m.kind).opts[+i];
+  if (!o) return { ok: false, msg: "No such answer." };
+  f.meetings.splice(f.meetings.indexOf(m), 1);
+  if (!c) return { ok: false, msg: "That client already left." };
+  const msg = o.fx(c, m);
+  goal("meeting");
+  toast(`📅 <b>${esc(c.name)}</b>: ${esc(msg)}`);
+  return { ok: true, msg: `${c.name}: ${msg}` };
+}
+
+// ---------- staff, research, office, shop ----------
+function hire(role) {
+  const r = STAFF[role]; if (!r) return { ok: false, msg: `Unknown role ${role}.` };
+  if (r.need && !S.firm.research[r.need]) return { ok: false, msg: `Research ${resName(r.need)} before hiring a ${r.name}.` };
+  if (staffCount() >= office().staff) {
+    const nx = OFFICES[S.firm.office + 1];
+    return { ok: false, msg: nx ? `All ${office().staff} desks are taken. Move to the ${nx.name} (${money0(nx.cost)}, ${nx.staff} desks) to hire more.` : "Every desk on the campus is taken." };
+  }
+  const cost = hireCost(role);
+  if (S.firm.cash < cost) return firmShort(cost, `Hiring ${/^[aeiou]/i.test(r.name) ? "an" : "a"} ${r.name}`);
+  spend(cost); S.firm.staff[role]++; goal("hire");
+  if (staffCount() >= 50) goal("staff50");
+  const an = /^[aeiou]/i.test(r.name) ? "an" : "a";
+  const warn = role === "intern" && S.firm.leads >= leadCap() ? " Your lead list is already full, so this intern adds nothing until more leads get pitched: Sales associates do that." : role === "intern" && S.firm.staff.intern >= 3 && !S.firm.staff.assoc ? " Your interns' leads need pitching: a Sales associate would do that." : "";
+  toast(`${r.icon} Hired ${an} ${r.name}.${warn}`, warn ? "" : "good", warn ? 7000 : 4000);
+  return { ok: true, msg: `Hired ${an} ${r.name} for ${money0(cost)} (salary ${money0(salaryOf(role))}/day).${warn}` };
+}
+const severance = role => Math.round(salaryOf(role) * 5);
+function fire(role) {
+  const r = STAFF[role]; if (!r || !S.firm.staff[role]) return { ok: false, msg: `You have no ${r ? r.name : role} to let go.` };
+  const cost = severance(role);
+  spend(cost); S.firm.staff[role]--;
+  if (role === "quanttrader" && !S.firm.staff.quanttrader) S.auto.on = false;
+  toast(`📦 Let ${/^[aeiou]/i.test(r.name) ? "an" : "a"} ${r.name} go (severance ${money0(cost)}).`);
+  return { ok: true, msg: `Fired a ${r.name}; paid ${money0(cost)} severance.` };
+}
+function buyLab(id) {
+  const L = LABS.find(x => x.id === id), f = S.firm; if (!L) return { ok: false, msg: `Unknown research ${id}.` };
+  if (lab(id) >= L.max) return { ok: false, msg: `${L.name} is maxed out.` };
+  const cost = labCost(L); if (f.rp < cost) return { ok: false, msg: `${L.name} needs ${cost} RP; you have ${f.rp}.` };
+  f.rp -= cost; f.labs[id] = lab(id) + 1;
+  if (id === "signal" || id === "coverage") S.crowd = Math.max(0, (S.crowd || 0) - 0.2);
+  toast(`🔬 <b>${L.name}</b> level ${f.labs[id]}: ${L.desc(f.labs[id])}`, "gold");
+  return { ok: true, msg: `${L.name} is now level ${f.labs[id]}.` };
+}
+function autoFirstResearch() {
+  const f = S.firm, first = RESEARCH[0];
+  if (f.autoDone || Object.keys(f.research).length || f.rp < first.cost) return;
+  f.autoDone = true;
+  buyResearch(first.id);
+  toast(`🔬 Your first research project is done: the <b>${first.name}</b> now marks each headline ▲ or ▼. Spend future research points in the Research &amp; shop tab.`, "gold", 9000);
+}
+function buyResearch(id) {
+  const r = RESEARCH.find(r => r.id === id); if (!r) return { ok: false, msg: `Unknown research ${id}.` };
+  if (S.firm.research[id]) return { ok: false, msg: `${r.name} already done.` };
+  if (r.need && !S.firm.research[r.need]) return { ok: false, msg: `${r.name} needs ${resName(r.need)} first.` };
+  if (S.firm.rp < r.cost) return { ok: false, msg: `${r.name} needs ${r.cost} RP; you have ${S.firm.rp}.` };
+  S.firm.rp -= r.cost; S.firm.research[id] = true;
+  if (r.br === "Market intel") S.crowd = Math.max(0, (S.crowd || 0) - 0.1);
+  if (id === "scanner") { goal("scanner"); renderNews(); }
+  if (RESEARCH.filter(x => x.br === r.br).every(x => S.firm.research[x.id])) goal("branch");
+  if (RESEARCH.every(x => S.firm.research[x.id])) goal("allres");
+  toast(`🔬 Research complete: <b>${r.name}</b>`, "gold");
+  return { ok: true, msg: `Unlocked ${r.name}.` };
+}
+function upgradeOffice() {
+  const nx = OFFICES[S.firm.office + 1]; if (!nx) return { ok: false, msg: "You already own the biggest campus." };
+  if (S.firm.cash < nx.cost) return firmShort(nx.cost, `The ${nx.name}`);
+  spend(nx.cost); S.firm.office++; S.firm.rep += 3 + S.firm.office * 2; goal("office");
+  if (S.firm.office >= 5) goal("tower");
+  toast(`🏢 Moved into the <b>${nx.name}</b>! Rent is now ${money0(nx.rent)}/day.`, "gold");
+  return { ok: true, msg: `Moved into the ${nx.name}.` };
+}
+const shopCost = it => Math.round(it.once ? it.cost * office().mult : it.cost * Math.pow(it.mult, S.firm.shop[it.id] || 0));
+const premium = () => Math.round(Math.max(50, netWorth() * 0.0002));
+function buyShop(id) {
+  const it = SHOP.find(x => x.id === id), f = S.firm; if (!it) return { ok: false, msg: `Unknown item ${id}.` };
+  if (it.need && !f.research[it.need]) return { ok: false, msg: `${it.name} needs ${resName(it.need)} research.` };
+  const lvl = f.shop[id] || 0, cost = shopCost(it);
+  if (lvl >= it.max) return { ok: false, msg: `${it.name} is maxed out.` };
+  if (S.firm.cash < cost) return firmShort(cost, it.name);
+  spend(cost); f.shop[id] = lvl + 1; goal("shop");
+  const rep = { ads: 4, gala: 12, car: 5, art: 30, jet: 80, island: 200 }[id] || 0;
+  f.rep += rep;
+  if (id === "ads") addLeads(8 + 4 * f.office);
+  if (id === "gala") f.clients.forEach(c => bumpSat(c, 10));
+  toast(`${it.icon} <b>${it.name}</b>${it.max > 1 && !it.once ? ` level ${lvl + 1}` : ""}${rep ? ` · +${rep} reputation` : ""}`, "gold");
+  return { ok: true, msg: `Bought ${it.name} for ${money0(cost)}.` };
+}
+// When the firm account can't cover something, say how to fix it.
+function firmShort(cost, what) {
+  const gap = Math.ceil(cost - S.firm.cash);
+  return { ok: false, msg: `${what} costs ${money0(cost)}, but the firm account has ${money0(S.firm.cash)}.` +
+    (myStake() >= gap ? ` Move at least ${money0(gap)} from your fund stake to the firm account (Accounts card, Your firm tab).` : " Earn more fees from clients first.") };
+}
+function topUpAndMove(gap) {
+  const r = transfer("out", gap); if (!r.ok) return r;
+  return upgradeOffice();
+}
+// The button to show when the firm account is short of `cost` but your stake could cover it.
+// The single most useful thing to do next, in priority order. Shown on the Firm tab and under the goals.
+function nextTip() {
+  const f = S.firm, o = office(), nx = OFFICES[f.office + 1], staffFull = staffCount() >= o.staff, clientsFull = f.clients.length >= o.clients;
+  const w = S.events.warn[0];
+  if (w) return `⚠️ A ${THREATS[w.k].name.toLowerCase()} is coming. Stop it on the risk radar (Your firm tab), or gamble that it passes.`;
+  if (f.meetings.length) return `📅 ${f.meetings.length} client meeting${f.meetings.length > 1 ? "s are" : " is"} waiting. Answer before they expire, or clients get upset.`;
+  if (f.cash < payroll() + o.rent && myStake() > 0) return `🏦 The firm account can't cover tomorrow's salaries and rent. Move money from your stake on the Accounts card.`;
+  if (overloadHit() >= 3) return `🏢 ${f.clients.length} clients for ${o.clients} seats: everyone loses ${overloadHit().toFixed(1)} satisfaction a day, and unhappy clients leave and sue. ${nx ? `Move to the ${nx.name}, ` : ""}hire relationship managers (+6 a day for the clients they cover), or drop small clients.`;
+  if (clientsFull && nx && !f.overbook) return `🏢 Your ${o.name} has a seat for every client. Signing more is allowed, but past ${o.clients} everyone gets less attention. Move to the ${nx.name} for room to grow.`;
+  if ((S.crowd || 0) >= 0.3) return `🐑 Rivals are crowding your signals (${Math.round(S.crowd * 100)}%): buy Signal refinement, Market coverage or any Market intel research to find fresh ones.`;
+  if (equity() > fundCapacity() * 1.5) return `📏 The fund is ${(equity() / fundCapacity()).toFixed(1)}× its capacity, so picks are barely better than a coin flip. Raise capacity (Signal refinement, researchers, a bigger office) or use baskets and sit on cash.`;
+  if ((S.crowd || 0) >= 0.15 && f.rp >= labCost(LABS[0])) return `🔬 You have ${f.rp} RP and rivals are crowding your signals (${Math.round(S.crowd * 100)}%): buy Signal refinement (Ongoing research, ${labCost(LABS[0])} RP).`;
+  if (f.leads >= leadCap() && f.staff.assoc && f.staff.intern > 2 * f.staff.assoc) return `💼 The lead list is full (${leadCap()}): your ${f.staff.intern} interns outrun ${f.staff.assoc} sales associate${f.staff.assoc > 1 ? "s" : ""}. Hire associates, not interns.`;
+  if (staffFull && f.staff.intern >= 3 && !f.staff.assoc && f.clients.length) return `💼 Desks are full and ${f.staff.intern} interns make leads nobody pitches. Fire an intern (Staff panel) and hire a Sales associate in their desk.`;
+  if (f.leads >= leadCap() && f.clients.length && !f.staff.assoc)
+    return staffFull && nx ? `🏢 Your lead list is full and all desks are taken. Move to the ${nx.name}, then hire a sales associate to pitch leads for you.`
+      : `💼 Your lead list is full. Hire a sales associate (Staff panel): they pitch your leads automatically, with the right angle.`;
+  if (f.leads >= 3 || (f.leads && !f.clients.length)) { const L = nextLead(), P = PROFILES[L.prof];
+    return `🤝 You have ${f.leads} lead${f.leads > 1 ? "s" : ""}${f.clients.length ? "" : " and no clients yet"}: pitch them. ${L.name} is ${P.label.toLowerCase()}, so pitch "${ANGLES[P.angle]}".` +
+      (!f.clients.length && f.staff.intern >= 2 ? " Hold off on more interns until you're signing clients." : ""); }
+  if (!f.clients.length) return `📞 Make cold calls to find leads, then pitch them. Clients' money lets you trade bigger and pays the firm fees.`;
+  if (staffFull && nx) return `🏢 All your desks are taken. Move to the ${nx.name} to hire more.`;
+  const ready = RESEARCH.find(r => !f.research[r.id] && (!r.need || f.research[r.need]) && f.rp >= r.cost);
+  if (ready) return `🔬 You can unlock ${ready.name} (${ready.cost} RP) in Research & shop.`;
+  if (f.clients.length >= 3 && !f.staff.assoc) return `💼 Hire a sales associate: they pitch your leads automatically.`;
+  if (!f.staff.analyst) return `🧮 Hire an analyst: more research points and more stock picks on the Analyst desk.`;
+  if (f.staff.intern >= 3 && !f.staff.assoc && !clientsFull) return `💼 ${f.staff.intern} interns make leads faster than you can pitch them. Hire a Sales associate to turn leads into clients.`;
+  if (f.clients.length >= 6 && !f.staff.rm) return `☕ Hire a relationship manager: they keep clients happy and take routine meetings.`;
+  if (f.clients.length > 2 * rmCover * f.staff.rm + 8 && f.staff.rm) return `☕ Your ${f.staff.rm} relationship manager${f.staff.rm > 1 ? "s cover" : " covers"} ${rmCover * f.staff.rm} of ${f.clients.length} clients; the rest miss meetings and requests. Hire more RMs.`;
+  return `📈 Trade the analyst picks and beat the market: happy clients add money and refer friends.`;
+}
+const topUpOfficeBtn = (nx, full) => { const gap = Math.ceil(nx.cost - S.firm.cash + payroll() + nx.rent);   // plus a day of salaries and rent as a cushion
+  return S.firm.cash < nx.cost && myStake() >= gap ? `<button class="primary" data-topoffice="${gap}" style="${full ? "width:100%;margin-top:4px" : ""}">🏦 Move ${short$(gap)} from your stake and move to the ${nx.name}</button>` : ""; };
+function transfer(dir, amt) {
+  amt = Math.floor(+amt);
+  if (!(amt > 0)) return { ok: false, msg: "Enter an amount to move." };
+  if (dir === "in") {
+    if (amt > S.firm.cash) return { ok: false, msg: `The firm account only has ${money0(S.firm.cash)}.` };
+    S.firm.cash -= amt; fundIn(amt, null);
+    toast(`🏦 Invested ${money0(amt)} from the firm account into the fund.`);
+    return { ok: true, msg: `Moved ${money0(amt)} into the fund.` };
+  }
+  if (amt > myStake() + 0.5) return { ok: false, msg: `Your stake in the fund is only ${money0(myStake())}, so you can move at most that much. (Trades don't need a transfer: they use fund cash directly.)` };
+  const got = fundOut(amt, null); S.firm.cash += got;
+  toast(`🏦 Moved ${money0(got)} from your fund stake to the firm account.`);
+  return { ok: true, msg: `Moved ${money0(got)} to the firm account.` };
+}
+const feeTier = () => FEE_TIERS[S.firm.feeTier ?? 1];
+const feeTierOpen = i => S.firm.office >= FEE_TIERS[i].office && S.firm.rep >= FEE_TIERS[i].rep;
+function setFeeTier(i) {
+  const f = S.firm, t = FEE_TIERS[i];
+  if (!t || i === f.feeTier) return { ok: false, msg: "That's already your fee level." };
+  if (!feeTierOpen(i)) return { ok: false, msg: `${t.name} fees need the ${OFFICES[t.office].name} and ${t.rep} reputation.` };
+  if (f.feeDay === S.day) return { ok: false, msg: "You already changed fees today." };
+  const up = i > f.feeTier;
+  f.clients.forEach(c => bumpSat(c, up ? -6 : 4));
+  f.feeTier = i; f.feeDay = S.day;
+  toast(`💲 Fees set to <b>${t.name}</b>. ${up ? "Clients grumble (−6 satisfaction)." : "Clients are pleased (+4 satisfaction)."}`, up ? "bad" : "good");
+  return { ok: true, msg: `Fee level is now ${t.name}.` };
+}
+function toggleInsurance() {
+  S.insured = !S.insured;
+  return { ok: true, msg: S.insured ? `Insured for ${money0(premium())}/day: covers 70% of catastrophe losses.` : "Insurance cancelled." };
+}
+function firmTick() {
+  const f = S.firm, st = f.staff, w = workRate();
+  if (st.intern || st.marketer) { f.leadProg += (st.intern * (f.research.algo ? 2 : 1) / 13 + st.marketer / 39) * w * (1 + 0.1 * lab("leadgen")); while (f.leadProg >= 1) { f.leadProg--; f.leads++; } if (f.leads >= leadCap()) { f.leads = leadCap(); f.leadProg = 0; } }
+  if (st.assoc) { f.pitchProg += st.assoc / 13 * w; while (f.pitchProg >= 1 && f.leads > 0 && (f.overbook || f.clients.length < office().clients)) { f.pitchProg--; pitch(false); } f.pitchProg = Math.min(f.pitchProg, 1); }
+  if (st.analyst || st.researcher) { f.rpProg += (st.analyst + 2 * st.researcher) / 13 * w; while (f.rpProg >= 1) { f.rpProg--; f.rp++; } }
+  screenLeads();
+  const A = S.auto;
+  if (A.on && f.research.algodesk && st.quanttrader && !f.down && S.tick % 13 === 1 && S.tick < TPD - 8) {
+    // every hour each quant trader screens 5 ideas and posts the ones that clear your confidence bar
+    // they pace themselves to use the whole budget by the close
+    const waiting = S.picks.filter(p => p.q && !p.auto).length, room = autoBudget() - A.used - waiting;
+    if (room > 0) { const slots = Math.max(1, Math.floor((TPD - 9 - S.tick) / 13) + 1), want = Math.ceil(room / slots), scan = Math.max(5 * st.quanttrader, 3 * want);
+      A.scan = (A.scan || 0) + scan; A.sig = (A.sig || 0) + makePicks(scan, true, A.conf, A.fill ? want : 0, room); }
+  }
+  autoTrade();
+  if (S.basket.auto && !f.down && S.tick % 13 === 2 && S.tick < TPD - 2) {
+    const excess = S.cash - equity() * S.basket.keep / 100 - marginReq() * shortValue();
+    if (excess > Math.max(5000, equity() * 0.02)) { const r = basketTrade("buy", excess * 0.98, S.basket.set, true); if (r.ok) log(r.msg); }
+  }
+  if (st.marketer) f.rep += st.marketer * 0.3 / TPD * w;
+  if (S.tick === TPD / 2) { newMeetings(); if (f.research.altdata) makePicks(Math.max(0, pickSlots() - analystPicks())); }
+  autoFirstResearch();
+}
+function makeRequest(c) {
+  const eq = equity(), days = Math.floor(rand(2, 4));
+  const type = pick(["sector", "sector", "green", "cash"]);
+  if (type === "sector") {
+    const s = pick(SECTORS), amt = Math.max(2000, Math.round(eq * 0.1 / 1000) * 1000);
+    return { type, sector: s, amt, due: S.day + days, text: `wants at least ${short$(amt)} in ${s} stocks by the close of day ${S.day + days}` };
+  }
+  if (type === "green") return { type, base: npu(), due: S.day + days, text: `wants the fund to be up from today at the close of day ${S.day + days}` };
+  return { type, frac: 0.3, due: S.day + days, text: `is nervous: keep at least 30% of the fund in cash at a close by day ${S.day + days}` };
+}
+function sectorHolding(s) { return Object.entries(S.pos).reduce((a, [t, p]) => a + (CO[t].s === s && p.qty > 0 ? p.qty * S.stocks[t].price : 0), 0); }
+function reqMet(r, eq) {
+  if (r.type === "sector") return sectorHolding(r.sector) >= r.amt;
+  if (r.type === "green") return S.day === r.due && (r.base > 10 ? eq > r.base : npu() > r.base);
+  if (r.type === "stock") return (S.pos[r.t]?.qty || 0) * S.stocks[r.t].price >= r.amt;
+  if (r.type === "opt") return S.opts.length > 0;
+  if (r.type === "avoid") return S.day === r.due && sectorHolding(r.sector) < 1;
+  return S.cash >= r.frac * eq;
+}
+// Sells any position that has moved 8% against you (Stop-loss bot research).
+function stopBot() {
+  if (!S.firm.research.stopbot || S.tick >= TPD) return;
+  for (const [t, p] of Object.entries(S.pos)) {
+    if (halted(t)) continue;
+    const px = S.stocks[t].price;
+    if ((p.qty > 0 && px < p.avg * 0.92) || (p.qty < 0 && px > p.avg * 1.08)) {
+      const r = fill(t, p.qty > 0 ? "sell" : "buy", Math.abs(p.qty), px, "🤖 Stop-loss bot: ");
+      if (r.ok) { toast(r.msg, "bad"); log(r.msg); }
+    }
+  }
+}
+
+// ---------- analyst desk ----------
+// Each pick plants a real hidden catalyst on the stock; the analyst reads its direction right with probability pickAccuracy().
+const rawAccuracy = () => { const f = S.firm, r = f.research;
+  return Math.min(0.85 + 0.01 * lab("signal"), 0.55 + 0.01 * lab("signal") + Math.min(5, f.staff.analyst) * 0.01 + Math.min(4, f.staff.quant) * 0.03 + Math.min(5, f.staff.researcher) * 0.02 + (f.shop.terminal || 0) * 0.02 + (r.models ? 0.05 : 0) + (r.satellite ? 0.05 : 0) + (r.ai ? 0.06 : 0)); };
+// Alpha decay. A signal that works on $20M doesn't work on $2B: the trades move the price before the gain arrives,
+// and rivals copy anything that keeps working. Capacity is how much money your edge can carry at full strength;
+// crowding creeps up every day the fund is big and drops when research finds new signals.
+const fundCapacity = () => { const f = S.firm, r = f.research;
+  return 30e6 * office().mult * (1 + 0.5 * lab("signal")) * (1 + 0.1 * Math.min(5, f.staff.researcher)) * (r.altdata ? 1.3 : 1) * (r.ai ? 1.6 : 1); };
+const capacityF = () => Math.min(1, fundCapacity() / Math.max(1, equity()));
+const crowdF = () => 1 - (S.crowd || 0);
+const edgeF = () => capacityF() * crowdF();
+const pickAccuracy = () => 0.5 + (rawAccuracy() - 0.5) * edgeF();
+// Quant signals are small, same-day trades sized to what the market can absorb, so fund size doesn't dull them; only crowding does.
+const quantAccuracy = () => 0.5 + (rawAccuracy() - 0.5) * crowdF();
+// The auto-trader caps each order so it moves the price at most ~0.15% (more with Execution capacity research):
+// past that, the impact costs more than a short-term signal earns.
+const autoCap = t => 0.0015 * (1 + 0.25 * lab("capacity")) * liquidity(t);
+const pickSlots = () => Math.min(9 + lab("coverage"), 1 + Math.min(4, S.firm.staff.analyst) + (S.firm.shop.terminal || 0) + (S.firm.research.altdata ? 2 : 0) + lab("coverage"));
+const analystPicks = () => S.picks.filter(p => !p.q).length;
+const autoBudget = () => S.firm.staff.quanttrader * (6 + 2 * lab("capacity"));
+// Each pick has its own confidence, and it means something: a 80% pick is right 80% of the time.
+// Quant signals (q) last until the close; the quants only post the ones that clear your auto-trader's bar.
+// For quants: screen n ideas, post the best ones that clear minConf (at most max), and if fewer than need clear it,
+// fill up with the best of the rest (marked fill) so the day's trade budget gets used.
+function makePicks(n, q = false, minConf = 0, need = 0, max = Infinity) {
+  const busy = new Set(S.picks.map(p => p.t)), acc = q ? quantAccuracy() : pickAccuracy(); let posted = 0;
+  const cands = Array.from({ length: n }, () => clamp(acc + randn() * 0.06, 0.5, 0.97));
+  if (q) cands.sort((a, b) => b - a);
+  for (const conf of cands) {
+    if (posted >= max) break;
+    const fill = conf * 100 < minConf;
+    if (fill && (!q || posted >= need)) continue;
+    const c = pick(COMPANIES.filter(c => !busy.has(c.t) && !(q && halted(c.t)))); if (!c) break;
+    busy.add(c.t); posted++;
+    const st = S.stocks[c.t], h = q ? 1 : 1 + Math.floor(Math.random() * 3), dir = Math.random() < 0.5 ? 1 : -1;
+    const left = (h - 1) * TPD + (TPD - S.tick), mag = (q ? rand(0.012, 0.03) : rand(0.025, 0.055)) * clamp(st.vol / 0.35, 0.7, 1.4);
+    st.imp.push({ per: dir * mag / left, left });
+    const call = Math.random() < conf ? dir : -dir;
+    S.picks.push({ id: S.nextId++, t: c.t, call, mag, q, fill, due: S.day + h - 1, p0: st.price, conf: Math.round(conf * 100),
+      by: q ? "Quant desk" : S.firm.staff.analyst ? pick(FIRST) : MENTOR.split(" ")[0], why: pick(q ? QUANT_WHY : call > 0 ? PICK_WHY.up : PICK_WHY.down) });
+  }
+  return posted;
+}
+const QUANT_WHY = ["momentum breakout", "order-flow imbalance", "mean-reversion signal", "pairs spread stretched", "volatility squeeze", "options skew shift", "sector rotation"];
+const PICK_WHY = {
+  up: ["channel checks look strong", "unusual call buying", "insiders have been buying", "supplier orders are up", "web traffic is surging", "a short squeeze is building"],
+  down: ["channel checks look weak", "heavy put buying", "insiders are selling", "supplier orders are down", "app downloads are slipping", "a big holder is unwinding"],
+};
+// Quant traders act on picks at or above your confidence threshold, then close the trade when the pick ends.
+function autoTrade() {
+  const A = S.auto, f = S.firm;
+  if (!A.on || !f.research.algodesk || !f.staff.quanttrader || f.down || S.tick < 1 || S.tick >= TPD - 2) return;
+  for (const p of S.picks) {
+    if (A.used >= autoBudget()) return;
+    if (p.auto || (p.conf < A.conf && !p.fill) || halted(p.t)) continue;
+    p.auto = true; A.used++;
+    const px = S.stocks[p.t].price, side = p.call > 0 ? "buy" : "sell";
+    const want = Math.floor(A.unit === "shares" ? A.size : A.unit === "usd" ? A.size / px : equity() * A.size / 100 / px);
+    const qty = Math.min(want, Math.floor(autoCap(p.t) / px));
+    if (qty < 1) { A.last = `skipped ${p.t}: size rounds to 0 shares`; continue; }
+    const c0 = S.cash, r = fill(p.t, side, qty, px * (1 + (p.call > 0 ? 1 : -1) * spread() / 2), "🤖 Auto-trader: ");
+    A.last = r.ok ? r.msg + (qty < want ? " (capped to limit price impact)" : "") : `skipped ${p.t}: ${r.msg}`;
+    if (r.ok) { p.autoQty = qty; p.autoCash = S.cash - c0; log(r.msg); }
+  }
+}
+function settlePicks(msgs) {
+  for (const p of S.picks.slice()) if (p.due <= S.day) {
+    const pos = S.pos[p.t];
+    if (p.autoQty && pos && Math.sign(pos.qty) === p.call) {   // close the auto-trader's position
+      const q = Math.min(p.autoQty, Math.abs(pos.qty)), c0 = S.cash, r = fill(p.t, p.call > 0 ? "sell" : "buy", q, S.stocks[p.t].price, "🤖 Auto-trader closed: ");
+      if (r.ok) { const pnl = S.cash - c0 + (p.autoCash || 0) * q / p.autoQty, A = S.auto; A.pnl = (A.pnl || 0) + pnl; A.pnlAll = (A.pnlAll || 0) + pnl; A.n = (A.n || 0) + 1; }
+    }
+    const mv = S.stocks[p.t].price / p.p0 - 1, right = Math.sign(mv) === p.call;
+    S.pickLog.push(right); S.pickLog = S.pickLog.slice(-30);
+    const held = (S.pos[p.t]?.qty || 0) * p.call > 0 || S.opts.some(o => o.t === p.t && (o.kind === "call" ? 1 : -1) === p.call);
+    if (right && held) goal("pick");
+    msgs.push(`🧮 ${p.t} ${p.call > 0 ? "BUY" : "SELL"} pick was ${right ? "right" : "wrong"} (${pct(mv, 1)})`);
+    S.picks.splice(S.picks.indexOf(p), 1);
+  }
+}
+
+// ---------- events, catastrophes and story ----------
+// Threats send a warning first (you can pay to stop it); a day later it strikes. Defenses make warnings rarer.
+const sizeF = () => 0.4 + 0.15 * S.firm.office;
+const stopCost = T => Math.round(Math.max(T.stop[2] * office().mult, T.stop[1] * lossBase()));
+const THREATS = {
+  cyber: { icon: "🔓", name: "Cyber attack", fix: "Cyber hygiene research, Security engineers, Network security",
+    odds: f => 0.03 * sizeF() * (f.research.cyber ? 0.7 : 1) * (1 - 0.15 * (f.shop.firewall || 0)) * Math.pow(0.8, f.staff.security),
+    warn: "Security logs show someone probing your servers.", stop: ["Hire an emergency security firm", 0.004, 2000] },
+  outage: { icon: "🔌", name: "IT outage", fix: "Network security, Security engineers, Disaster recovery",
+    odds: f => 0.025 * sizeF() * (1 - 0.15 * (f.shop.firewall || 0)) * Math.pow(0.85, f.staff.security), min: () => staffCount() >= 2,
+    warn: "The server room is overheating and the backup power failed its test.", stop: ["Replace the hardware now", 0.002, 1000] },
+  reg: { icon: "⚖️", name: "Regulator audit", fix: "Compliance manual, Compliance officers, Outside auditors, not trading on tips",
+    odds: f => (0.012 + 0.004 * f.office) * (1 - 0.15 * (f.shop.audit || 0)) * Math.pow(0.8, f.staff.compliance) * (1 + 3 * (S.events.tainted || 0)),
+    min: f => f.clients.length >= 3 || S.events.tainted,
+    warn: "A letter from the SEC: they'll review your client records soon.", stop: ["Hire outside counsel to fix the paperwork", 0.006, 3000] },
+  rogue: { icon: "🃏", name: "Rogue trader", fix: "Outside auditors, Compliance officers",
+    odds: f => 0.02 * (1 - 0.15 * (f.shop.audit || 0)) * Math.pow(0.8, f.staff.compliance), min: () => staffCount() >= 8,
+    warn: "One of your staff keeps asking for higher trading limits and stays late alone.", stop: ["Audit their trades", 0.002, 2000] },
+  press: { icon: "🗞️", name: "Bad press", fix: "Marketers (Brand studio research)",
+    odds: f => 0.02 * sizeF() * Math.pow(0.6, f.staff.marketer) * (S.events.story.refused ? 1.5 : 1), min: f => f.clients.length >= 3,
+    warn: "A reporter is calling your former clients.", stop: ["Hire a PR firm", 0.002, 1500] },
+  poach: { icon: "🦈", name: "Staff poaching", fix: "HR department research blocks it",
+    odds: f => f.research.hr ? 0 : 0.025 * (S.events.story.refused ? 2 : 1), min: () => staffCount() >= 4,
+    warn: `${RIVAL} is taking your people out to fancy lunches.`, stop: ["Pay retention bonuses", 0.003, 2000] },
+  lawsuit: { icon: "📜", name: "Client lawsuit", fix: "Not losing clients' money, In-house legal, Compliance officers",
+    odds: f => Math.min(0.05, 0.006 * (f.clients.filter(c => c.sat < 35).length + 2 * f.clients.filter(c => c.aum < 0.85 * c.hwm).length)) * Math.pow(0.85, f.staff.compliance) * (f.research.legal ? 0.6 : 1),
+    warn: "An unhappy client's lawyer asked for your trading records.", stop: ["Settle quietly now", 0.004, 2500] },
+};
+const threatLevel = p => p < 0.012 ? ["Low", "up"] : p < 0.03 ? ["Medium", "gold"] : ["High", "down"];
+// Fines and settlements grow with the firm, but much slower above $20M: a $1B firm doesn't pay 50× what a $20M one does.
+const lossBase = () => { const nw = Math.max(0, netWorth()); return Math.min(nw, 2e7) + 0.2 * Math.max(0, nw - 2e7); };
+function lose(frac, what, abs) {
+  const amt = Math.round(abs ?? Math.max(1000 * office().mult, frac * lossBase())), paid = S.insured ? Math.round(amt * 0.7) : 0;
+  spend(amt - paid); S.stats.evLoss = (S.stats.evLoss || 0) + amt - paid;
+  return `Lost ${money0(amt)} to the ${what}${paid ? ` (insurance paid ${money0(paid)} of it)` : ""}.`;
+}
+function removeStaff(n) {
+  const f = S.firm, gone = [];
+  for (let i = 0; i < n; i++) {
+    const role = Object.keys(STAFF).filter(k => f.staff[k] > 0).sort((a, b) => STAFF[b].hire - STAFF[a].hire)[0];
+    if (!role) break; f.staff[role]--; gone.push(STAFF[role].name);
+  }
+  return gone.join(" and ") || "nobody";
+}
+const rogueLoss = () => S.firm.staff.riskofficer ? 0.015 : 0.03;
+const legalF = () => (S.firm.research.legal ? 0.4 : 1) * Math.pow(0.85, S.firm.staff.compliance);
+const HITS = {
+  cyber: () => ({ text: "Hackers encrypted your client files and demand a ransom.", opts: [
+    [S.firm.research.backup ? "Restore from backups (Disaster recovery: no damage)" : "Restore from backups (the firm can't work for the rest of the day)", () => S.firm.research.backup ? "Backups restored. Business as usual." : (S.firm.down = true, "Your staff can't work until tomorrow.")],
+    ["Pay the ransom", () => lose(0.03, "ransom")],
+    ["Go public and investigate", () => { S.firm.down = true; S.firm.clients.forEach(c => bumpSat(c, -6)); S.firm.rep += 2; return "Firm closed for the day and clients are rattled (−6), but you look honest (+2 rep)."; }],
+  ] }),
+  outage: () => ({ text: "Your servers just went dark. Nobody can trade for clients, make calls or research.", opts: [
+    ["Pay for emergency repairs", () => lose(0.008, "emergency repairs") + " Back online."],
+    [S.firm.research.backup ? "Switch to the backup site (no downtime)" : "Wait for the regular technician (down for the rest of the day)", () => S.firm.research.backup ? "The backup site took over seamlessly." : (S.firm.down = true, "Staff idle until tomorrow.")],
+  ] }),
+  reg: () => { const fine = 0.03 * (S.firm.research.manual ? 0.5 : 1) * legalF() * (S.events.tainted ? 3 : 1); S.events.tainted = 0;
+    return { text: `The SEC found problems in your records${fine > 0.05 ? ", including suspicious trades before an earnings report" : ""}. The proposed fine is about ${money0(fine * netWorth())}.`, opts: [
+      ["Cooperate and pay the fine", () => lose(fine, "SEC fine")],
+      ["Fight it in court", () => Math.random() < 0.5 ? (S.firm.rep += 3, "You won. No fine (+3 rep).") : (S.firm.rep = Math.max(0, S.firm.rep - 8), lose(fine * 1.8, "fine and legal bills") + " (−8 rep)")],
+    ] }; },
+  rogue: () => ({ text: "One of your staff hid a string of losing trades in a side account.", opts: [
+    ["Fire them publicly", () => { const who = removeStaff(1); S.firm.rep = Math.max(0, S.firm.rep - 3); return `${lose(rogueLoss(), "hidden losses")} Fired a ${who} (−3 rep).`; }],
+    ["Cover it up", () => { S.events.tainted = (S.events.tainted || 0) + 1; return lose(rogueLoss(), "hidden losses") + " Nobody knows… yet. Regulator risk is up."; }],
+  ] }),
+  press: () => ({ text: "A newspaper ran a hit piece on your firm.", opts: [
+    ["Issue a careful statement", () => { const cost = Math.round(Math.max(1500, netWorth() * 0.002)); spend(cost); S.firm.rep = Math.max(0, S.firm.rep - 2); return `Cost ${money0(cost)}; the story faded (−2 rep).`; }],
+    ["Ignore it", () => { const d = Math.max(3, Math.round(S.firm.rep * 0.1)); S.firm.rep = Math.max(0, S.firm.rep - d); S.firm.clients.forEach(c => bumpSat(c, -8)); return `−${d} rep, and every client −8 satisfaction.`; }],
+  ] }),
+  poach: () => { const cost = Math.round(payroll() * 4 + 3000); return { text: `${RIVAL} offered two of your best people a 50% raise.`, opts: [
+    [`Counter-offer (${money0(cost)})`, () => (spend(cost), "They stayed.")],
+    ["Let them go", () => `${removeStaff(2)} left for ${RIVAL}.`],
+  ] }; },
+  // the client furthest below their peak sues for part of what they lost, then takes the rest of their money elsewhere
+  lawsuit: () => { const f = S.firm, c = f.clients.slice().sort((a, b) => a.aum / Math.max(1, a.hwm) - b.aum / Math.max(1, b.hwm))[0];
+    const claim = Math.round(Math.max(5000 * office().mult, c ? 0.6 * Math.max(0, c.hwm - c.aum) + 0.02 * c.aum : 0) * legalF());
+    const gone = () => { if (c && f.clients.includes(c)) { const out = leave(c); f.meetings = f.meetings.filter(m => m.cid !== c.id); return ` ${c.name} pulled their ${short$(out)} out of the fund.`; } return ""; };
+    return { text: `${c ? esc(c.name) : "A client"}, who lost money in your fund, is suing you for mismanaging it. Their lawyers want about ${money0(claim)}.`, opts: [
+      ["Settle", () => lose(0, "settlement", claim) + gone()],
+      ["Fight in court", () => Math.random() < 0.55 ? (S.firm.rep += 3, "The judge threw it out (+3 rep)." + gone()) : (S.firm.rep = Math.max(0, S.firm.rep - 6), lose(0, "verdict", claim * 2) + " (−6 rep)" + gone())],
+    ] }; },
+};
+const OPPS = [
+  { id: "tv", ok: () => S.firm.rep >= 5, data: () => ({}), show: () => ({ title: "📺 TV invitation", text: "A financial news show wants you on air this morning.", opts: [
+    ["Go on and make a bold call", () => Math.random() < 0.6 ? (S.firm.rep += 8, addLeads(5), "You nailed it: +8 rep, +5 leads.") : (S.firm.rep = Math.max(0, S.firm.rep - 5), "Your call aged badly on air: −5 rep.")],
+    ["Go on and play it safe", () => (S.firm.rep += 3, addLeads(2), "+3 rep, +2 leads.")],
+    ["Decline", () => "Maybe next time."],
+  ] }) },
+  { id: "insider", ok: () => S.day >= 3, data: () => ({ t: pick(COMPANIES).t }), show: d => ({ title: "🤫 A tip you shouldn't have", text: `A friend at ${CO[d.t].n} hints that tomorrow's numbers will be a blowout. Trading on this is illegal insider trading.`, opts: [
+    ["Report it to compliance", () => (S.firm.rep += 4, "+4 rep for integrity.")],
+    ["Ignore it", () => "You let it go."],
+    [`Trade on it (${d.t} will jump, but regulator risk soars)`, () => { S.stocks[d.t].imp.push({ per: 0.09 / (TPD * 1.5), left: Math.round(TPD * 1.5) }); S.events.tainted = (S.events.tainted || 0) + 1; selected = d.t; syncTicket(); return `${d.t} is on your ticket. The SEC is far more likely to come knocking.`; }],
+  ] }) },
+  { id: "whale", ok: () => S.firm.office >= 2, data: () => ({ name: pick(["Royal Fjord Sovereign Fund", "Kestrel Pension Board", "Atlas University Endowment", "Meridian Insurance Group"]), aum: Math.round(rand(15, 30) * 80000 * office().mult / 1e4) * 1e4 }),
+    show: d => { const add = disc => { const c = { id: S.nextId++, name: d.name, prof: "safe", inst: true, units: 0, aum: 0, hwm: 0, sat: 70, req: null, since: S.day, disc }; fundIn(d.aum, c); S.firm.clients.push(c); return `${d.name} put ${short$(d.aum)} into your fund.`; };
+      return { title: "🐋 A whale wants in", text: `The ${d.name} wants to invest ${short$(d.aum)} if you cut their fees by 40%.`, opts: [
+        ["Accept the 40% discount", () => add(0.4)],
+        ["Negotiate for 20%", () => Math.random() < 0.5 ? add(0.2) : "They walked away."],
+        ["Decline", () => "You passed."],
+      ] }; } },
+  { id: "award", ok: () => S.firm.clients.length >= 3, data: () => ({ cost: Math.round(3000 * office().mult) }), show: d => ({ title: "🏆 Award nomination", text: `You're nominated for Emerging Fund of the Year. Entry and a table at the dinner cost ${money0(d.cost)}.`, opts: [
+    ["Enter", () => { spend(d.cost); return Math.random() < 0.5 ? (S.firm.rep += 15, "You won! +15 rep.") : "You lost to a crypto fund. Nice dinner, though."; }],
+    ["Skip it", () => "Maybe next year."],
+  ] }) },
+  { id: "prodigy", ok: () => staffCount() < office().staff, data: () => ({ name: `${pick(FIRST)} ${pick(LAST)}` }), show: d => ({ title: "🎓 A prodigy applies", text: `${d.name}, a math olympiad winner, wants to work for you. No hiring fee.`, opts: [
+    ["Hire them as an analyst", () => staffCount() < office().staff ? (S.firm.staff.analyst++, `${d.name} joined (+1 analyst).`) : "No free desk any more."],
+    ["Pass", () => "They went to a rival."],
+  ] }) },
+  { id: "conference", ok: () => true, data: () => ({ cost: Math.round(2000 * office().mult) }), show: d => ({ title: "🎤 Investor conference", text: `A booth at this week's investor conference costs ${money0(d.cost)}.`, opts: [
+    ["Book the booth", () => { spend(d.cost); addLeads(4 + 2 * S.firm.office); S.firm.rep += 2; return `+${4 + 2 * S.firm.office} leads and +2 rep.`; }],
+    ["Skip it", () => "You stayed at your desk."],
+  ] }) },
+];
+const STORY = [
+  { id: "hello", when: () => true, show: () => ({ title: `✉️ A note from ${MENTOR}`, text: `"I traded on the floor for 30 years, so listen. Read the wire, keep your clients close, and never bet the firm. My desk will send you one stock pick a day: it's at the top right. Hire analysts and you'll get more picks, and sharper ones."<br><br>— ${MENTOR}, your mentor` }) },
+  { id: "rival", when: () => S.firm.office >= 1 || S.day >= 6, show: () => ({ title: `🦈 Meet ${RIVAL}`, text: `"Cute little shop. I'm Rex Halloran. My fund, ${RIVAL}, owns this town. When you're ready to sell, call me."<br><br>Their net worth now shows on your Firm tab. Pass them.` }) },
+  { id: "radar", when: () => S.events.warn.length > 0, show: () => ({ title: "📡 Trouble knocks first", text: `"See that warning on your risk radar? Trouble usually knocks before it walks in. Pay to stop it, or gamble that it passes. And build defenses so it knocks less often. Insurance helps too."<br><br>— ${MENTOR}` }) },
+  { id: "offer", when: () => netWorth() >= 1e6, show: () => { const price = Math.round(netWorth() * 1.6 / 1e4) * 1e4; return { title: `💼 ${RIVAL} wants to buy you`, text: `Rex Halloran offers ${short$(price)} for your whole firm, 60% more than it's worth today. Selling ends the game.`, opts: [
+    ["Refuse: you're just getting started", () => { S.events.story.refused = true; S.firm.rep += 10; return `+10 rep. Halloran won't forget this: expect more poaching and bad press.`; }],
+    [`Sell for ${short$(price)} and retire`, () => (ending(`You sold to ${RIVAL} for ${short$(price)} on day ${S.day}.`, price), "")],
+  ] }; } },
+  { id: "passed", when: () => S.goals.rival, show: () => ({ title: `🏆 You passed ${RIVAL}`, text: `"Well, well. You're bigger than Rex now. They'll be furious. Don't get comfortable: the bigger you are, the bigger the target."<br><br>— ${MENTOR}` }) },
+  { id: "crunch", when: () => netWorth() >= 8e6, show: () => ({ title: "🌩️ Storm warning", text: `"Credit markets are cracking. I think a three-day selloff starts tomorrow, hitting everything. Puts, shorts or cash: your call."<br><br>— ${MENTOR}`, opts: [["Get ready", () => { S.events.crunch = S.day + 1; return "The selloff should start tomorrow."; }]] }) },
+  { id: "legend", when: () => netWorth() >= 1e9, show: () => ({ title: "👑 Master of the Universe", text: "A billion dollars. Magazine covers, a museum wing with your name on it, and Rex Halloran trying to get a meeting with you.", opts: [["Take a bow", () => (ending(`You reached $1 billion on day ${S.day}.`), "")]] }) },
+];
+function checkStory() {
+  for (const s of STORY) if (!S.events.story[s.id] && s.when()) { S.events.story[s.id] = 1; S.events.pending.push({ type: "story", id: s.id }); }
+}
+// Daily rolls at the open: at most one new threat warning, maybe a flash crash, maybe an opportunity.
+function rollEvents() {
+  const f = S.firm, E = S.events;
+  for (const k of Object.keys(THREATS).sort(() => Math.random() - 0.5)) {
+    const T = THREATS[k];
+    if (E.warn.some(w => w.k === k) || (T.min && !T.min(f)) || Math.random() > T.odds(f)) continue;
+    E.warn.push({ k, hitDay: S.day + 1, tick: Math.floor(rand(5, TPD - 5)) });
+    toast(`${T.icon} <b>Risk radar:</b> ${T.warn} It will hit tomorrow unless you act (Your firm tab).`, "bad", 10000);
+    break;
+  }
+  if (S.day >= 4 && Math.random() < 0.025) {
+    E.crash = { day: S.day, tick: Math.floor(rand(18, 66)), seen: !!(f.staff.quant || f.research.risklab) };
+    if (E.crash.seen) toast(`📉 <b>Quant alert:</b> order books look fragile. A flash crash is likely around ${clockStr(E.crash.tick)} today.`, "bad", 12000);
+    else if (Math.random() < 0.5) toast("📉 Market jitters: options traders are buying unusual amounts of protection today.", "bad", 8000);
+  }
+  if (Math.random() < 0.18) {
+    const o = pick(OPPS.filter(o => o.ok()));
+    if (o) E.oppAt = { day: S.day, tick: Math.floor(rand(8, TPD - 10)), ev: { type: "opp", id: o.id, d: o.data() } };
+  }
+  if (E.crunch && S.day >= E.crunch && S.day < E.crunch + 3)
+    for (const c of COMPANIES) S.stocks[c.t].imp.push({ per: -0.03 * rand(0.6, 1.4) / TPD, left: TPD });
+}
+function flashCrash() {
+  const ro = S.firm.staff.riskofficer;
+  if (ro) {   // they saw it coming and trimmed the longs
+    const frac = Math.min(0.5, 0.25 * ro); let sold = 0;
+    for (const [t, p] of Object.entries(S.pos)) if (p.qty > 0) { const q = Math.floor(p.qty * frac), px = S.stocks[t].price; if (q > 0 && fill(t, "sell", q, px, "🧯 Risk officer: ").ok) sold += q * px; }
+    if (sold) toast(`🧯 Your risk officers sold ${short$(sold)} of stock seconds before the crash.`, "good", 8000);
+  }
+  for (const c of COMPANIES) {
+    const st = S.stocks[c.t], d = rand(0.05, 0.1) * (c.s === "Consumer" || c.s === "Health" ? 0.7 : 1);
+    st.imp.push({ per: -d / 6, left: 6 }, { per: d * 0.5 / 40, left: 40 });
+    st.bump = Math.max(st.bump, 1.6);
+  }
+  toast("📉 <b>FLASH CRASH!</b> The whole market is plunging. It usually bounces back partway.", "bad", 10000);
+  log("Flash crash");
+}
+function eventTick() {
+  const E = S.events;
+  for (const w of E.warn.slice()) if (S.day > w.hitDay || (S.day === w.hitDay && S.tick >= w.tick)) {
+    E.warn.splice(E.warn.indexOf(w), 1);
+    const T = THREATS[w.k];
+    if (Math.random() < 0.25) { toast(`${T.icon} The ${T.name.toLowerCase()} threat passed without harm.`, "good"); goal("defend"); continue; }
+    E.pending.push({ type: "hit", k: w.k });
+  }
+  if (E.crash && E.crash.day === S.day && S.tick === E.crash.tick) { flashCrash(); E.crash = null; }
+  if (E.oppAt && E.oppAt.day === S.day && S.tick >= E.oppAt.tick) { E.pending.push(E.oppAt.ev); E.oppAt = null; }
+}
+function preventThreat(k) {
+  const E = S.events, w = E.warn.find(w => w.k === k), T = THREATS[k];
+  if (!w) return { ok: false, msg: "That threat is gone." };
+  const cost = stopCost(T);
+  if (S.firm.cash < cost) return firmShort(cost, T.stop[0]);
+  spend(cost); E.warn.splice(E.warn.indexOf(w), 1); goal("defend");
+  toast(`${T.icon} Averted the ${T.name.toLowerCase()} for ${money0(cost)}.`, "good");
+  return { ok: true, msg: `Averted the ${T.name}.` };
+}
+function eventView(e) {
+  if (e.type === "hit") { const T = THREATS[e.k], h = HITS[e.k](); return { title: `${T.icon} ${T.name}!`, text: h.text, opts: h.opts, bad: true }; }
+  if (e.type === "opp") return OPPS.find(o => o.id === e.id)?.show(e.d);
+  if (e.type === "story") return STORY.find(s => s.id === e.id)?.show();
+}
+// Shows the next waiting event as a modal (the game pauses while it's open).
+function showEvent() {
+  if (!S || $("modalBg") || !S.events.pending.length) return;
+  const e = S.events.pending[0], v = eventView(e);
+  if (!v) { S.events.pending.shift(); return; }
+  const opts = v.opts || [["Continue", () => ""]];
+  const choose = i => {
+    S.events.pending.shift(); closeModal();
+    const msg = opts[i][1]();
+    if (msg) { toast(`<b>${v.title}</b><br>${msg}`, v.bad ? "bad" : "gold", 9000); S.events.log.unshift(`D${S.day} ${v.title}: ${msg}`); S.events.log = S.events.log.slice(0, 12); }
+    window.__lastResult = { ok: true, msg }; render(true); showEvent();
+  };
+  if (AGENT) return choose(0);
+  modal(`<h1>${v.title}</h1><p>${v.text}</p>${opts.map((o, i) => `<button class="${i ? "" : "primary"}" data-ev="${i}" style="width:100%;margin-top:6px;text-align:left">${o[0]}</button>`).join("")}`);
+  document.querySelector(".modal").onclick = ev => { const b = ev.target.closest("[data-ev]"); if (b) choose(+b.dataset.ev); };
+}
+function ending(how, payout = 0) {
+  setSpeed(0);
+  const nw = netWorth() + payout;
+  modal(`<h1>🏁 The end of ${esc(S.name)}</h1><p>${esc(how)}</p>
+    <p>Final fortune <b>${money0(nw)}</b> · rank <b>${rankOf(nw)[1]}</b> · ${S.firm.clients.length} clients · ${staffCount()} staff · ${Object.keys(S.firm.research).length}/${RESEARCH.length} research · ${Object.keys(S.goals).length}/${GOALS.length} goals</p>
+    <button class="primary" id="endNew" style="width:100%">Start a new firm</button><button id="endKeep" style="width:100%;margin-top:6px">Keep playing this one</button>`);
+  $("endNew").onclick = () => { closeModal(); localStorage.removeItem(SAVE_KEY); intro(); };
+  $("endKeep").onclick = () => { closeModal(); if (payout) S.events.story.refused = true; };
+}
+
+// ---------- end of day ----------
+function closeDay() {
+  const msgs = [];
+  for (const o of S.opts.slice()) if (o.exp <= S.day) {
+    const v = Math.max(0, o.kind === "call" ? S.stocks[o.t].price - o.strike : o.strike - S.stocks[o.t].price) * 100 * o.n;
+    S.cash += v; S.opts.splice(S.opts.indexOf(o), 1);
+    msgs.push(`${o.t} ${money(o.strike)} ${o.kind} expired ${v > 0 ? "in the money: +" + money(v) : "worthless"}`);
+  }
+  settlePicks(msgs);
+  // carry, all inside the fund: interest on idle cash, dividends on longs (shorts pay them), and fees to borrow shorted shares
+  let interest = Math.max(0, S.cash) * CASH_RATE / 252, divs = 0, borrow = 0;
+  for (const [t, ps] of Object.entries(S.pos)) {
+    const v = ps.qty * S.stocks[t].price;
+    divs += v * (DIVIDENDS[t] || 0) / 252;
+    if (ps.qty < 0) borrow += -v * borrowRate(t) / 252;
+  }
+  S.cash += interest + divs - borrow;
+  S.carry = { interest, divs, borrow };
+  // clients only see trading returns, capped so a near-empty account or a windfall can't make them jump 10×
+  // the fund's return is the change in its unit price, so deposits and withdrawals don't count
+  const eqClose = equity(), p = npu(), ret = clamp(p / (S.npuOpen || p) - 1, -0.3, 0.3);
+  const idxRet = indexValue() / S.idxOpen - 1;
+  const f = S.firm;
+  let fees = 0, perf = 0;
+  const rmCover = f.staff.rm * 8;
+  // Clients own units of the fund, so their money already moved with your trades. Fees come out of their units into the firm account:
+  // 0.1% a day plus a flat account fee, and 20% of any gain above their previous high (losses must be won back first).
+  syncAum();
+  f.clients.sort((a, b) => a.sat - b.sat).forEach((c, i) => {
+    const ft = feeTier(), pay = 1 - (c.disc || 0), fee = Math.min(c.aum * 0.05, (c.aum * FEES.mgmt * ft.mgmt + FEES.account * office().mult) * pay), pf = c.aum - fee > c.hwm ? (c.aum - fee - c.hwm) * ft.perf * pay : 0;
+    c.units -= (fee + pf) / p; S.units -= (fee + pf) / p; c.aum = c.units * p;
+    if (c.aum > c.hwm) c.hwm = c.aum;
+    fees += fee; perf += pf;
+    let d = clamp((ret - idxRet) * 400, -15, 15) * (c.prof === "growth" ? 1.3 : 1) + (ret > 0 ? 2 : c.prof === "safe" ? -4 : -2) - (f.research.crm ? 0.75 : 1.5);
+    if (c.aum < 0.9 * c.hwm) d -= c.prof === "safe" ? 6 : 3;   // sitting on losses from their peak
+    d += ret >= idxRet ? Math.max(0, feeTier().sat) : feeTier().sat;   // high fees only sting when you trail the market
+    if (i < rmCover) d += 6;
+    d += lab("retention") - overloadHit();
+    bumpSat(c, d);
+  });
+  if (overloadHit() > 0) msgs.push(`🏢 Overloaded: ${f.clients.length} clients for ${office().clients} seats cost everyone ${overloadHit().toFixed(1)} satisfaction today`);
+  // requests
+  for (const c of f.clients) if (c.req) {
+    if (reqMet(c.req, eqClose)) {
+      const bonus = Math.round(c.aum * 0.01 + 250);
+      f.cash += bonus; bumpSat(c, 20); f.rep += 3; S.stats.reqDone++;
+      msgs.push(`✅ ${c.name}'s request done: +${money0(bonus)}, +3 rep`); c.req = null;
+    } else if (S.day >= c.req.due) {
+      bumpSat(c, -20); f.rep = Math.max(0, f.rep - 2); S.stats.reqFail++;
+      msgs.push(`❌ Missed ${c.name}'s request (−20 satisfaction)`); c.req = null;
+    }
+  }
+  // meetings nobody answered: RMs take some (the safe answer), the rest are missed
+  let rmLeft = f.staff.rm * 4;
+  for (const m of f.meetings.slice()) if (m.due <= S.day) {
+    f.meetings.splice(f.meetings.indexOf(m), 1);
+    const c = f.clients.find(x => x.id === m.cid); if (!c) continue;
+    if (rmLeft > 0) { rmLeft--; const t = MEETINGS.find(x => x.id === m.kind); (t.opts.find(o => o.safe) || t.opts[0]).fx(c, m); msgs.push(`☕ Your RM took ${c.name}'s meeting`); }
+    else { bumpSat(c, -10); msgs.push(`📅 You missed ${c.name}'s meeting (−10 satisfaction)`); }
+  }
+  // churn, referrals, deposits
+  for (const c of f.clients.slice()) {
+    if (c.sat <= 0 || (c.sat < 25 && Math.random() < 0.35)) {
+      const out = leave(c); f.rep = Math.max(0, f.rep - 3); S.stats.lost++;
+      msgs.push(`👋 ${c.name} left and pulled ${short$(out)} out of the fund (−3 rep)`); continue;
+    }
+    if (c.sat >= 85 && f.leads < leadCap() && Math.random() < (f.research.referral ? 0.5 : 0.25)) { f.leads++; msgs.push(`📇 ${c.name} referred a friend (+1 lead)`); }
+    if (c.sat >= 80 && Math.random() < 0.15) { const add = Math.round(c.aum * 0.2); fundIn(add, c); msgs.push(`💰 ${c.name} added ${short$(add)} to the fund`); }
+  }
+  for (const c of f.clients) if (!c.req && c.since < S.day && Math.random() < 0.15) { c.req = makeRequest(c); msgs.push(`📝 ${c.name} ${c.req.text}`); }
+  f.rmHandled = 0; S.auto.used = 0; S.auto.sig = 0; S.auto.scan = 0; f.turned = 0;
+  if (S.events.tainted && Math.random() < 0.3) S.events.tainted--;   // old slips fade from the regulator's radar
+  if (S.auto.n) { msgs.unshift(`🤖 Auto-trader ${S.auto.pnl >= 0 ? "made" : "lost"} ${short$(Math.abs(S.auto.pnl))} on ${S.auto.n} trade${S.auto.n > 1 ? "s" : ""} today`); }
+  S.auto.yday = { pnl: S.auto.pnl || 0, n: S.auto.n || 0 }; S.auto.pnl = 0; S.auto.n = 0;
+  // crowding: rivals reverse-engineer a big fund's trades; below $5M nobody is watching
+  const big = Math.log10(Math.max(1, eqClose) / 5e6);
+  if (big > 0) { const c0 = S.crowd || 0; S.crowd = Math.min(0.7, c0 + 0.012 * Math.min(3, big)); if (c0 < 0.25 && S.crowd >= 0.25) msgs.push("🐑 Rivals are copying your trades: signal crowding is 25%. New research finds fresh signals."); }
+  if (eqClose > fundCapacity() && !f.toldCap) { f.toldCap = true; msgs.push(`📏 The fund (${short$(eqClose)}) is now bigger than its capacity (${short$(fundCapacity())}): pick accuracy falls as your trades move prices. Grow capacity with research, or stay nimble.`); }
+  if (eqClose <= fundCapacity()) f.toldCap = false;
+  newMeetings();
+  const salaries = payroll(), rent = office().rent, prem = S.insured ? premium() : 0;
+  raiseCash(fees + perf); S.cash -= fees + perf;
+  f.cash += fees + perf - salaries - rent - prem;
+  f.fees += fees + perf;
+  if (f.cash < 0) {
+    const got = fundOut(-f.cash, null); f.cash += got;
+    msgs.push(f.cash < 0 ? "🚨 The firm can't pay its bills" : `🏦 The firm account was overdrawn: moved ${short$(got)} from your fund stake`);
+  }
+  f.down = false;
+  // margin call
+  const sv = shortValue();
+  if (sv > 0 && S.cash < (marginReq() - 0.2) * sv) {
+    for (const t in S.pos) if (S.pos[t].qty < 0) fill(t, "buy", -S.pos[t].qty, S.stocks[t].price * 1.002, "Margin call: ");
+    msgs.push("⚠️ Margin call: your shorts were bought back");
+  }
+  const nw = netWorth();
+  f.lastDay = { day: S.day, ret, idxRet, fees: fees + perf, salaries, rent, prem, nw, msgs };
+  S.history.push({ day: S.day, nw });
+  S.stats.best = Math.max(S.stats.best, nw);
+  for (const [g, x] of [["nw100", 1e5], ["nw1m", 1e6], ["nw10m", 1e7], ["nw100m", 1e8]]) if (nw >= x) goal(g);
+  if (nw >= 1e9 && !S.unlimited) { S.unlimited = true; toast("👑 <b>A billion dollars.</b> No more limits: hire as many people and take as many clients as you like.", "gold", 12000); }
+  S.rival.nw *= 1 + idxRet * 1.1 + 0.02 + randn() * 0.01;
+  if (nw > S.rival.nw) goal("rival");
+  toast(`<b>Day ${S.day} closed.</b> Fund ${pct(ret)} vs market ${pct(idxRet)}.<br>Fees ${money0(fees + perf)} · Salaries ${money0(salaries)}${rent ? ` · Rent ${money0(rent)}` : ""}${prem ? ` · Insurance ${money0(prem)}` : ""}` +
+    `<br>Fund carry: interest +${money0(interest)}${divs ? ` · dividends ${divs > 0 ? "+" : "−"}${money0(Math.abs(divs))}` : ""}${borrow ? ` · borrow fees −${money0(borrow)}` : ""}` +
+    (msgs.length ? "<br>" + msgs.slice(0, 5).map(esc).join("<br>") : ""), ret >= idxRet ? "good" : "bad", 9000);
+  // next day: overnight gap
+  S.day++; S.tick = 0;
+  for (const c of COMPANIES) {
+    const st = S.stocks[c.t];
+    st.daily.push(st.price); if (st.daily.length > 60) st.daily.shift();
+    st.prev = st.price;
+    st.price *= Math.exp(randn() * st.vol / Math.sqrt(252) * 0.3);
+    st.halt = 0;
+    if (st.earn <= S.day) reportEarnings(c, st);
+    st.open = st.price; st.hist.push(st.price);
+  }
+  S.haltUntil = 0; S.cbLevel = 0; S.foot = {};
+  S.fundDaily.push(eqClose); if (S.fundDaily.length > 90) S.fundDaily.shift();
+  S.equityOpen = equity(); S.npuOpen = npu(); S.idxOpen = indexValue(); S.fundOpen = equity();
+  S.nextNews = Math.min(S.nextNews, 2);
+  renderNews();
+  makePicks(Math.max(0, pickSlots() - analystPicks()));
+  rollEvents();
+  checkStory();
+  save();
+  if (netWorth() <= 0 || (S.firm.cash < 0 && myStake() <= 0)) gameOver();
+}
+function gameOver() {
+  speed = 0;
+  modal(`<h1>💥 Wiped out</h1><p>Your stake and the firm account ran dry on day ${S.day}. The firm is closed.</p><button class="primary" id="goNew">Start over</button>`);
+  $("goNew").onclick = () => { closeModal(); startNew(); };
+}
+
+// ---------- main loop ----------
+let speed = 0, acc = 0, lastT = performance.now();
+function tick() {
+  if (S.tick < (S.haltUntil || 0)) for (const c of COMPANIES) S.stocks[c.t].hist.push(S.stocks[c.t].price);   // market-wide halt: nothing trades
+  else stepPrices();
+  checkHalts();
+  S.fundHist.push(equity()); if (S.fundHist.length > TPD * 5) S.fundHist.shift();
+  processOrders();
+  stopBot();
+  firmTick();
+  eventTick();
+  S.nextNews--;
+  if (S.nextNews <= 0) { releaseNews(); S.nextNews = NEWS_EVERY + Math.floor(rand(-2, 3)); }
+  S.tick++;
+  if (S.tick >= TPD) closeDay();
+}
+function advance(n) { for (let i = 0; i < n; i++) tick(); render(true); showEvent(); }
+function loop(now) {
+  const dt = Math.min(1000, now - lastT); lastT = now;
+  if (S && speed > 0 && !$("modalBg")) {
+    acc += dt * speed * TPD / S.dayLen / 1000;
+    let did = 0;
+    while (acc >= 1 && did < 40) { acc--; tick(); did++; }
+    if (did) dirty = true;
+  }
+  if (S && dirty && now - lastDraw > 200) { dirty = false; lastDraw = now; render(); }
+  if (S && !$("modalBg") && S.events.pending.length) { render(true); showEvent(); }
+  requestAnimationFrame(loop);
+}
+function setSpeed(s) { speed = s; document.querySelectorAll("#speed button").forEach(b => b.classList.toggle("on", +b.dataset.speed === s)); }
+
+// ---------- rendering ----------
+let lastPrices = {}, firmRenderAt = 0, watchAt = 0, chartAt = 0, dirty = false, lastDraw = 0, chartMode = "fund";
+const tabOn = name => $("tab-" + name).classList.contains("on");
+function rankOf(nw) { let r = RANKS[0]; for (const x of RANKS) if (nw >= x[0]) r = x; return r; }
+function render(full = false) {
+  if (!S) return;
+  if ($("dayLen").value !== String(S.dayLen)) $("dayLen").value = String(S.dayLen);
+  const nw = netWorth(), fr = npu() / (S.npuOpen || 1) - 1, dayP = S.myUnits * (npu() - (S.npuOpen || 1));
+  $("firmName").textContent = S.name;
+  $("clock").innerHTML = `Day ${S.day} · ${clockStr(Math.min(S.tick, TPD))}${S.tick === 0 ? " <span class='dim'>open</span>" : ""}${S.tick < (S.haltUntil || 0) ? ` <span class="halt">⛔ HALTED${S.haltUntil < TPD ? " to " + clockStr(S.haltUntil) : ""}</span>` : ""}<div class="bar"><i style="width:${S.tick / TPD * 100}%"></i></div>`;
+  $("netWorth").textContent = money0(nw);
+  $("cash").textContent = money0(S.cash);
+  $("firmCash").innerHTML = `<span class="${S.firm.cash < 0 ? "down" : ""}">${money0(S.firm.cash)}</span>`;
+  $("dayPnl").innerHTML = `<span class="${cls(fr)}">${pct(fr)}</span> <span class="dim" style="font-size:12px">you ${money0(dayP)}</span>`;
+  const rk = rankOf(nw); $("rank").textContent = rk[1];
+  // Only what's on screen is redrawn, and the heavy parts (watchlist, stock chart) at most once a second.
+  const now = performance.now();
+  if (full || now - watchAt > 1000) { watchAt = now; renderWatch(); }
+  if (tabOn("trade")) {
+    if (full || chartMode === "fund" || now - chartAt > 1000) { chartAt = now; renderChart(); }
+    renderBook(); renderTicketPreview(); if (ticketMode === "basket") renderBasket();
+    if (document.activeElement !== $("bkKeep")) { $("bkAuto").checked = !!S.basket.auto; $("bkKeep").value = S.basket.keep; }
+    if (document.activeElement !== $("bkSet") && $("bkSet").value !== S.basket.set) $("bkSet").value = S.basket.set;
+  }
+  if (full || now - firmRenderAt > 500) { firmRenderAt = now; renderFirm(); renderResearch(); renderGoals(nw); renderMoves(); renderPicks(); }
+}
+function spark(arr, w = 60, h = 18) {
+  if (arr.length < 2) return "";
+  const mn = Math.min(...arr), mx = Math.max(...arr), sp = mx - mn || 1;
+  const pts = arr.map((v, i) => `${(i / (arr.length - 1) * w).toFixed(1)},${(h - (v - mn) / sp * h).toFixed(1)}`).join(" ");
+  return `<svg width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="${arr[arr.length - 1] >= arr[0] ? "#2ecc71" : "#ff5c5c"}" stroke-width="1.2"/></svg>`;
+}
+const SEC_ORDER = [...new Set(COMPANIES.map(c => c.s))];
+const closedSecs = new Set(JSON.parse(localStorage.getItem("tickerTycoon.closedSecs") || "[]"));
+function renderWatch() {
+  const iv = indexValue(), ir = iv / S.idxOpen - 1;
+  $("indexLine").innerHTML = `<span><b>TT-${COMPANIES.length} index</b> <span class="dim">(all ${COMPANIES.length} stocks)</span></span><span class="${cls(ir)}">${iv.toFixed(1)} ${pct(ir)}</span>`;
+  let h = "";
+  for (const sec of SEC_ORDER) {
+    const cos = COMPANIES.filter(c => c.s === sec), avg = cos.reduce((a, c) => a + S.stocks[c.t].price / S.stocks[c.t].prev - 1, 0) / cos.length;
+    const held = cos.filter(c => S.pos[c.t]).length, shut = closedSecs.has(sec);
+    h += `<tr class="sec" data-sec="${sec}"><td colspan="2">${shut ? "▸" : "▾"} ${sec} <span>(${cos.length}${held ? `, ${held} held` : ""})</span></td><td class="num ${cls(avg)}">${pct(avg)}</td><td></td></tr>`;
+    if (shut) continue;
+  for (const c of cos) {
+    const st = S.stocks[c.t], ch = st.price / st.prev - 1, p = S.pos[c.t];
+    const flash = lastPrices[c.t] && Math.abs(st.price / lastPrices[c.t] - 1) > 0.004 ? (st.price > lastPrices[c.t] ? "flash-up" : "flash-down") : "";
+    const today = st.hist.slice(-(S.tick + 1));
+    h += `<tr data-t="${c.t}" class="${c.t === selected ? "sel" : ""} ${flash}"><td><span class="tk">${c.t}</span>${halted(c.t) ? `<span class="halt">HALT</span>` : ""}${st.earn - S.day <= 3 ? `<span class="earn" title="Reports earnings before the open on day ${st.earn}">📅${st.earn - S.day}d</span>` : ""}${p ? `<span class="held">${p.qty > 0 ? p.qty : "short " + -p.qty}</span>` : ""}<span class="nm">${c.n}</span></td>
+      <td class="num">${st.price.toFixed(2)}</td><td class="num ${cls(ch)}">${pct(ch)}</td><td>${spark(today.length > 1 ? today : st.hist.slice(-20))}</td></tr>`;
+  }
+  }
+  $("watchTable").innerHTML = h;
+  for (const c of COMPANIES) lastPrices[c.t] = S.stocks[c.t].price;
+}
+function renderChart() {
+  const cv = $("chart"), fund = chartMode === "fund";
+  const rangeBtns = `<span id="chartRange">${["1D", "5D", "3M"].map(r => `<button data-r="${r}" class="${r === chartRange ? "on" : ""}">${r}</button>`).join("")}</span>`;
+  const modeBtns = `<span class="seg"><button data-mode="fund" class="${fund ? "on" : ""}">💼 Fund</button><button data-mode="stock" class="${fund ? "" : "on"}">📈 ${selected}</button></span>`;
+  let data, prev, lines = [], fmt, markers = [];
+  if (fund) {
+    const fv = equity(), fo = S.fundOpen || S.equityOpen || fv, fr = npu() / (S.npuOpen || 1) - 1;
+    $("chartHead").innerHTML = `${modeBtns}<span class="big">Fund worth</span><span class="big num">${money0(fv)}</span>
+      <span class="${cls(fr)}">${pct(fr)} today</span><span class="dim">your stake ${short$(myStake())} · cash ${short$(S.cash)}</span><span style="flex:1"></span>${rangeBtns}`;
+    data = chartRange === "1D" ? S.fundHist.slice(-S.tick) : chartRange === "5D" ? S.fundHist.slice() : S.fundDaily.concat([fv]);
+    if (chartRange === "1D") data = [fo].concat(data);
+    prev = fo; fmt = v => short$(v);
+  } else {
+    const st = S.stocks[selected], c = CO[selected], ch = st.price / st.prev - 1;
+    $("chartHead").innerHTML = `${modeBtns}<span>${c.n} · ${c.s}</span><span class="big num">${money(st.price)}</span>
+      <span class="${cls(ch)}">${pct(ch)} today</span><span class="dim">vol ${(sigmaOf(selected) * 100).toFixed(0)}% · earnings day ${st.earn} (in ${st.earn - S.day}d)${DIVIDENDS[selected] ? ` · dividend ${(DIVIDENDS[selected] * 100).toFixed(1)}%` : ""}</span>${halted(selected) ? `<span class="halt">HALTED</span>` : ""}<span style="flex:1"></span>${rangeBtns}`;
+    data = chartRange === "1D" ? st.hist.slice(-(S.tick + 1)) : chartRange === "5D" ? st.hist.slice() : st.daily.concat([st.price]);
+    prev = st.prev; fmt = v => v.toFixed(2);
+    const p = S.pos[selected]; if (p) lines.push([p.avg, "#f5c542", `your avg ${p.qty > 0 ? "long" : "short"}`]);
+    for (const o of S.orders) if (o.t === selected) lines.push([o.price, "#4da3ff", `${o.type} ${o.side} #${o.id}`]);
+    if (chartRange === "1D") markers = st.news.filter(n => n.day === S.day && n.tick <= S.tick);
+  }
+  if (chartRange === "1D") lines.push([prev, "#7f8aa6", "prev close"]);
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return;
+  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const span = chartRange === "1D" ? TPD + 1 : data.length;
+  if (data.length < 2) data = [prev, data[0] ?? prev];
+  const vals = data.concat(lines.map(l => l[0]));
+  let mn = Math.min(...vals), mx = Math.max(...vals); const pad = (mx - mn) * 0.08 || mx * 0.01; mn -= pad; mx += pad;
+  const L = 8, R = W - 64, T = 10, B = H - 18;
+  const X = i => L + (R - L) * i / Math.max(1, span - 1), Y = v => B - (B - T) * (v - mn) / (mx - mn);
+  g.font = "10px Segoe UI"; g.fillStyle = "#7f8aa6"; g.strokeStyle = "#1c2538"; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const v = mn + (mx - mn) * i / 4, y = Y(v); g.beginPath(); g.moveTo(L, y); g.lineTo(R, y); g.stroke(); g.fillText(fmt(v), R + 6, y + 3); }
+  if (chartRange === "1D") ["10:00", "12:00", "14:00", "16:00"].forEach((s, i) => { const tk = [6, 30, 54, 78][i]; g.fillText(s, X(tk) - 12, H - 4); });
+  else g.fillText(chartRange === "5D" ? "last 5 days (5-min bars)" : "daily closes", L, H - 4);
+  for (const [v, col, label] of lines) { g.setLineDash([4, 4]); g.strokeStyle = col; g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(R, Y(v)); g.stroke(); g.setLineDash([]); g.fillStyle = col; g.fillText(label, L + 4, Y(v) - 3); }
+  const up = data[data.length - 1] >= data[0];
+  const grad = g.createLinearGradient(0, T, 0, B); grad.addColorStop(0, up ? "#2ecc7140" : "#ff5c5c40"); grad.addColorStop(1, "#0000");
+  g.beginPath(); data.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)));
+  g.strokeStyle = up ? "#2ecc71" : "#ff5c5c"; g.lineWidth = 1.6; g.stroke();
+  g.lineTo(X(data.length - 1), B); g.lineTo(X(0), B); g.closePath(); g.fillStyle = grad; g.fill();
+  for (const n of markers) {
+    const x = X(n.tick), y = Y(data[Math.min(n.tick, data.length - 1)]);
+    g.fillStyle = n.dir > 0 ? "#2ecc71" : n.dir < 0 ? "#ff5c5c" : "#f5c542"; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill();
+    g.fillStyle = "#fff"; g.fillText("📰", x - 6, y - 7);
+  }
+}
+let posSort = (() => { try { return JSON.parse(localStorage.getItem("tickerTycoon.posSort")) || { k: "value", d: -1 }; } catch { return { k: "value", d: -1 }; } })();
+const POS_COLS = [["t", "Stock", ""], ["qty", "Qty", "num"], ["avg", "Avg", "num"], ["value", "Value", "num"], ["pl", "P&amp;L", "num"], ["plp", "P&amp;L %", "num"]];
+function renderBook() {
+  let h = `<h2>Open orders</h2>`;
+  h += S.orders.length ? `<table><tr><th>#</th><th>Order</th><th class="num">Price</th><th class="num">Now</th><th></th></tr>` + S.orders.map(o =>
+    `<tr><td>${o.id}</td><td>${o.type} ${o.side} ${o.qty} ${o.t}</td><td class="num">${o.price.toFixed(2)}</td><td class="num">${S.stocks[o.t].price.toFixed(2)}</td><td><button class="x" data-cancel="${o.id}">✕</button></td></tr>`).join("") + "</table>"
+    : `<p class="dim">None. Limit orders wait for a better price; stop orders trigger when the price crosses a level.</p>`;
+  h += `<h2 style="margin-top:10px">Positions</h2>`;
+  const pos = Object.entries(S.pos).map(([t, p]) => { const v = p.qty * S.stocks[t].price, pl = p.qty * (S.stocks[t].price - p.avg);
+    return { t, p, v, pl, key: { t, qty: p.qty, avg: p.avg, value: v, pl, plp: pl / Math.abs(p.qty * p.avg) } }; });
+  pos.sort((a, b) => { const x = a.key[posSort.k], y = b.key[posSort.k]; return (typeof x === "string" ? x.localeCompare(y) : x - y) * posSort.d; });
+  h += pos.length ? `<table class="sortable"><tr>${POS_COLS.slice(0, 5).map(([k, l, c]) => `<th class="${c}" data-psort="${k}" title="Sort by ${l.replace("&amp;", "&")}">${l}${k === "pl" ? ` <span data-psort="plp" class="dim" title="Sort by P&L %">%</span>` : ""}${posSort.k === k || (k === "pl" && posSort.k === "plp") ? (posSort.d > 0 ? " ▲" : " ▼") : ""}</th>`).join("")}<th></th></tr>` + pos.map(({ t, p, v, pl }) => {
+    const risk = S.firm.research.risklab ? `<br><span class="dim" title="Risk lab: a bad day (2 standard deviations)">bad day −${short$(Math.abs(v) * sigmaOf(t) / Math.sqrt(252) * 2)}</span>` : "";
+    return `<tr><td><b>${t}</b></td><td class="num">${p.qty}</td><td class="num">${p.avg.toFixed(2)}</td><td class="num">${money0(v)}${risk}</td><td class="num ${cls(pl)}">${money0(pl)} (${pct(pl / Math.abs(p.qty * p.avg), 1)})</td><td><button class="x" data-close="${t}">Close</button></td></tr>`;
+  }).join("") + "</table>" : `<p class="dim">No stock positions.</p>`;
+  h += `<h2 style="margin-top:10px">Options</h2>`;
+  h += S.opts.length ? `<table><tr><th>Contract</th><th class="num">Qty</th><th class="num">Cost</th><th class="num">Value</th><th class="num">P&amp;L</th><th></th></tr>` + S.opts.map(o => {
+    const v = optMid(o) * 100 * o.n, pl = v - o.cost, dl = o.exp - S.day;
+    return `<tr><td><b>${o.t}</b> ${o.strike} ${o.kind}<br><span class="dim">expires ${dl ? "in " + dl + "d" : "today"}</span></td><td class="num">${o.n}</td><td class="num">${money0(o.cost)}</td><td class="num">${money0(v)}</td><td class="num ${cls(pl)}">${money0(pl)}</td><td><button class="x" data-sellopt="${o.id}">Sell</button></td></tr>`;
+  }).join("") + "</table>" : `<p class="dim">No options. Calls profit when a stock rises, puts when it falls.</p>`;
+  if ($("book").dataset.h !== h) { $("book").innerHTML = h; $("book").dataset.h = h; }
+}
+function renderTicketPreview() {
+  const t = $("tkSym").value, st = S.stocks[t]; if (!st) return;
+  const type = $("tkType").value, qty = Math.floor(+$("tkQty").value) || 0;
+  const px = type === "market" ? st.price : +$("tkPrice").value || st.price;
+  const held = S.pos[t]?.qty || 0;
+  let txt = `${tkSide === "buy" ? "Cost" : "Proceeds"} ≈ <b>${money(qty * px)}</b> + ${money(commission())} commission. You hold ${held} ${t}.`;
+  const imp = impactOf(t, qty * px);
+  if (imp > 0.001) txt += `<br><span class="${imp > 0.01 ? "down" : "dim"}">Big order: about ${(imp * 100).toFixed(1)}% price impact, which fades over half a day. Split big bets across several stocks.</span>`;
+  { const eat = Math.min(0.8, 12 * qty * px / liquidity(t)), pk = S.picks.find(p => p.t === t && (p.call > 0) === (tkSide === "buy"));
+    if (pk && eat > 0.15) txt += `<br><span class="down">This order would eat about ${Math.round(eat * 100)}% of the move the ${t} pick is waiting for. Smaller orders keep more of the edge.</span>`; }
+  if (Math.abs((S.foot[t] || 0) + (tkSide === "buy" ? imp : -imp) / 2) >= 0.04) txt += `<br><span class="down">⚖️ This would push ${t} 4%+ today. The SEC treats that as possible market manipulation.</span>`;
+  if (tkSide === "sell" && qty > Math.max(0, held)) txt += `<br><span class="down">Selling more than you own opens a short of ${qty - Math.max(0, held)}. Shorts pay a ${(borrowRate(t) * 100).toFixed(1)}%/yr borrow fee${DIVIDENDS[t] ? ` and the ${(DIVIDENDS[t] * 100).toFixed(1)}% dividend` : ""}.</span>`;
+  if (type === "limit") txt += `<br>Limit: fills only at ${tkSide === "buy" ? "or below" : "or above"} your price.`;
+  if (type === "stop") txt += `<br>Stop: becomes a market order when price ${tkSide === "buy" ? "rises to" : "falls to"} your price.`;
+  $("tkPreview").innerHTML = txt;
+  // options preview
+  const exps = [2, 5, 10].concat(S.firm.research.longopts ? [20, 40] : []);
+  if ($("opExp").options.length !== exps.length) { const cur = $("opExp").value; $("opExp").innerHTML = exps.map(d => `<option value="${d}" ${String(d) === cur ? "selected" : ""}>${d} days</option>`).join(""); }
+  const ot = $("opSym").value, ost = S.stocks[ot];
+  if (!ost) return;
+  const ks = strikesFor(ot), cur = +$("opStrike").value;
+  if ($("opStrike").dataset.for !== ot + ks.join()) {
+    const keep = ks.includes(cur) ? cur : ks[3];
+    $("opStrike").innerHTML = ks.map(k => `<option value="${k}" ${k === keep ? "selected" : ""}>${money(k)}${k === ks[3] ? " (at the money)" : ""}</option>`).join("");
+    $("opStrike").dataset.for = ot + ks.join();
+  }
+  const K = +$("opStrike").value, days = +$("opExp").value, n = Math.floor(+$("opQty").value) || 0;
+  const ask = optAsk(ot, opKind, K, S.day + days), tot = ask * 100 * n + 0.65 * n;
+  let o = `Premium ${money(ask)}/share → <b>${money(tot)}</b> for ${n} contract${n === 1 ? "" : "s"} (100 shares each). Max loss = premium.`;
+  const ed = ost.earn - S.day;
+  if (ed > 0 && ost.earn <= S.day + days) o += `<br><span class="gold">📅 ${ot} reports earnings in ${ed} day${ed > 1 ? "s" : ""}, before this expires: options are pricier now and usually drop in value right after the report.</span>`;
+  if (S.firm.research.greeks) {
+    const be = opKind === "call" ? K + ask : K - ask, d = delta(ost.price, K, yearsLeft(S.day + days), optSig(ot, S.day + days), opKind);
+    const move = ost.price * sigmaOf(ot) * Math.sqrt(days / 252);
+    o += `<br>Δ ${d.toFixed(2)} · breakeven ${money(be)} (${pct(be / ost.price - 1, 1)}) · typical ${days}-day move ±${money(move)}`;
+  } else o += `<br><span class="dim">Research the Quant toolkit for delta and breakeven.</span>`;
+  $("opPreview").innerHTML = o;
+}
+function newsHtml(n) {
+  const scan = S.firm.research.scanner;
+  let tags = n.tickers.map(t => {
+    const e = n.est[t] || 0, mv = n.p0?.[t] ? S.stocks[t].price / n.p0[t] - 1 : null;
+    if (mv !== null) return `<span class="tag ${scan && e ? cls(e) : ""}" data-t="${t}">${t}${scan && e ? (e > 0 ? " ▲" : " ▼") : ""} <span class="mv ${cls(mv)}" data-n="${n.id}" data-mt="${t}">${pct(mv, 1)}</span></span>`;
+    return `<span class="tag ${scan && e ? cls(e) : ""}" data-t="${t}">${t}${scan && e ? (e > 0 ? " ▲" : " ▼") + (Math.abs(e) > 0.03 ? "▲▼"[e > 0 ? 0 : 1] : "") : ""}</span>`;
+  }).join("");
+  if (scan) {
+    const secs = n.sectors.map(s => `<span class="tag ${cls(n.sent)}">${s} ${n.sent > 0.12 ? "▲" : n.sent < -0.12 ? "▼" : "–"}</span>`).join("");
+    tags += secs + (n.macro ? `<span class="tag ${cls(n.sent)}">whole market ${n.sent > 0.12 ? "▲" : n.sent < -0.12 ? "▼" : "–"}</span>` : "");
+    if (!n.tickers.length && !n.sectors.length && !n.macro) tags += `<span class="dim">no market impact expected</span>`;
+    if (S.firm.research.ai && n.fade) tags += `<span class="tag" title="AI forecasting expects the market to shrug this headline off">🤖 likely to reverse</span>`;
+  } else tags += n.sectors.map(s => `<span class="tag">${s}</span>`).join("") + (n.macro ? `<span class="tag">macro</span>` : "");
+  const when = n.sim ? `<span class="sim">SIM</span>` : `${esc(n.source)} · ${new Date(n.time).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+  return `<div class="news-item" data-id="${n.id}">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a>` : esc(n.title)}
+    <div class="news-meta">${clockStr(n.tick)} D${n.day} · ${when} ${tags}</div></div>`;
+}
+function renderNews(freshId) {
+  $("news").innerHTML = S.news.map(newsHtml).join("") || `<p class="dim">Waiting for the opening bell…</p>`;
+  if (freshId) { const el = $("news").querySelector(`[data-id="${freshId}"]`); el && el.classList.add("fresh"); }
+}
+function renderMoves() {
+  for (const el of $("news").querySelectorAll(".mv")) {
+    const n = S.news.find(x => x.id === +el.dataset.n), t = el.dataset.mt;
+    if (!n?.p0?.[t]) continue;
+    const mv = S.stocks[t].price / n.p0[t] - 1;
+    el.textContent = pct(mv, 1); el.className = "mv " + cls(mv);
+  }
+}
+function renderPicks() {
+  const log = S.pickLog, right = log.filter(Boolean).length;
+  let h = `<h2>🧮 Analyst desk <span class="dim" style="text-transform:none;letter-spacing:0">${Math.round(pickAccuracy() * 100)}% accurate${edgeF() < 0.97 ? ` <span title="Your raw edge is ${Math.round(rawAccuracy() * 100)}%. Capacity ${short$(fundCapacity())} vs fund ${short$(equity())}; crowding ${Math.round((S.crowd || 0) * 100)}%">(raw ${Math.round(rawAccuracy() * 100)}%${capacityF() < 0.97 ? `, over capacity ×${capacityF().toFixed(2)}` : ""}${(S.crowd || 0) > 0.03 ? `, crowding −${Math.round((S.crowd || 0) * 100)}%` : ""})</span>` : ""}${log.length ? ` · last ${log.length}: ${right} right` : ""}</span></h2>`;
+  const ap = S.picks.filter(p => !p.q), qp = S.picks.filter(p => p.q);
+  h += ap.length ? ap.map(p => {
+    const mv = S.stocks[p.t].price / p.p0 - 1, left = p.due - S.day;
+    return `<div class="pick" data-pick="${p.t}" data-call="${p.call}" title="Click to load this trade on the ticket">
+      <b class="${p.call > 0 ? "up" : "down"}">${p.call > 0 ? "BUY" : "SELL"}</b> <b>${p.t}</b> <span class="dim">${p.conf}% confident · ${left ? `${left + 1} days` : "today"}</span>
+      ${S.firm.research.satellite ? `<span class="dim">· target ${money(p.p0 * (1 + p.call * p.mag))}</span>` : ""}
+      <span class="${cls(mv)}" style="float:right">${pct(mv, 1)}</span><br><span class="dim">${esc(p.by)}: ${p.why}</span></div>`;
+  }).join("") : `<p class="dim">New picks arrive at the open.</p>`;
+  if (pickSlots() < 2) h += `<p class="dim" style="font-size:11px">Hire analysts for more picks; research Earnings models for sharper ones.</p>`;
+  if (edgeF() < 0.97) { const cf = capacityF(), cr = S.crowd || 0, cheapest = LABS.find(L => L.id === "signal");
+    h += `<div class="dim" style="font-size:11px;margin-top:4px">📏 <b>Why ${Math.round(pickAccuracy() * 100)}% and not ${Math.round(rawAccuracy() * 100)}%:</b> ${cf < 0.97 ? `the fund (${short$(equity())}) is ${(1 / cf).toFixed(1)}× its capacity (${short$(fundCapacity())}), which keeps ${Math.round(cf * 100)}% of the edge` : "the fund is within capacity"}${cr > 0.03 ? `${cf < 0.97 ? "; " : ""}rivals copying you take ${Math.round(cr * 100)}%` : ""}. Fix: <b>Signal refinement</b> (Research tab, ${labCost(cheapest)} RP; you have ${S.firm.rp}) raises capacity and clears crowding; researchers and a bigger office raise capacity; smaller orders and baskets lose less of each pick.</div>`; }
+  if (qp.length || S.auto.sig) h += `<div class="dim" style="font-size:11px;margin-top:4px">🤖 Quant signals today: ${S.auto.sig || 0} posted of ${S.auto.scan || 0} screened. Live: ${qp.slice(-6).map(p => `<span class="${p.call > 0 ? "up" : "down"}">${p.call > 0 ? "▲" : "▼"}${p.t}</span> ${p.conf}%`).join(", ") || "none"}</div>`;
+  if ($("picks").dataset.h !== h) { $("picks").innerHTML = h; $("picks").dataset.h = h; }
+  renderAuto();
+}
+// The auto-trader's settings are built once (so typing isn't interrupted); only the status line updates.
+function renderAuto() {
+  const f = S.firm, A = S.auto, box = $("autoCfg");
+  const state = !f.research.algodesk ? "locked" : f.staff.quanttrader ? "on" : "nohire";
+  const sgn = v => `<span class="${cls(v)}">${v < 0 ? "−" : "+"}${short$(Math.abs(v))}</span>`;
+  if (box.dataset.state !== state) {
+    box.dataset.state = state;
+    box.innerHTML = state === "locked" ? `<span class="dim">🤖 Research the Algo trading desk to let quant traders trade these picks for you.</span>`
+      : state === "nohire" ? `<span class="dim">🤖 Hire a Quant trader (Your firm tab) to run the auto-trader.</span>`
+      : `<b>🤖 Auto-trader</b> <label><input type="checkbox" data-auto="on"> on</label><br>
+        Trade picks at least <input type="number" data-auto="conf" min="50" max="99" step="1">% confident,
+        <input type="number" data-auto="size" min="1" step="1"> <select data-auto="unit"><option value="shares">shares</option><option value="usd">dollars</option><option value="pct">% of the fund</option></select> per trade.
+        <br><label title="If too few ideas clear your bar, the quants take the best of the rest so no trade goes unused"><input type="checkbox" data-auto="fill"> Use every trade, even if a few fall below my bar</label>
+        <div class="dim" id="autoStatus"></div>`;
+    if (state === "on") for (const el of box.querySelectorAll("[data-auto]")) el.type === "checkbox" ? (el.checked = !!A[el.dataset.auto]) : (el.value = A[el.dataset.auto]);
+  }
+  if (state === "on") { const cap = 0.0015 * (1 + 0.25 * lab("capacity")) * 1.5e9 * 0.2 / 0.35;
+    $("autoStatus").innerHTML = `<b>${A.used}/${autoBudget()}</b> trades used today (${f.staff.quanttrader} quant trader${f.staff.quanttrader > 1 ? "s" : ""}). Quant signals are ${Math.round(quantAccuracy() * 100)}% accurate${(S.crowd || 0) > 0.03 ? ` (crowding takes ${Math.round(S.crowd * 100)}% of the edge)` : ""}. They pace their screening to use every trade by the close${A.fill ? "" : ", but only trade ideas at or above your bar"}.${!A.fill && A.conf > quantAccuracy() * 100 + 4 ? ` Your bar is well above their accuracy, so trades will go unused.` : ""}
+      Each order is capped near ${short$(cap)} so it moves the price less than 0.15%; bigger orders would cost more than a short-term signal earns. Execution capacity research raises the cap and the trade count.
+      <br>Open trades ${sgn(S.picks.reduce((a, p) => a + (p.autoQty && !(p.due < S.day) ? (p.autoCash || 0) + p.call * p.autoQty * S.stocks[p.t].price : 0), 0) + (A.pnl || 0))} so far today${A.yday ? ` · yesterday ${sgn(A.yday.pnl)} on ${A.yday.n}` : ""} · all time ${sgn(A.pnlAll || 0)}.${A.last ? `<br>Last: ${esc(A.last)}` : ""}`; }
+}
+function renderGoals(nw) {
+  const next = RANKS.find(r => r[0] > nw), cur = rankOf(nw);
+  let h = `<div class="tip" style="margin-bottom:8px"><b>Next step:</b> ${esc(nextTip())}</div><h2>Goals</h2>`;
+  if (next) h += `<div class="dim" style="font-size:11px">Next rank: <b class="gold">${next[1]}</b> at ${short$(next[0])}</div><div class="progress"><i style="width:${clamp((nw - cur[0]) / (next[0] - cur[0]), 0, 1) * 100}%"></i></div>`;
+  const open = GOALS.filter(g => !S.goals[g.id]).slice(0, 4), done = GOALS.filter(g => S.goals[g.id]).length;
+  h += `<ul style="margin-top:6px">${open.map(g => `<li>☐ ${g.text} <span class="gold" style="font-size:10px">${g.reward.rp ? "+" + g.reward.rp + " RP" : "+" + g.reward.rep + " rep"}</span></li>`).join("")}</ul>`;
+  h += `<div class="dim" style="font-size:11px">${done}/${GOALS.length} goals done</div>`;
+  if ($("goals").dataset.h !== h) { $("goals").innerHTML = h; $("goals").dataset.h = h; }
+}
+const setH = (id, h) => { if ($(id).dataset.h !== h) { $(id).innerHTML = h; $(id).dataset.h = h; } };
+function renderFirm() {
+  const f = S.firm, o = office(), aum = clientAUM(), ld = f.lastDay;
+  const requests = f.clients.filter(c => c.req).length, full = f.clients.length >= o.clients, over = overloadHit();
+  $("firmAlert").textContent = [f.meetings.length ? `📅${f.meetings.length}` : "", S.events.warn.length ? `⚠️${S.events.warn.length}` : "", f.leads >= 3 && !full ? `📇${f.leads}` : "", requests ? `📝${requests}` : "", over ? "🏢 over" : ""].filter(Boolean).join(" ");
+  $("firmStats").innerHTML = [["Office", o.name + (f.down ? ` <span class="down">· DOWN</span>` : "")], ["Reputation", Math.floor(f.rep)], ["Clients", over ? `<span class="down" title="More clients than seats: everyone loses satisfaction each day. A bigger office, relationship managers or fewer clients fix it.">${f.clients.length}/${capTxt(o.clients)} · −${over.toFixed(1)}/day</span>` : full ? `<span class="gold" title="Every seat is taken. You can sign more, but they all get less attention.">${f.clients.length}/${capTxt(o.clients)}</span>` : `${f.clients.length}/${capTxt(o.clients)}`], ["Client money", short$(aum)],
+    ["Staff", `${staffCount()}/${capTxt(o.staff)}`],
+    ["Fund capacity", `<span class="${equity() > fundCapacity() ? "down" : ""}" title="How much money your edge can carry at full strength. Above it, pick accuracy decays toward a coin flip. Grows with offices, Signal refinement, researchers, Alt-data and AI forecasting.">${short$(fundCapacity())}${equity() > fundCapacity() ? ` <small>fund ${short$(equity())}</small>` : ""}</span>`],
+    ["Crowding", `<span class="${(S.crowd || 0) > 0.25 ? "down" : (S.crowd || 0) > 0.1 ? "gold" : ""}" title="Rivals copying your signals. Rises daily while the fund is above $5M; falls when you buy Market intel research, Signal refinement or Market coverage.">${Math.round((S.crowd || 0) * 100)}%</span>`], ["Profit/day", (() => { const inc = f.clients.reduce((a, c) => a + (c.aum * FEES.mgmt * feeTier().mgmt + FEES.account * o.mult) * (1 - (c.disc || 0)), 0), cost = payroll() + o.rent + (S.insured ? premium() : 0), net = inc - cost;
+      return `<span class="${cls(net)}" title="Fees about ${money0(inc)}/day before performance fees, minus salaries, rent and insurance of ${money0(cost)}/day">${net < 0 ? "−" : "+"}${short$(Math.abs(net))}</span>`; })()], ["Fees earned", short$(f.fees)],
+    ["Yesterday", ld ? `<span class="${cls(ld.ret)}">${pct(ld.ret)}</span> vs mkt <span class="${cls(ld.idxRet)}">${pct(ld.idxRet)}</span>` : "–"],
+    ...(S.events.story.rival ? [[RIVAL, `<span class="${S.rival.nw > netWorth() ? "down" : "up"}">${short$(S.rival.nw)}</span>`]] : [])]
+    .map(([k, v]) => `<div class="stat"><label>${k}</label><b>${v}</b></div>`).join("") +
+    `<div style="flex-basis:100%;font-size:11px" class="dim">At your <b>${feeTier().name}</b> fee level, clients pay the firm ${pct(FEES.signup * feeTier().mgmt, 1).slice(1)} of every deposit up front, then each close ${pct(FEES.mgmt * feeTier().mgmt, 2).slice(1)} of their money plus a ${money0(FEES.account * o.mult)} account fee, plus ${feeTier().perf * 100}% of any gain above their previous high. Beat the market to keep them happy.</div>`;
+  setH("feeTiers", FEE_TIERS.map((t, i) => { const open = feeTierOpen(i);
+    return `<button data-tier="${i}" class="${i === f.feeTier ? "on" : ""}" ${open && f.feeDay !== S.day ? "" : "disabled"} title="${open ? "" : `Needs the ${OFFICES[t.office].name} and ${t.rep} reputation`}">${open ? "" : "🔒 "}${t.name}<br><small class="dim">${pct(FEES.mgmt * t.mgmt, 2).slice(1)}/day · ${t.perf * 100}% perf</small></button>`; }).join(""));
+  const ft = feeTier(), nextT = FEE_TIERS.find((t, i) => !feeTierOpen(i));
+  $("feeNote").textContent = `Pitch odds ${ft.pitch >= 0 ? "+" : ""}${Math.round(ft.pitch * 100)}%. ${ft.sat < 0 ? `Clients lose ${-ft.sat} satisfaction a day when you trail the market.` : ft.sat > 0 ? `Clients gain ${ft.sat} satisfaction a day.` : ""} You can change the level once a day; raising it annoys every client (−6), lowering it pleases them (+4).${nextT ? ` Next level: ${nextT.name} at the ${OFFICES[nextT.office].name} with ${nextT.rep} reputation.` : ""}`;
+  $("firmTip").textContent = "Next step: " + nextTip();
+  const fundV = equity(), mine = myStake();
+  setH("accounts", `<div class="firm-stats">${[["The fund", short$(fundV)], ["Fund cash", short$(S.cash)], ["Your stake", `${short$(mine)} <span class="dim" style="font-size:11px">${fundV > 0 ? Math.round(mine / fundV * 100) : 0}%</span>`],
+    ["Clients' money", short$(clientAUM())], ["Unit price", npu().toFixed(3)], ["Firm account", `<span class="${f.cash < 0 ? "down" : ""}">${short$(f.cash)}</span>`]].map(([k, v]) => `<div class="stat"><label>${k}</label><b>${v}</b></div>`).join("")}</div>
+    ${f.cash < payroll() + office().rent ? `<p class="req">⚠️ The firm account can't cover tomorrow's salaries and rent (${money0(payroll() + office().rent)}). Move money from your stake below, or the shortfall comes out of it at the close.</p>` : ""}
+    <p class="dim" style="font-size:11px;margin:6px 0">You trade the whole fund: your stake plus every client's money. Gains and losses are shared by everyone in proportion. Fees go to the firm account, which pays for staff, rent, offices and the shop. Lose clients' money and they get angry, pull out (forcing you to sell) or sue.</p>`);
+  $("clkCallSub").innerHTML = `${f.leads}/${leadCap()} leads · <span class="progress" style="display:inline-block;width:50px"><i style="width:${f.leadProg * 100}%"></i></span>`;
+  $("clkResearchSub").innerHTML = `${f.rp} RP · <span class="progress" style="display:inline-block;width:50px"><i style="width:${f.rpProg * 100}%"></i></span>`;
+  const L = f.leads ? nextLead() : null;
+  setH("clkPitch", L ? `<div>🤝 Pitch <b>${esc(L.name)}</b>, ${PROFILES[L.prof].icon} ${L.who}, would invest <b>${short$(L.amt)}</b> <span class="dim">(${f.leads} lead${f.leads === 1 ? "" : "s"}${f.turned ? `; turned away ${f.turned} small one${f.turned > 1 ? "s" : ""} today` : ""})</span></div>
+    <div class="angles">${Object.entries(ANGLES).map(([k, v]) => `<button data-angle="${k}">${v}</button>`).join("")}<button class="x" data-decline="1" title="Pass on this lead. No reputation cost.">Turn away</button></div>
+    <div class="dim" style="font-size:11px;margin-top:4px">About ${Math.round(pitchChance() * 100)}% to sign. Pick the angle that suits them (+20%); the opposite one backfires.${full ? ` <span class="${over ? "down" : "gold"}">Every seat is taken: each client past ${o.clients} makes all of them less happy${over ? ` (now −${over.toFixed(1)}/day)` : ""}.</span>` : ""}</div>`
+    : `<div class="dim">🤝 No leads to pitch. Cold call, or hire interns.</div>`);
+  // meetings
+  const mh = f.meetings.map(m => {
+    const c = f.clients.find(x => x.id === m.cid), t = MEETINGS.find(x => x.id === m.kind); if (!c) return "";
+    return `<div class="meet"><div><b>${esc(c.name)}</b> <span class="dim">${PROFILES[c.prof].icon} ${PROFILES[c.prof].label} · ${short$(c.aum)} · ${m.due > S.day ? "answer by tomorrow" : "answer today"}</span><br>${esc(t.text(c, m))}</div>
+      <div class="opts">${t.opts.map((op, i) => `<button data-meet="${m.id}" data-opt="${i}">${op.l}${op.cost ? ` (${money0(op.cost())})` : ""}</button>`).join("")}</div></div>`;
+  }).join("");
+  setH("meetList", mh || `<p class="dim">No meetings waiting. Clients ask for them now and then; answer before they expire${f.staff.rm ? ", or your relationship managers will take them" : ""}.</p>`);
+  $("meetCount").textContent = (f.meetings.length ? `(${f.meetings.length})` : "") + (f.rmHandled ? ` · ☕ your RMs took ${f.rmHandled} today` : "");
+  // staff
+  let sh = "";
+  for (const [k, r] of Object.entries(STAFF)) {
+    if (r.need && !f.research[r.need] && !f.staff[k]) { sh += `<div class="staff locked"><div><b>🔒 ${r.name}</b><p>Research ${resName(r.need)} to unlock. ${r.desc}</p></div></div>`; continue; }
+    const cost = hireCost(k);
+    sh += `<div class="staff"><div><b>${r.icon} ${r.name}</b> ×${f.staff[k]}<p>${r.desc} Salary ${money0(salaryOf(k))}/day.</p></div><div class="btns">
+    ${f.staff[k] ? `<button class="x" data-fire="${k}" title="Let one go: costs ${money0(severance(k))} severance (5 days' salary)">Fire</button>` : ""}
+    <button data-hire="${k}" ${S.firm.cash < cost || staffCount() >= o.staff ? "disabled" : ""}>${staffCount() >= o.staff ? "Desks full" : S.firm.cash < cost ? "Need " + short$(cost) : "Hire " + short$(cost)}</button></div></div>`;
+  }
+  const nxo = OFFICES[f.office + 1];
+  if (staffCount() >= o.staff && nxo) sh += topUpOfficeBtn(nxo, true);
+  if (staffCount() >= o.staff && nxo) sh += `<p class="req">All ${o.staff} desks are taken.</p><button class="primary" data-office="1" style="width:100%" ${S.firm.cash < nxo.cost ? "disabled" : ""}>🏢 ${S.firm.cash < nxo.cost ? `Need ${short$(nxo.cost)} for the ${nxo.name}` : `Move to the ${nxo.name} · ${short$(nxo.cost)}`} (${nxo.staff} desks, ${nxo.clients} clients)</button>`;
+  const blocked = Object.keys(STAFF).filter(k => (!STAFF[k].need || f.research[STAFF[k].need]) && staffCount() < o.staff && S.firm.cash < hireCost(k)).sort((a, b) => hireCost(a) - hireCost(b))[0];
+  if (blocked) {
+    const gap = Math.ceil(hireCost(blocked) - f.cash);
+    sh += myStake() >= gap ? `<p class="req">The firm account is short for new hires.</p><button data-topup="${gap}" style="width:100%">🏦 Move ${short$(gap)} from your fund stake to hire ${/^[aeiou]/i.test(STAFF[blocked].name) ? "an" : "a"} ${STAFF[blocked].name}</button>` : "";
+  }
+  setH("staffList", sh);
+  const covered = rmCovered();
+  const cl = f.clients.length ? f.clients.slice().sort((a, b) => (!!b.req - !!a.req) || a.aum - b.aum).map(c => {
+    const col = c.sat > 66 ? "#2ecc71" : c.sat > 33 ? "#f5c542" : "#ff5c5c";
+    return `<div class="staff"><div><b>${esc(c.name)}</b> <span title="${PROFILES[c.prof].label}">${PROFILES[c.prof].icon}</span>${covered.has(c.id) ? ` <span title="A relationship manager looks after them">☕</span>` : ""}${c.disc ? ` <span class="dim">−${c.disc * 100}% fees</span>` : ""}<p>${short$(c.aum)} · <span class="sat"><i style="width:${c.sat}%;background:${col}"></i></span> ${Math.round(c.sat)}</p>
+      ${c.req ? `<div class="req">📝 ${esc(c.req.text)}</div>` : ""}</div><button class="x" data-drop="${c.id}" title="Let this client go and return their money (−${dropRep()} reputation)">${dropArm === c.id ? `Confirm drop (−${dropRep()} rep)` : "Drop"}</button></div>`;
+  }).join("") : `<p class="dim">No clients yet. Cold call to get leads, then pitch them with the angle that suits them.</p>`;
+  setH("clientList", cl);
+  if (document.activeElement !== $("minInv")) $("minInv").value = f.minInv || "";
+  $("overbook").checked = !!f.overbook;
+  { const low = f.minInv ? f.clients.filter(c => c.aum < f.minInv).length : 0, b = $("dropBelow");
+    const txt = dropLowArm && low ? `Confirm: drop ${low} (−${dropLowRep(low)} rep)` : `Drop all below it${low ? ` (${low})` : ""}`; if (b.textContent !== txt) b.textContent = txt; }
+  // risk radar
+  let rh = "";
+  for (const w of S.events.warn) {
+    const T = THREATS[w.k], cost = stopCost(T);
+    rh += `<div class="warn"><b>${T.icon} ${T.name} incoming</b> <span class="dim">(strikes ${w.hitDay > S.day ? "tomorrow" : "today"})</span><br>${T.warn}<br>
+      <button data-stop="${w.k}" ${S.firm.cash < cost ? "disabled" : ""}>${T.stop[0]} · ${money0(cost)}</button> <span class="dim">or gamble: about 1 in 4 threats fizzle.</span></div>`;
+  }
+  if (S.events.crash?.seen && S.events.crash.day === S.day) rh += `<div class="warn"><b>📉 Flash crash expected around ${clockStr(S.events.crash.tick)}</b><br>Sell, hedge with puts, or short before it hits.</div>`;
+  rh += `<table><tr><th>Threat</th><th>Daily risk</th><th>Lowered by</th></tr>` + Object.entries(THREATS).map(([k, T]) => {
+    const live = !T.min || T.min(f), p = live ? T.odds(f) : 0, [lv, c] = live ? threatLevel(p) : ["None yet", "dim"];
+    return `<tr><td>${T.icon} ${T.name}</td><td class="${c}">${lv}</td><td class="dim" style="white-space:normal;font-size:11px">${T.fix}</td></tr>`;
+  }).join("") + `</table>`;
+  rh += `<div class="upg"><div><b>🧾 Catastrophe insurance</b><p>Pays 70% of money lost to catastrophes. Premium ${money0(premium())}/day (0.02% of net worth).</p></div><button data-ins="1" class="${S.insured ? "on" : ""}">${S.insured ? "✓ Insured · cancel" : "Buy cover"}</button></div>`;
+  if (S.events.log.length) rh += `<details><summary class="dim">Event history</summary>${S.events.log.map(x => `<div class="dim" style="font-size:11px">${esc(x).replace(/&lt;br&gt;/g, " ")}</div>`).join("")}</details>`;
+  setH("radar", rh);
+}
+function renderResearch() {
+  const f = S.firm, avail = r => !f.research[r.id] && (!r.need || f.research[r.need]);
+  const ready = RESEARCH.filter(r => avail(r) && f.rp >= r.cost), nx = OFFICES[f.office + 1];
+  const officeReady = nx && S.firm.cash >= nx.cost * 2 && (staffCount() >= office().staff || f.clients.length >= office().clients);
+  $("researchAlert").textContent = ready.length || officeReady ? `● ${ready.length + (officeReady ? 1 : 0)} ready` : "";
+  f.told = f.told || {};
+  for (const r of ready) if (!f.told[r.id]) { f.told[r.id] = 1; toast(`🔬 You can afford <b>${r.name}</b> (${r.cost} RP). Unlock it in Research &amp; shop.`, "gold", 6000); }
+  if (officeReady && !f.told["office" + f.office]) { f.told["office" + f.office] = 1; toast(`🏢 Your ${office().name} is full. The ${nx.name} is in Research &amp; shop.`, "gold", 6000); }
+  $("rpLabel").textContent = `${f.rp} RP · ${RESEARCH.filter(r => f.research[r.id]).length}/${RESEARCH.length} done`;
+  let h = "";
+  for (const br of BRANCHES) {
+    h += `<div class="branch">${br}</div>`;
+    for (const r of RESEARCH.filter(r => r.br === br)) {
+      const lock = r.need && !f.research[r.need];
+      h += `<div class="upg ${lock ? "locked" : ""}"><div><b>${lock ? "🔒 " : ""}${r.name}</b><p>${r.desc}${lock ? ` <i>Needs ${resName(r.need)}.</i>` : ""}</p></div>${f.research[r.id] ? `<span class="owned">✓ done</span>` : `<button data-research="${r.id}" ${f.rp < r.cost || lock ? "disabled" : ""}>${r.cost} RP</button>`}</div>`;
+    }
+  }
+  h += `<div class="branch">Ongoing research <span class="dim" style="text-transform:none">· keep leveling these up</span></div>`;
+  for (const L of LABS) {
+    const lv = lab(L.id), maxed = lv >= L.max, cost = labCost(L);
+    h += `<div class="upg"><div><b>${L.name}</b> <span class="dim">lvl ${lv}/${L.max}</span><p>${lv ? "Now: " + L.desc(lv) + " " : ""}${maxed ? "" : "Next: " + L.desc(lv + 1)}</p></div>${maxed ? `<span class="owned">✓ max</span>` : `<button data-lab="${L.id}" ${f.rp < cost ? "disabled" : ""}>${cost} RP</button>`}</div>`;
+  }
+  setH("researchList", h);
+  let oh = "";
+  OFFICES.forEach((o, i) => oh += `<div class="upg"><div><b>${o.name}</b><p>${o.staff} staff · ${o.clients} clients · clients bring ${o.mult}× more · rent ${money0(o.rent)}/day</p></div>${i <= f.office ? (i === f.office ? `<span class="owned">✓ current</span>` : `<span class="dim">past</span>`) : i === f.office + 1 ? `<button data-office="1" ${S.firm.cash < o.cost ? "disabled" : ""}>Move ${short$(o.cost)}</button>` : `<span class="dim">${short$(o.cost)}</span>`}</div>`);
+  if (nx) oh += topUpOfficeBtn(nx, true);
+  setH("officeList", oh);
+  let sh = "";
+  for (const it of SHOP) {
+    const lvl = f.shop[it.id] || 0, cost = shopCost(it), lock = it.need && !f.research[it.need], maxed = lvl >= it.max;
+    const now = it.max > 1 && !it.once ? (lvl ? `Now: ${it.desc(lvl)} ` : "") + (maxed ? "" : `Next level: ${it.desc(lvl + 1)}`) : it.desc(1);
+    sh += `<div class="upg ${lock ? "locked" : ""}"><div><b>${it.icon} ${it.name}</b>${it.max > 1 && !it.once ? ` <span class="dim">lvl ${lvl}/${it.max}</span>` : ""}<p>${now}${lock ? ` <i>Needs ${resName(it.need)}.</i>` : ""}</p></div>
+      ${maxed ? `<span class="owned">✓ ${it.max > 1 ? "max" : "owned"}</span>` : `<button data-shop="${it.id}" ${S.firm.cash < cost || lock ? "disabled" : ""}>${short$(cost)}</button>`}</div>`;
+  }
+  setH("shopList", sh);
+}
+function syncTicket() {
+  for (const id of ["tkSym", "opSym"]) if ($(id).value !== selected) $(id).value = selected;
+  $("opStrike").dataset.for = "";
+  renderTicketPreview();
+}
+
+// ---------- modal ----------
+function modal(html) { closeModal(); const bg = document.createElement("div"); bg.className = "modal-bg"; bg.id = "modalBg"; bg.innerHTML = `<div class="modal">${html}</div>`; document.body.appendChild(bg); }
+function closeModal() { $("modalBg")?.remove(); }
+
+// ---------- data loading ----------
+async function getJSON(url, ms = 6000) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); } finally { clearTimeout(t); }
+}
+async function loadQuotes() {
+  try {
+    // the server takes up to 40 symbols per request
+    const parts = await Promise.all([0, 40].map(i => getJSON("api/quotes?symbols=" + COMPANIES.slice(i, i + 40).map(c => c.t).join(","), 15000).catch(() => ({}))));
+    const q = Object.assign({}, ...parts);
+    let n = 0;
+    for (const c of COMPANIES) if (q[c.t]) { c.p = q[c.t].price; c.v = clamp(q[c.t].vol, 0.15, 0.65); c.closes = q[c.t].closes; n++; }
+    net.quotesLive = n > 0;
+  } catch { net.quotesLive = false; }
+  COMPANIES.forEach(c => c.base = c.p);
+}
+function enqueue(items, breaking) {
+  const fresh = items.filter(it => { const k = newsKey(it); if (seenKeys.has(k)) return false; seenKeys.add(k); return true; });
+  if (!fresh.length) return 0;
+  if (breaking) { S.queue.unshift(...fresh); return fresh.length; }
+  // oldest first, so the wire catches up to the present; headlines that touch the market come first within that order
+  fresh.sort((a, b) => a.time - b.time);
+  const rel = [], other = [];
+  for (const it of fresh) { const a = analyze(it); (a.tickers.length || a.sectors.length || a.macro ? rel : other).push(it); }
+  const out = [];
+  while (rel.length || other.length) { out.push(...rel.splice(0, 3)); if (other.length) out.push(other.shift()); }
+  S.queue.push(...out);
+  return fresh.length;
+}
+async function pollNews(first) {
+  net.lastPoll = Date.now();
+  try {
+    const d = await getJSON("api/news");
+    const n = enqueue(d.items, !first);
+    net.live = true;
+    if (!first && n) toast(`📰 ${n} new real headline${n > 1 ? "s" : ""} on the wire`, "", 3000);
+  } catch { net.live = false; }
+  $("liveBadge").className = net.live ? "live" : "";
+  $("liveBadge").textContent = net.live ? `● LIVE news${net.quotesLive ? " + prices" : ""}` : "offline: simulated news";
+  $("liveBadge").title = net.live ? "Headlines come from real CNBC, MarketWatch and BBC feeds; starting prices are real Yahoo Finance quotes." : "Run server.py for real headlines and prices.";
+}
+
+// ---------- save / start ----------
+function save() { if (AGENT || !S) return; S.seen = [...seenKeys].slice(-600); localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }
+// Playtest helper: jump to a big, established firm so a short session can test the late game.
+function richStart(amt) {
+  if (!AGENT || !S) return;
+  const f = S.firm; amt = +amt || 2e8;
+  f.office = 5; f.rep = 150; f.cash = Math.round(amt * 0.025); f.feeTier = 2; S.day = 40;
+  for (const id of ["scanner", "models", "satellite", "altdata", "greeks", "router", "algodesk", "risklab", "margin", "script", "crm", "brand", "referral", "manual", "cyber", "hr"]) f.research[id] = true;
+  Object.assign(f.staff, { intern: 3, assoc: 3, rm: 3, analyst: 4, quant: 2, quanttrader: 2, researcher: 2, riskofficer: 1, compliance: 1, security: 1 });
+  f.labs = { signal: 2, capacity: 1 }; f.rp = 150;
+  S.cash = S.units = S.myUnits = Math.round(amt * 0.4); S.npuOpen = 1;
+  for (let i = 0; i < 20; i++) { const c = { id: S.nextId++, name: `${pick(FIRST)} ${pick(LAST)}`, prof: pick(Object.keys(PROFILES)), inst: false, units: 0, aum: 0, hwm: 0, sat: 72, req: null, since: 1 }; fundIn(Math.round(amt * 0.03), c); f.clients.push(c); }
+  for (const t in S.stocks) S.stocks[t].earn = Math.max(S.stocks[t].earn, S.day + 2);
+  S.equityOpen = S.fundOpen = equity(); S.picks = []; makePicks(pickSlots()); S.crowd = 0.1;
+  S.rival = { nw: amt * 0.3 }; S.events.story.rival = 1; S.events.story.mentor = 1;
+  render(true);
+}
+function startNew() {
+  if (!confirmSafe()) return;
+  localStorage.removeItem(SAVE_KEY);
+  intro();
+}
+function confirmSafe() { return AGENT || !S || confirm("Start a new game? Your current firm will be lost."); }
+function intro() {
+  setSpeed(0);
+  modal(`<h1>📈 Ticker Tycoon</h1>
+    <p>You have <b>${money0(START_CASH)}</b> (${money0(START_CASH - START_FIRM)} in your trading fund, ${money0(START_FIRM)} in the firm account) and a garage. Trade real companies whose prices react to <b>real headlines</b> from today's news wire, and build a trading firm on the side.</p>
+    <ul>
+      <li><b>Trading desk:</b> market, limit and stop orders, short selling, and call/put options.</li>
+      <li><b>News wire:</b> every headline can move stocks. Read fast, because prices react over the next hour of game time.</li>
+      <li><b>Analyst desk:</b> stock picks from your analysts. Hire more and research better data to sharpen them.</li>
+      <li><b>Your firm:</b> clients put their money into your fund, so you have more to trade. Keep them happy and they pay fees into the firm account; lose their money and they leave or sue.</li>
+      <li><b>Research &amp; shop:</b> a four-branch research tree, upgrades, offices and big-ticket flexes.</li>
+    </ul>
+    <div class="field"><label>Firm name</label><input id="introName" value="Garage Capital" maxlength="28"></div>
+    <div class="field"><label>Day length</label><select id="introLen">${DAYLENS}</select><span class="dim" style="font-size:11px">real time per trading day at ▶ speed (change it any time)</span></div>
+    <button class="primary" id="introStart" style="width:100%;margin-top:8px">Ring the opening bell 🔔</button>`);
+  $("introName").focus(); $("introName").select();
+  const go = async () => {
+    const name = $("introName").value.trim() || "Garage Capital";
+    $("introStart").disabled = true; $("introStart").textContent = "Loading live market data…";
+    await loadQuotes();
+    S = freshState(name); S.idxOpen = indexValue(); S.dayLen = +$("introLen").value;
+    makePicks(pickSlots()); checkStory();
+    seenKeys.clear();
+    await pollNews(true);
+    closeModal(); selected = "NVDA"; syncTicket(); renderNews(); render(true);
+    setSpeed(AGENT ? 0 : 1);
+    toast("🔔 Market open! Watch the news wire and analyst picks on the right.", "gold");
+  };
+  $("introStart").onclick = go;
+  $("introName").onkeydown = e => { if (e.key === "Enter") go(); };
+}
+async function resume(saved) {
+  S = migrate(saved);
+  for (const c of COMPANIES) { c.p = S.stocks[c.t]?.price ?? c.p; c.base = c.p; if (!S.stocks[c.t]) S.stocks[c.t] = { price: c.p, open: c.p, prev: c.p, hist: [c.p], daily: [c.p], vol: c.v, imp: [], bump: 1, news: [] }; }
+  // the index is measured from the saved game's first prices
+  if (S.base) for (const c of COMPANIES) c.base = S.base[c.t] || c.base;
+  (S.seen || []).forEach(k => seenKeys.add(k));
+  if (!S.idxOpen) S.idxOpen = indexValue();
+  syncTicket(); renderNews(); render(true);
+  toast(`Welcome back to <b>${esc(S.name)}</b>. Day ${S.day}.`, "gold");
+  setSpeed(0);
+  pollNews(false);
+}
+
+// ---------- events ----------
+function bind() {
+  $("speed").onclick = e => { const b = e.target.closest("button"); if (b) setSpeed(+b.dataset.speed); };
+  document.querySelector(".tabs").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+    document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x.id === "tab-" + b.dataset.tab));
+    render(true);
+  };
+  $("watchTable").onclick = e => { const tr = e.target.closest("tr"); if (!tr) return;
+    if (tr.dataset.sec) { const s = tr.dataset.sec; closedSecs.has(s) ? closedSecs.delete(s) : closedSecs.add(s); localStorage.setItem("tickerTycoon.closedSecs", JSON.stringify([...closedSecs])); renderWatch(); return; }
+    selected = tr.dataset.t; chartMode = "stock"; syncTicket(); render(true); };
+  $("bkSet").innerHTML = `<option value="all">Whole market (${COMPANIES.length} stocks)</option>` + SEC_ORDER.map(s => `<option value="${s}">${s} (${COMPANIES.filter(c => c.s === s).length})</option>`).join("");
+  const bk = (side) => () => { const r = basketTrade(side, $("bkAmt").value, $("bkSet").value); if (!r.ok) toast(r.msg, "bad"); window.__lastResult = r; render(true); };
+  $("bkBuy").onclick = bk("buy"); $("bkSell").onclick = bk("sell");
+  $("bkMax").onclick = () => { $("bkAmt").value = Math.max(0, Math.floor(S.cash - marginReq() * shortValue())); renderBasket(); };
+  ["bkAmt", "bkSet"].forEach(id => $(id).oninput = () => { if (S) { S.basket.set = $("bkSet").value; renderBasket(); } });
+  $("bkAuto").onchange = () => { S.basket.auto = $("bkAuto").checked; S.basket.set = $("bkSet").value; S.basket.keep = clamp(+$("bkKeep").value || 0, 0, 100);
+    toast(S.basket.auto ? `🧺 Auto-invest on: every hour, cash above ${S.basket.keep}% of the fund goes into the ${S.basket.set === "all" ? "whole-market" : S.basket.set} basket.` : "🧺 Auto-invest off."); };
+  $("bkKeep").onchange = () => { S.basket.keep = clamp(+$("bkKeep").value || 0, 0, 100); };
+  $("minInv").onchange = () => { dropLowArm = false; S.firm.minInv = Math.max(0, Math.floor(+$("minInv").value || 0)); const n = screenLeads();
+    toast(S.firm.minInv ? `Minimum investment set to ${money0(S.firm.minInv)}.${n ? ` Turned away ${n} smaller lead${n > 1 ? "s" : ""}.` : ""}` : "No minimum investment."); render(true); };
+  $("dropBelow").onclick = () => { const r = dropBelowMin(); if (!r.ok || dropLowArm) toast(r.msg, r.ok ? "" : "bad"); window.__lastResult = r; render(true); };
+  $("news").onclick = e => { const t = e.target.closest(".tag[data-t]"); if (t) { selected = t.dataset.t; syncTicket(); render(); } };
+  $("chartHead").onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.r) chartRange = b.dataset.r; if (b.dataset.mode) chartMode = b.dataset.mode; renderChart(); };
+  const opts = COMPANIES.map(c => `<option value="${c.t}">${c.t} · ${c.n}</option>`).join("");
+  $("tkSym").innerHTML = opts; $("opSym").innerHTML = opts;
+  $("tkSym").onchange = () => { selected = $("tkSym").value; syncTicket(); render(); };
+  $("opSym").onchange = () => { selected = $("opSym").value; syncTicket(); render(); };
+  $("ticketMode").onclick = e => { const b = e.target.closest("button"); if (!b) return; ticketMode = b.dataset.mode;
+    $("ticketMode").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    $("stockTicket").style.display = ticketMode === "stock" ? "" : "none"; $("optionTicket").style.display = ticketMode === "option" ? "" : "none"; $("basketTicket").style.display = ticketMode === "basket" ? "" : "none"; if (ticketMode === "basket") renderBasket(); };
+  $("tkSide").onclick = e => { const b = e.target.closest("button"); if (!b) return; tkSide = b.dataset.side;
+    $("tkSide").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    $("tkSubmit").className = tkSide === "buy" ? "buy" : "sell"; $("tkSubmit").textContent = tkSide === "buy" ? "Place buy order" : "Place sell order"; renderTicketPreview(); };
+  $("opKind").onclick = e => { const b = e.target.closest("button"); if (!b) return; opKind = b.dataset.kind;
+    $("opKind").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); renderTicketPreview(); };
+  $("tkType").onchange = () => { const m = $("tkType").value === "market"; $("tkPrice").disabled = m;
+    if (!m && !$("tkPrice").value) $("tkPrice").value = S.stocks[$("tkSym").value].price.toFixed(2); if (m) $("tkPrice").value = ""; renderTicketPreview(); };
+  ["tkQty", "tkPrice", "opQty", "opExp", "opStrike"].forEach(id => $(id).oninput = renderTicketPreview);
+  $("tkMax").onclick = () => { const p = S.stocks[$("tkSym").value].price; $("tkQty").value = Math.max(1, Math.floor((S.cash - commission()) / (p * (1 + spread())))); renderTicketPreview(); };
+  $("tkSubmit").onclick = () => {
+    const r = placeOrder({ t: $("tkSym").value, side: tkSide, qty: $("tkQty").value, type: $("tkType").value, price: $("tkPrice").value });
+    if (!r.ok) toast(r.msg, "bad");
+    window.__lastResult = r; render(true);
+  };
+  $("opSubmit").onclick = () => {
+    const r = buyOption({ t: $("opSym").value, kind: opKind, strike: $("opStrike").value, days: $("opExp").value, n: $("opQty").value });
+    if (!r.ok) toast(r.msg, "bad");
+    window.__lastResult = r; render(true);
+  };
+  $("book").onclick = e => {
+    const s = e.target.closest("[data-psort]");
+    if (s) { const k = s.dataset.psort; posSort = { k, d: posSort.k === k ? -posSort.d : k === "t" ? 1 : -1 }; localStorage.setItem("tickerTycoon.posSort", JSON.stringify(posSort)); renderBook(); return; }
+    const b = e.target.closest("button"); if (!b) return;
+    const r = b.dataset.cancel ? cancelOrder(b.dataset.cancel) : b.dataset.close ? closePosition(b.dataset.close) : sellOption(b.dataset.sellopt);
+    if (!r.ok) toast(r.msg, "bad");
+    window.__lastResult = r; render(true);
+  };
+  const firmBtn = (id, fn) => $(id).onclick = () => { const r = fn(); if (!r.ok) toast(r.msg, "bad"); window.__lastResult = r; render(true); };
+  firmBtn("clkCall", () => coldCall()); firmBtn("clkResearch", () => doResearch());
+  const act = (fn) => e => { const b = e.target.closest("button"); if (!b || b.disabled) return; const r = fn(b); if (!r.ok) toast(r.msg, "bad"); window.__lastResult = r; render(true); };
+  $("clkPitch").onclick = act(b => b.dataset.decline ? declineLead() : pitch(true, b.dataset.angle));
+  $("overbook").onchange = () => { S.firm.overbook = $("overbook").checked; toast(S.firm.overbook ? "Sales associates will keep signing clients past your office's seats." : "Sales associates stop when every seat is taken."); };
+  $("meetList").onclick = act(b => answerMeeting(b.dataset.meet, b.dataset.opt));
+  $("clientList").onclick = act(b => dropClient(b.dataset.drop));
+  $("autoCfg").onchange = e => { const el = e.target.closest("[data-auto]"); if (!el || !S) return; const k = el.dataset.auto;
+    S.auto[k] = k === "on" || k === "fill" ? el.checked : k === "unit" ? el.value : Math.max(k === "conf" ? 50 : 0, +el.value || 0);
+    if (k === "on") toast(S.auto.on ? `🤖 Auto-trader on: picks at ${S.auto.conf}%+ confidence, ${S.auto.size} ${S.auto.unit === "pct" ? "% of the fund" : S.auto.unit === "usd" ? "dollars" : "shares"} each.` : "🤖 Auto-trader off."); };
+  $("radar").onclick = act(b => b.dataset.stop ? preventThreat(b.dataset.stop) : toggleInsurance());
+  $("acctCard").onclick = act(b => transfer(b.dataset.xfer, $("xferAmt").value));
+  $("feeTiers").onclick = act(b => setFeeTier(+b.dataset.tier));
+  $("staffList").onclick = act(b => b.dataset.fire ? fire(b.dataset.fire) : b.dataset.topoffice ? topUpAndMove(+b.dataset.topoffice) : b.dataset.topup ? transfer("out", b.dataset.topup) : b.dataset.office ? upgradeOffice() : hire(b.dataset.hire));
+  $("researchList").onclick = act(b => b.dataset.lab ? buyLab(b.dataset.lab) : buyResearch(b.dataset.research));
+  $("officeList").onclick = act(b => b.dataset.topoffice ? topUpAndMove(+b.dataset.topoffice) : upgradeOffice());
+  $("shopList").onclick = act(b => buyShop(b.dataset.shop));
+  $("picks").onclick = e => { const el = e.target.closest("[data-pick]"); if (!el) return; selected = el.dataset.pick; syncTicket();
+    document.querySelector(`.tabs [data-tab="trade"]`).click(); if (ticketMode !== "stock") $("ticketMode").querySelector('[data-mode="stock"]').click();
+    $("tkSide").querySelector(`[data-side="${+el.dataset.call > 0 ? "buy" : "sell"}"]`).click(); render(true); };
+  $("dayLen").innerHTML = DAYLENS;
+  $("dayLen").onchange = () => { if (S) { S.dayLen = +$("dayLen").value; save(); toast(`One trading day now lasts ${$("dayLen").selectedOptions[0].text} at normal speed.`); } };
+  $("newGameBtn").onclick = startNew;
+  document.addEventListener("keydown", e => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || $("modalBg")) return;
+    if (e.code === "Space") { e.preventDefault(); setSpeed(speed ? 0 : 1); }
+  });
+  window.addEventListener("resize", () => S && renderChart());
+  window.addEventListener("beforeunload", save);
+  setInterval(save, 30000);
+  setInterval(() => { if (S && !AGENT && Date.now() - net.lastPoll > 180000) pollNews(false); }, 10000);
+}
+
+// ---------- agent hook ----------
+window.__tycoon = {
+  get S() { return S; }, halted, basketTrade, declineLead, quantAccuracy, autoCap, lossBase, clientLoad, overloadHit, dropRep, fundCapacity, richStart, edgeF, rawAccuracy, liquidity, fire, buyLab, LABS, autoBudget, screenLeads, dropBelowMin, optSig, borrowRate, DIVIDENDS, netWorth, npu, myStake, FEE_TIERS, feeTierOpen, firmShort, nextTip, impactOf, COMPANIES, STAFF, RESEARCH, OFFICES, SHOP, MEETINGS, THREATS, PROFILES, ANGLES, TPD,
+  advance, equity, indexValue, optMid, strikesFor, optAsk, pitchChance, office, rankOf, clockStr, sectorHolding, hireCost, shopCost, stopCost, pickAccuracy, nextLead,
+  select(t) { selected = t; syncTicket(); render(); },
+};
+
+bind();
+requestAnimationFrame(loop);
+(() => {
+  let saved = null;
+  if (!AGENT) try { saved = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch {}
+  if (saved && saved.v >= 1) resume(saved); else intro();
+  if (AGENT) { const s = document.createElement("script"); s.src = "playtest/agent.js?" + Date.now(); document.body.appendChild(s); }
+})();
+</script>
+</body>
+</html>
