@@ -127,7 +127,7 @@ foreach ($g in $todo) {
 
 [System.IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 10), $utf8)
 
-if (-not $changed.Count -and -not $Force) { Write-Host "Nothing changed, so nothing to upload."; }
+if (-not $changed.Count -and -not $Force) { Write-Host "No game files changed."; }
 
 # Commit and push.
 if (-not (Test-Path -LiteralPath (Join-Path $site ".git"))) { Write-Host "Not a git repository yet, so nothing was uploaded."; exit 0 }
