@@ -1,5 +1,17 @@
 {
     "siteTitle":  "Arcade Shelf",
+    "sections":  [
+                     {
+                         "type":  "game",
+                         "title":  "Games",
+                         "blurb":  "Play in your browser, or download to keep."
+                     },
+                     {
+                         "type":  "app",
+                         "title":  "Apps",
+                         "blurb":  "Tools that run on your own computer."
+                     }
+                 ],
     "games":  [
                   {
                       "id":  "hearthlands",
@@ -24,7 +36,8 @@
                       "version":  1,
                       "updated":  "2026-11-18",
                       "hash":  "376393e1174cf863a0f73bec4c614f97ae8598c7900a04d417ac8afa50bb4e13",
-                      "size":  236215
+                      "size":  236215,
+                      "type":  "game"
                   },
                   {
                       "id":  "ticker-tycoon",
@@ -53,7 +66,8 @@
                       "version":  1,
                       "updated":  "2026-11-18",
                       "hash":  "2e9c899242261e31e6fc6405311062c47eaaa4e1eeeaf1e8826df0d359146798",
-                      "size":  69391
+                      "size":  69391,
+                      "type":  "game"
                   },
                   {
                       "id":  "quiz-maze",
@@ -79,7 +93,8 @@
                       "version":  1,
                       "updated":  "2026-11-18",
                       "hash":  "535c71fa516f04d21bb27159c73d5a6e1a42c5aad0b97a7e7186b3f57f1aec18",
-                      "size":  150433
+                      "size":  150433,
+                      "type":  "game"
                   },
                   {
                       "id":  "rydberg-lattice",
@@ -104,7 +119,8 @@
                       "version":  1,
                       "updated":  "2026-11-18",
                       "hash":  "491cf218c479251d0146c97bd1000ee870ce32e2e8da43d4ec01500dd2e59a0f",
-                      "size":  101597
+                      "size":  101597,
+                      "type":  "game"
                   },
                   {
                       "id":  "kerdos",
@@ -138,7 +154,8 @@
                       "version":  1,
                       "updated":  "2026-11-18",
                       "hash":  "0d5bf0aaef25331e9dd094abc17d38c78e0bd13444551a210538c34f568f0f16",
-                      "size":  376445
+                      "size":  376445,
+                      "type":  "app"
                   }
               ]
 }

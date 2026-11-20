@@ -66,7 +66,7 @@ header.site p { color: var(--muted); margin: 0; max-width: 560px; font-size: 18p
 }
 .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .body { padding: 18px 18px 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
-.body h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
+.body h3 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
 .tagline { margin: 0; font-weight: 600; }
 .desc { margin: 0; color: var(--muted); font-size: 15px; }
 .tags { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -119,3 +119,10 @@ header.site { padding-top: 32px; }
   .about .hero .actions { justify-content: center; }
   .about .portrait { width: 150px; height: 150px; }
 }
+
+/* Homepage sections */
+.shelf-section { padding-bottom: 8px; }
+.section-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 12px 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.section-head h2 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
+.section-head p { margin: 0; color: var(--muted); }
+.shelf-section .grid { padding-bottom: 40px; }
