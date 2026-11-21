@@ -45,6 +45,32 @@
                       "type":  "game"
                   },
                   {
+                      "id":  "gloamreach",
+                      "title":  "Gloamreach",
+                      "tagline":  "The things in the dark were people once. They still are.",
+                      "description":  "A gothic horror RPG in a world where night is truly dark. Something is always hunting you: hide in wardrobes, brambles and hollow logs, explore a ruined castle and the lands beyond it, and decide whether to kill the Gloam-kept or bring them back.",
+                      "tags":  [
+                                   "Horror",
+                                   "RPG"
+                               ],
+                      "icon":  "🏮",
+                      "accent":  "#b8763a",
+                      "source":  "../gloamreach",
+                      "play":  true,
+                      "download":  true,
+                      "excludeDirs":  [
+                                          "playtest"
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "version":  1,
+                      "updated":  "2026-11-20",
+                      "hash":  "fef5982754212a71dd52871740fe467fdb5f5fe9bae069be9a6d80a020353738",
+                      "size":  170738,
+                      "type":  "game"
+                  },
+                  {
                       "id":  "ticker-tycoon",
                       "title":  "Ticker Tycoon",
                       "tagline":  "Trade your way from a small stake to a fortune.",
