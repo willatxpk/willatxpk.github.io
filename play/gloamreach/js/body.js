@@ -205,6 +205,34 @@ export function buildHuman(mat, o) {
   }
   const mount = J(arms[1].hand, 0, -0.06, 0.02);
 
+  // ---- the Lantern-Taker: a long split skull with a column of eyes either side of the seam,
+  // bone spurs down its back, and the lanterns of the hunters it has kept, hung from it on chains
+  const lamps = [];
+  if (o.taker) {
+    head.scale.setScalar(1.55);
+    M(ball(0.12, 0.95, 1.4, 1.0, 14), skin, head, 0, 0.17, -0.005);
+    M(new THREE.BoxGeometry(0.02, 0.3, 0.05), 0x0a0302, head, 0, 0.15, 0.112);
+    for (let k = 0; k < 4; k++) for (const s of [-1, 1]) {
+      const e = new THREE.Mesh(ball(0.012, 1, 1, 1, 6), o.eyeMat); e.position.set(s * (0.032 + k * 0.005), 0.25 - k * 0.048, 0.11 - k * 0.005); head.add(e); eyes.push(e);
+    }
+    for (let k = 0; k < 6; k++) { const c = new THREE.ConeGeometry(0.028, 0.16 - k * 0.014, 5); c.rotateX(-0.9); M(c, o.bone || 0x9a9282, spine, 0, torsoH * (0.95 - k * 0.15), -0.11); }
+    if (o.lampMat) {
+      const lamp = (parent, x, y, z, chain) => {
+        const g = J(parent, x, y, z), L0 = J(g, 0, 0, 0); L0.scale.setScalar(1.7);
+        M(new THREE.CylinderGeometry(0.005, 0.005, chain, 4).translate(0, -chain / 2, 0), 0x2a2622, g);
+        const L = J(L0, 0, -chain / 1.7, 0), iron = 0x1e1a16;
+        M(new THREE.ConeGeometry(0.05, 0.035, 4).rotateY(Math.PI / 4), iron, L, 0, -0.005, 0);
+        M(new THREE.BoxGeometry(0.075, 0.012, 0.075), iron, L, 0, -0.115, 0);
+        for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) M(new THREE.BoxGeometry(0.008, 0.1, 0.008), iron, L, a * 0.033, -0.062, b * 0.033);
+        const core = new THREE.Mesh(ball(0.027, 1, 1.3, 1, 8), o.lampMat); core.position.set(0, -0.062, 0); L.add(core);
+        lamps.push(g);
+      };
+      // hung outside the body: from the hips, the shoulders and the hand
+      lamp(spine, -0.2 * wd, 0.0, 0.1 * wd, 0.14); lamp(spine, 0.19 * wd, -0.02, 0.09 * wd, 0.22); lamp(spine, 0.04, 0.0, -0.17 * wd, 0.12);
+      lamp(chest, -0.27 * wd, 0.04, 0.0, 0.3); lamp(chest, 0.27 * wd, 0.03, -0.02, 0.18); lamp(arms[0].hand, 0, -0.05, 0, 0.2);
+    }
+  }
+
   // ---- held things
   const item = (g, c, x, y, z, rx = 0) => { const m = M(g, c, mount, x, y, z); m.rotation.x = rx; return m; };
   const it = o.item;
@@ -223,7 +251,7 @@ export function buildHuman(mat, o) {
 
   if (o.hunch) { spine.rotation.x = o.hunch; neck.rotation.x = -o.hunch * 0.6; }
   bake(root, mat);
-  return { flames, root, body, hips, hipY, spine, chest, neck, head, jaw, arms, legs, mount, eyes, hunch: o.hunch || 0, armBase: o.armBase || 0, tilt: o.headTilt || 0, jawBase: (o.jawOpen || 0) * 0.75, tw: { t: 0, x: 0, y: 0, z: 0 } };
+  return { lamps, flames, root, body, hips, hipY, spine, chest, neck, head, jaw, arms, legs, mount, eyes, hunch: o.hunch || 0, armBase: o.armBase || 0, tilt: o.headTilt || 0, jawBase: (o.jawOpen || 0) * 0.75, tw: { t: 0, x: 0, y: 0, z: 0 } };
 }
 
 /**

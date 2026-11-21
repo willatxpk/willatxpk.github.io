@@ -297,6 +297,15 @@ export class Sound {
   twig(pan = 0, vol = 1) { this._noise(0.05, { type: 'highpass', f: 2600, g: 0.2 * vol, pan }); this._noise(0.04, { type: 'bandpass', f: 1500, q: 3, g: 0.14 * vol, when: 0.06, pan }); }
   crack(pan = 0, vol = 1) { this._noise(0.03, { type: 'highpass', f: 3000, g: 0.16 * vol, pan }); this._tone(240, 0.05, { type: 'square', g: 0.04 * vol, fEnd: 90, pan }); }
   footfall(pan = 0, vol = 1) { for (let i = 0; i < 2; i++) this._noise(0.1, { f: 520 + Math.random() * 200, g: 0.09 * vol, when: i * (0.32 + Math.random() * 0.05), pan }); }
+  // the Lantern-Taker: a footfall you feel, the clink of the lanterns it carries, and its bellow
+  stomp(pan = 0, vol = 1) { this._tone(48 + Math.random() * 8, 0.35, { g: 0.42 * vol, fEnd: 26, pan }); this._noise(0.22, { f: 260, g: 0.3 * vol, pan }); }
+  chains(pan = 0, vol = 1) { for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) { const w = i * (0.07 + Math.random() * 0.09); this._tone(1700 + Math.random() * 1600, 0.25, { type: 'triangle', g: 0.035 * vol, when: w, pan }); this._noise(0.03, { type: 'highpass', f: 4000, g: 0.06 * vol, when: w, pan }); } }
+  roar(pan = 0, vol = 1) {
+    if (!this.ok()) return;
+    for (const [f, d] of [[38, 0], [41, 0.04], [57, 0.08]]) this._tone(f, 2.2, { type: 'sawtooth', g: 0.2 * vol, fEnd: f * 0.6, a: 0.25, lp: 420, when: d, pan });
+    this._tone(520, 1.6, { type: 'sawtooth', g: 0.045 * vol, fEnd: 240, a: 0.3, lp: 1800, when: 0.1, pan, vib: 9 });
+    this._noise(2.0, { type: 'bandpass', f: 700, q: 1.2, fEnd: 260, g: 0.3 * vol, a: 0.3, pan });
+  }
   heartbeat(k) { this._tone(62, 0.13, { g: 0.32 * k, fEnd: 36 }); this._tone(56, 0.15, { g: 0.24 * k, fEnd: 32, when: 0.22 }); }
   whisper(pan = Math.random() * 2 - 1, vol = 1) {
     if (!this.ok()) return;

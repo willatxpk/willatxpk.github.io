@@ -584,6 +584,23 @@ function equip(k) {
   } else S.eq[it.slot] = k;
   snd.place(); renderHotbar();
 }
+// gear you buy goes straight on: a new weapon takes the weaker hand (a digging tool counts as weakest)
+let buying = false;
+function wearBought(k) {
+  const it = ITEMS[k]; if (!it?.slot || wearing(k)) return;
+  if (it.slot === 'rh') {
+    const rh = S.eq.rh, rate = j => (rh[j] && count(rh[j]) ? attackRating(rh[j]) - (ITEMS[rh[j]].tool ? 1000 : 0) : -1e9);
+    const j = rate(0) <= rate(1) ? 0 : 1, old = rh[j];
+    rh[j] = k; S.eq.rhSel = j;
+    log(`You take up the <b>${it.name}</b>${old && count(old) ? ` (the ${itemName(old)} goes in your pack)` : ''}. [V] swaps weapons · [I] shows your gear.`, 'good');
+  } else {
+    const old = eqItem(it.slot);
+    if (old && (ITEMS[old]?.ac || 0) > (it.ac || 0)) { log(`${it.name} is in your pack — [I] to wear it.`, 'good'); return; }
+    S.eq[it.slot] = k;
+    log(`You put on the <b>${it.name}</b>.`, 'good');
+  }
+  renderHotbar();
+}
 function unequip(slot, i) {
   if (slot === 'rh') { S.eq.rh[i] = null; if (S.eq.rh[1 - i]) S.eq.rhSel = 1 - i; } else S.eq[slot] = null;
   renderHotbar();
@@ -662,6 +679,7 @@ function rangedHit(m, a, head) {
   if (a.ammo === 'arrow_fire') { dmg += roll(6); m.fireT = 4; }
   if (a.ammo === 'arrow_poison') m.poisonT = 7;
   if (m.hexT > 0) dmg = Math.round(dmg * 1.5);
+  dmg = giantArmour(m, dmg);
   log(`🏹 d20(${d20})${fm(bonus)} = ${total} vs AC ${m.T.ac} — ${head ? '<b>HEADSHOT</b> ' : crit ? '<b>CRITICAL</b> ' : ''}hit for <b>${dmg}</b>${a.p < 0.6 ? ' <i>(weak draw)</i>' : ''}`, 'hit');
   floater((head ? '◎ ' : '') + dmg, over, head ? '#ffd24a' : '#ffb27a'); snd.hit();
   m.hp -= dmg; m.hurtT = 1;
@@ -759,10 +777,20 @@ $('talkShop').addEventListener('click', e => {
   if (b.dataset.inf) { const [k, id] = b.dataset.inf.split('|'), f = INFUSIONS[id], u = S.wup[k] ||= { lvl: 0 }; for (const [a, n] of Object.entries(f.need)) removeItem(a, n); removeItem('gold', f.gold); u.inf = id; snd.craft(); log(`⚒ ${itemName(k)} is now ${f.name.toLowerCase()}.`, 'good'); renderForge(); }
 });
 // ---- status: burning, poison, hexes — on them and on you
+// for a long time your weapons barely mark the Lantern-Taker
+function giantArmour(m, dmg) {
+  if (!m.T.giant) return dmg;
+  {
+    const k = S.level < 40 ? 0.12 : S.level < 100 ? 0.35 : S.level < 200 ? 0.7 : 1;
+    dmg = Math.max(1, Math.round(dmg * k));
+    if (k < 0.5 && !m.toldArmour) { m.toldArmour = true; log(`Your blow barely marks the ${m.T.name}. You cannot win this. <b>Run, and hide.</b>`, 'bad'); }
+  }
+  return dmg;
+}
 function hurtMob(m, dmg, col = '#ffb27a') {
   if (m.dead) return;
   if (m.hexT > 0) dmg = Math.round(dmg * 1.5);
-  m.hp -= dmg; m.hurtT = 1; if (!(m.brokenT > 0)) m.aware = true;
+  m.hp -= (dmg = giantArmour(m, dmg)); m.hurtT = 1; if (!(m.brokenT > 0)) m.aware = true;
   if (m.dist < 40) floater(String(dmg), m.pos.clone().add(new THREE.Vector3(0, m.h + 0.3, 0)), col);
   if (!checkBroken(m) && m.hp <= 0) killMob(m);
 }
@@ -1163,6 +1191,7 @@ function addItem(k, n = 1) {
     if (!had && it?.slot) {
       const free = it.slot === 'rh' ? S.eq.rh.some(r => !r || !count(r)) : !eqItem(it.slot);
       if (free) { equip(k); if (state === 'play') log(`Equipped: <b>${it.name}</b>.`, 'good'); }
+      else if (state === 'play' && it.slot === 'rh' && !buying) log(`<b>${it.name}</b> is in your pack — open [I] and click it to wield it.`, 'good');
     }
   }
   if (k === 'b5') S.flags.wood = true;
@@ -1572,7 +1601,7 @@ function renderPanel() {
 $('invGrid').addEventListener('click', e => {
   const s = e.target.closest('.slot'); if (!s) return;
   pick = s.dataset.k;
-  const it = ITEMS[pick], placeable = picisBlk(k);
+  const it = ITEMS[pick], placeable = isBlk(pick);
   $('itemInfo').innerHTML = `<b>${itemName(pick)}</b> — ${it ? it.desc : (BLOCKS[+pick.slice(1)].render === 'cross' && BLOCKS[+pick.slice(1)].light ? 'A light source. Place it to hold back the dark.' : 'A placeable block.')} <span style="color:var(--dim)">${placeable ? 'Now click a hotbar slot.' : 'A crafting material.'}</span>`;
   if (!placeable) pick = null;
   renderPanel();
@@ -1874,7 +1903,7 @@ function playerAttack(m) {
   { const ul = S.wup?.[rightHand()]?.lvl || 0; if (ul) { dmg = Math.round(dmg * (1 + 0.08 * ul)); } }
   if (m.hexT > 0) { dmg = Math.round(dmg * 1.5); txt += ' ×1.5 hexed'; }
   if (S.cls === 'rogue' && adv > 0) { const sd = sneakDice() * (crit ? 2 : 1); const sa = rollDice(sd, 6); dmg += sa; txt += ` + sneak ${sd}d6`; }
-  dmg = Math.max(1, dmg);
+  dmg = Math.max(1, giantArmour(m, dmg));
   log(`⚔ d20(${d20})${fm(bonus)} = ${total} vs AC ${m.T.ac} — <b>${crit ? 'CRITICAL ' : ''}hit</b>: ${txt} = <b>${dmg}</b>${advTxt}`, 'hit');
   floater((crit ? '‼ ' : '') + dmg, m.pos.clone().add(new THREE.Vector3(0, m.h + 0.3, 0)), crit ? '#ffd24a' : '#ffb27a');
   crit ? snd.crit() : snd.hit();
@@ -1897,6 +1926,7 @@ function killMob(m, restored = false) {
   else if (ACCURSED.has(m.type) && S.flags.magic) { const ae = m.type === 'king' ? 40 : m.T.xp >= 120 ? 8 : 4; S.aether = Math.min(maxAether(), (S.aether || 0) + ae); floater(`+${ae} Lumen`, m.pos.clone().add(new THREE.Vector3(0, m.h + 0.7, 0)), '#9fd8ff', 1.1); }
   if (restored) { if (m.type === 'king') { if (count('emptycore')) { removeItem('emptycore'); drops.push(['lumencore', 1]); } else drops.push(['kingash', 1]); S.flags.king = true; boss = null; msg('The Lord of Vharrow is returned', 'He gives back what he swallowed, and asks to be forgiven. Not by you: by all of them.', 7); snd.levelup(); fadeFlash(300); for (const o of mobs.slice()) if (o !== m && !o.dead && o.dist < 30 && o.type !== 'watcher') G.mobVanish(o, 'kneels, and is still'); } }
   else if (m.type === 'mirekin') { if (R() < 0.65) drops.push(['venomsac', 1]); if (R() < 0.2) drops.push(['shard', 1]); }
+  if (m.type === 'taker' && !restored) { drops.push(['gold', 60 + rollDice(6, 10)], ['shard', 3], ['oil', 4]); msg('The Lantern-Taker falls', 'One by one, the lanterns it carried go out. Somewhere out there, there are others.', 7); fadeFlash(250); }
   if (m.type === 'cinder') { if (R() < 0.65) drops.push(['emberresin', 1]); if (R() < 0.3) drops.push(['shard', 1]); }
   if (m.type === 'wendigo') { drops.push(['gold', rollDice(2, 8)]); if (R() < 0.4) drops.push(['shard', 1]); if (!count('hood') && R() < 0.2) drops.push(['hood', 1]); }
   const shardP = m.type === 'ghoul' ? 0.24 : 0.16;
@@ -1964,14 +1994,21 @@ const mobXP = m => Math.round((m.T.xp / 50) * (15 + 9 * Math.pow(m.lvl || 1, 1.5
 // mob-facing context
 const G = {
   world: null, ppos: P.pos, sun: 1, senseMult: 1,
+  get hidden() { return !!hideSpot; },
   perceive(m) { return perceive(m); },
   onLose(m) {
     if (m.hunter && m.dist < 34 && gameT - huntMsgT > 8) { huntMsgT = gameT; log(`The ${m.T.name} has lost sight of you. It is searching.`, 'lore'); }
   },
   onTwitch(m) { if (m.dist < 11 && Math.random() < 0.6) snd.crack(panFor(m.pos), clamp(1.2 - m.dist / 11, 0.15, 1)); },
+  onStomp(m) {
+    if (m.dist > 40) return;
+    const v = clamp(1.3 - m.dist / 34, 0.12, 1); snd.stomp(panFor(m.pos), v);
+    if (m.dist < 14) shakeT = Math.max(shakeT, 0.12 + 0.25 * (1 - m.dist / 14));
+  },
+  onChains(m) { if (m.dist < 36) snd.chains(panFor(m.pos), clamp(1.3 - m.dist / 30, 0.15, 1)); },
   onSearch(m) { if (m.dist < 22) snd.sniff(panFor(m.pos), clamp(1.2 - m.dist / 20, 0.2, 1)); },
   onGiveUp(m) {
-    if (!m.hunter) return;
+    if (!m.hunter || m.T.giant) return;
     m.losses = (m.losses || 0) + 1; m.scentT = sunNow < 0.35 ? 7 : 12;
     if (m.losses >= 3 || hideSpot || (inCover && crouch)) callOff(m, 'gives up the search, and turns away');
   },
@@ -1981,6 +2018,19 @@ const G = {
     if (dodgeT > 0) { floater('dodged', over, '#cfe6ff'); snd.miss(); return; }
     const tx = m.pos.x - P.pos.x, tz = m.pos.z - P.pos.z, tl = Math.hypot(tx, tz) || 1;
     const front = (tx * -Math.sin(yaw) + tz * -Math.cos(yaw)) / tl > 0.3;
+    if (T.giant) {
+      shakeT = Math.max(shakeT, 0.7); snd.stomp(0, 1);
+      if (guarding && front && gameT - guardAt < 0.45) log(`The ${T.name} is far too heavy to parry. It smashes straight through your guard.`, 'bad');
+      const floor = Math.round(S.maxHp * (S.level < 60 ? 0.55 : S.level < 150 ? 0.35 : 0.2));
+      const cap = Math.ceil(S.maxHp * (S.level < 60 ? 0.6 : 0.85)); // two blows, never one: the first is your warning
+      let dmg = Math.min(cap, Math.max(floor, Math.round((rollDice(T.dmg[0], T.dmg[1]) + T.dmg[2]) * (T.dmgMul || 1))));
+      if (guarding && front && offHand()) dmg = Math.round(dmg * 0.7);
+      log(`🩸 The ${T.name}'s arm comes down on you for <b>${dmg}</b>. <b>RUN.</b>`, 'bad');
+      const kx = P.pos.x - m.pos.x, kz = P.pos.z - m.pos.z, kl = Math.hypot(kx, kz) || 1;
+      P.vel.x += kx / kl * 10; P.vel.z += kz / kl * 10; P.vel.y = Math.max(P.vel.y, 5);
+      hurtPlayer(dmg, `the ${T.name}`); m.cd = T.cd + 1.2;
+      return;
+    }
     if (guarding && front && gameT - guardAt < 0.45) {
       m.stagT = T.boss ? 1.0 : 1.7; m.cd = Math.max(m.cd, T.cd + 0.5);
       snd.parry(); floater('PARRY', over, '#ffe9a0'); fadeFlash(60);
@@ -2013,7 +2063,7 @@ const G = {
     if (!m.jolted && m.type !== 'wolf' && (bx * -Math.sin(yaw) + bz * -Math.cos(yaw)) / bl < -0.2) {
       m.jolted = true; snd.jolt(); fadeFlash(90); shakeT = 0.5; S.dread = Math.min(100, S.dread + 12);
     }
-    if (m.dist < 24) snd.windup(panFor(m.pos), !!m.T.boss);
+    if (m.dist < 24) snd.windup(panFor(m.pos), !!(m.T.boss || m.T.giant));
     if (m.dist < 6) hint('windup', 'It is <b>rearing back</b> to strike!<br>Hold <b>right mouse</b> as the blow lands to <b>parry</b>, press <b>C</b> to dodge, or step back.', 9);
   },
   onRise(m) {
@@ -2028,6 +2078,10 @@ const G = {
   onAware(m) {
     if (m.leaving) { m.leaving = false; m.goal = null; }
     const pan = panFor(m.pos), vol = clamp(1.4 - m.dist / 20, 0.25, 1);
+    if (m.T.giant) {
+      if (gameT - (m.roarAt || -99) > 12) { m.roarAt = gameT; snd.roar(pan, clamp(1.5 - m.dist / 40, 0.4, 1)); shakeT = Math.max(shakeT, 0.5); S.dread = Math.min(100, S.dread + 8); }
+      return;
+    }
     if (m.type === 'ghoul' || m.type === 'crawler') {
       // it has seen you: a shriek, and it comes running
       snd.screech(pan, vol); if (m.type === 'crawler') snd.skitter(pan, vol);
@@ -2327,7 +2381,7 @@ $('talkShop').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || !talkNpc) return;
   if (b.dataset.buy == null && !b.dataset.sell) return;
   const sh = SHOPS[talkNpc.def.shop];
-  if (b.dataset.buy != null) { const [k, p, q = 1] = sh.sell[+b.dataset.buy]; if (count('gold') >= p) { removeItem('gold', p); addItem(k, q); snd.pickup(); } }
+  if (b.dataset.buy != null) { const [k, p, q = 1] = sh.sell[+b.dataset.buy]; if (count('gold') >= p) { removeItem('gold', p); buying = true; addItem(k, q); buying = false; wearBought(k); snd.pickup(); } }
   if (b.dataset.sell) { const k = b.dataset.sell; if (count(k)) { removeItem(k, 1); if (sh.buys[k]) addItem('gold', sh.buys[k]); snd.pickup(); } }
   renderShop();
 });
@@ -2510,7 +2564,7 @@ function huntSpot(r0, r1) {
   return null;
 }
 function updateHunt(dt) {
-  if (hunter && (hunter.dead || !mobs.includes(hunter))) { hunter = null; huntT = (sunNow < 0.35 ? 40 : 85) + Math.random() * 60; }
+  if (hunter && (hunter.dead || !mobs.includes(hunter))) { hunter = null; huntT = (sunNow < 0.35 ? 150 : 260) + Math.random() * 120; }
   const night = sunNow < 0.35, safe = colonySafe(P.pos.x, P.pos.z);
   tenseK = Math.max(0, tenseK - dt * 0.2);
   if (!hunter) {
@@ -2519,11 +2573,12 @@ function updateHunt(dt) {
     if (huntT > 0) return;
     huntT = 12; // no spot this time: try again soon
     const sp = huntSpot(24, 34); if (!sp) return;
-    const m = spawnMob(huntType(sp.x, sp.z, sp.under, night), sp.x, sp.y, sp.z, zoneLevel(sp.x, sp.y, sp.z) + 2);
+    const m = spawnMob('taker', sp.x, sp.y, sp.z, Math.max(zoneLevel(sp.x, sp.y, sp.z) + 8, S.level + 25));
+    m.patience = 20 + Math.random() * 14; m.hidT = 0;
     m.hunter = true; m.stalk = true; m.stalkT = night ? 35 + Math.random() * 35 : 55 + Math.random() * 50;
     m.scentT = 0; m.huntAge = 0; m.losses = 0; m.cueT = 2 + Math.random() * 3; m.holdT = 0; m.glimpses = 0;
     hunter = m;
-    if (!S.flags.stalkedOnce) { S.flags.stalkedOnce = true; msg('Something is following you', 'It keeps behind you, just out of sight. Turn around now and then.<br>When it stops pretending, run, or hide: a wardrobe in an old house, or crouch still in a bramble thicket.', 9); }
+    if (!S.flags.stalkedOnce) { S.flags.stalkedOnce = true; msg('Something is following you', 'Listen: lanterns clinking, far behind you. It keeps just out of sight.<br>When it comes for you, <b>do not fight it</b>. Run, break its line of sight, and <b>hide</b> until it gives up:<br>a wardrobe in an old house, a hollow log, or crouch still in a bramble thicket.', 11); }
     else log(['Somewhere behind you, something has started to follow.', 'Far back, something breathes in time with your steps.', 'You have the feeling of being counted.', 'A twig breaks behind you. Then another, closer.'][roll(4) - 1], 'bad');
     S.dread = Math.min(100, S.dread + 5);
     return;
@@ -2577,7 +2632,35 @@ function updateHunt(dt) {
       else {
         m.aware = true; m.lostT = 0; m.lastKnown = null; m.sprintT = (m.T.charge || 1) + 1.2; G.onAware(m);
         snd.stinger(); shakeT = Math.max(shakeT, 0.3); S.dread = Math.min(100, S.dread + 10);
-        log('<b>It stops pretending. It is coming.</b> Run, fight, or find somewhere to hide.', 'bad');
+        log(m.T.giant ? '<b>It stops pretending. It is coming.</b> You cannot fight it. <b>Run. Break its sight. Hide.</b>' : '<b>It stops pretending. It is coming.</b> Run, fight, or find somewhere to hide.', 'bad');
+      }
+    }
+    return;
+  }
+  if (m.T.giant) {
+    tenseK = Math.max(tenseK, clamp(1.2 - m.dist / 40, 0.35, 1));
+    if (hidden) {
+      // you have vanished: it hunts the ground where it lost you, closer and closer, until its patience runs out
+      m.hidT += dt; m.scentT -= dt;
+      if (!m.aware && m.scentT <= 0) {
+        m.scentT = 3 + Math.random() * 2.5;
+        const r = 2 + Math.random() * Math.max(2, 9 - m.hidT * 0.25), a = Math.random() * 6.28;
+        m.lastKnown = { x: P.pos.x + Math.sin(a) * r, y: P.pos.y, z: P.pos.z + Math.cos(a) * r }; m.goT = 0; m.searchT = 0;
+      }
+      if (m.hidT > 6 && !m.hidMsg && m.dist < 30) { m.hidMsg = true; log('It is right outside. Lanterns clinking, the floor shaking. Do not move.', 'bad'); }
+      if (m.hidT > m.patience && !m.aware) {
+        callOff(m, 'stands a long while, listening. Then the clink of its lanterns moves off into the dark');
+        S.dread = Math.max(0, S.dread - 15); hint('takerGone', 'It gave up. The Lantern-Taker always does, <b>if it cannot find you</b>.', 8);
+      }
+    } else {
+      // out in the open it always finds your trail again
+      m.hidT = Math.max(0, m.hidT - dt * 3); m.hidMsg = false;
+      if (!m.aware) { m.scentT -= dt; if (m.scentT <= 0) { m.scentT = night ? 1.5 : 2.5; m.lastKnown = { x: P.pos.x, y: P.pos.y, z: P.pos.z }; m.goT = 0; m.searchT = 0; } }
+      // you can outrun it, but not for long: left far behind, it comes round through the dark and is close behind you again
+      m.farT = m.dist > 44 && !m.aware ? (m.farT || 0) + dt : 0;
+      if (m.farT > 6 || m.dist > 75) {
+        const sp = huntSpot(24, 34);
+        if (sp) { m.pos.set(sp.x, sp.y, sp.z); m.vel.set(0, 0, 0); m.path = null; m.farT = 0; snd.chains(panFor(m.pos), 0.8); log(['Lanterns clink somewhere behind you. Closer than they should be.', 'You did not lose it. It is behind you again.', 'The ground shakes behind you. It found your trail.'][roll(3) - 1], 'bad'); }
       }
     }
     return;
@@ -2884,7 +2967,7 @@ function update(dt) {
       m.brT = (m.brT ?? Math.random() * 3) - dt;
       if (m.brT <= 0) { m.brT = 2.4 + Math.random() * 2.5; snd.breath(panFor(m.pos), clamp(1.3 - m.dist / 12, 0.15, 1)); }
     }
-    if (!m.dead && !m.raider && (m.dist > 62 || (m.postIdx != null && m.dist > 54))) removeMob(m);
+    if (!m.dead && !m.raider && !(m.hunter && !m.leaving) && (m.dist > 62 || (m.postIdx != null && m.dist > 54))) removeMob(m);
     if (!m.dead) tickMobStatus(m, dt);
   }
   updateSpawns(dt);

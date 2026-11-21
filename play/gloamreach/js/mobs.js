@@ -28,6 +28,10 @@ const HUMANS = {
     grime: 0.5, gore: 0.2, eyes: 0xbfe8ff, eyeK: 3, twitch: true },
   cinder: { skin: 0x2a2220, tunic: 0x221a18, pants: 0x221a18, boots: 0x1a1412, gloves: 0x2a2220, bald: true, belt: false, thin: 0.8, hunch: 0.15, sockets: true, jawOpen: 0.6, gaunt: true, bone: 0x5a3a2a,
     flames: true, eyes: 0xff8a30, eyeK: 4, grime: 1, gore: 0, rags: 0x1a1210 },
+  // the Lantern-Taker: twice a man's height, starved long, carrying the lanterns of the hunters it has kept
+  taker: { skin: 0x8c877c, tunic: 0x7a7468, pants: 0x3e3a34, boots: 0x6a665c, gloves: 0x7e796e, bald: true, belt: false, wide: 1.5, thin: 1.0, tall: 1.12, longArms: 1.95, hunch: 0.6, armBase: -0.05,
+    gaunt: true, bone: 0xb4ac98, jawOpen: 1.1, teeth: true, cloak: 0x161210, rags: 0x26221c, grime: 1, gore: 0.8, twitch: true, eyes: 0xdfe8ff, eyeK: 3.4, sleeves: false,
+    taker: true, scale: 2.5, stride: 0.42, giant: true },
   watcher: { skin: 0xd9d5cc, tunic: 0xd9d5cc, pants: 0xd9d5cc, boots: 0xd9d5cc, gloves: 0xd9d5cc, bald: true, belt: false, sockets: true, thin: 0.66, tall: 1.45, longArms: 1.55, hunch: 0.08, armBase: 0.05, jawOpen: 1.4, gaunt: true, bone: 0xc8c4ba, grime: 0.25, gore: 0.15 },
 };
 
@@ -54,10 +58,12 @@ export const MOB_TYPES = {
   drowned: { name: 'Salt-Drowned', hpDice: [4, 8, 4], ac: 13, atk: 5, dmg: [1, 8, 2], speed: 3.4, sense: 16, size: [0.65, 1.8], xp: 140, cd: 1.4, reach: 1.9, wind: 0.55, charge: 1.8, noBurn: true,
     ranged: { kind: 'spit', range: 13, cd: 3.8, dmg: [1, 8, 1], speed: 16, wind: 0.6 } },
   // the star-monks of the Rimewatch, frozen through and still keeping the vigil
+  // the hunter that hunts hunters: for a long time you cannot fight it. Run, break its sight, and hide until it goes
+  taker: { name: 'Lantern-Taker', hpDice: [20, 10, 120], ac: 16, atk: 8, dmg: [3, 10, 8], speed: 5.0, sense: 26, size: [0.9, 1.95], xp: 900, cd: 1.9, reach: 3.6, wind: 0.8, charge: 1.2, noBurn: true, giant: true },
   rimed: { name: 'Rime-Kept', hpDice: [4, 8, 5], ac: 14, atk: 6, dmg: [1, 8, 3], speed: 5.0, sense: 18, size: [0.6, 1.95], xp: 170, cd: 1.2, reach: 1.9, wind: 0.45, charge: 1.8, noBurn: true },
 };
 // the old magic, still in them: what escapes when they die
-export const ACCURSED = new Set(['ghoul', 'crawler', 'watcher', 'knight', 'king', 'wendigo', 'mirekin', 'cinder', 'barkkin', 'drowned', 'rimed']);
+export const ACCURSED = new Set(['ghoul', 'crawler', 'watcher', 'knight', 'king', 'wendigo', 'mirekin', 'cinder', 'barkkin', 'drowned', 'rimed', 'taker']);
 
 // a short path around walls, ruins and cliffs when the straight line is blocked: breadth-first over standable columns
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -133,8 +139,9 @@ export class Mob {
     const H = HUMANS[this.type];
     if (H) {
       if (H.eyes) this.eyeMat.color.set(H.eyes).multiplyScalar(H.eyeK || 4); // HDR: blooms in the dark
+      if (H.taker) this.lampMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.0, 1.5, 0.45) });
       if (H.flames) { this.flameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 1.1, 0.25), transparent: true, opacity: 0.85, depthWrite: false }); }
-      this.rig = buildHuman(this.mat, { ...H, eyeMat: this.eyeMat, flameMat: this.flameMat, seed: Math.random() * 100 });
+      this.rig = buildHuman(this.mat, { ...H, eyeMat: this.eyeMat, flameMat: this.flameMat, lampMat: this.lampMat, seed: Math.random() * 100 });
       this.rig.root.scale.setScalar(H.scale || 1);
       this.group.add(this.rig.root); this.eyes.push(...this.rig.eyes);
       return;
@@ -206,7 +213,7 @@ export class Mob {
     this.perT = (this.perT || 0) - dt;
     if (this.perT <= 0) { this.perT = 0.18 + Math.random() * 0.1; this.per = G.perceive(this); }
     // daylight slows the Gloam-kept that dare it
-    if (this.sprintT > 0) { this.sprintT -= dt; speed *= 2.1; }
+    if (this.sprintT > 0) { this.sprintT -= dt; speed *= T.giant ? 1.3 : 2.1; }
     if (this.slowT > 0) speed *= 0.5;
     const hd = Math.hypot(dx, dz) || 1;
 
@@ -222,7 +229,8 @@ export class Mob {
         }
       } else {
         this.obsT = 0;
-        if (dist > 1.4) { mvx = dx / hd; mvz = dz / hd; }
+        // it cannot reach you behind a shut door or inside a log: it waits outside instead
+        if (dist > 1.4 && !(G.hidden && dist < 4)) { mvx = dx / hd; mvz = dz / hd; }
       }
       this.aware = true;
     } else {
@@ -237,7 +245,7 @@ export class Mob {
         else if (this.lastKnown) {
           // it heard you, smelled you, or lost you: go to where you were, and look
           const lx = this.lastKnown.x - this.pos.x, lz = this.lastKnown.z - this.pos.z, ll = Math.hypot(lx, lz);
-          if (ll > 2.2 && !(this.searchT > 0) && !((this.goT = (this.goT || 0) + dt) > 25)) { mvx = lx / ll; mvz = lz / ll; speed *= this.stalk ? 0.95 : this.hunter ? 0.8 : 0.6; this.navTo = this.lastKnown; }
+          if (ll > 2.2 && !(this.searchT > 0) && !((this.goT = (this.goT || 0) + dt) > 25)) { mvx = lx / ll; mvz = lz / ll; speed *= this.stalk ? 0.95 : T.giant ? 1 : this.hunter ? 0.8 : 0.6; this.navTo = this.lastKnown; }
           else if (this.stalk) { mvx = 0; mvz = 0; }
           else {
             if (!(this.searchT > 0)) { this.searchT = 3.5 + Math.random() * 3.5; this.goT = 0; G.onSearch?.(this); }
@@ -280,7 +288,7 @@ export class Mob {
         if (gl > 3) { mvx = gx / gl; mvz = gz / gl; speed = T.speed * 0.8; this.navTo = this.goal; }
       }
       // mid-chase they lurch forward in sudden bursts
-      if (this.aware && T.charge && !(this.sprintT > 0) && dist < 18 && Math.random() < dt * 0.3) this.sprintT = 0.55;
+      if (this.aware && T.charge && !(this.sprintT > 0) && dist < 18 && Math.random() < dt * (T.giant ? 0.12 : 0.3)) this.sprintT = 0.55;
       if (this.aware) {
         const lk = !this.per && this.lastKnown;
         const tx = lk ? this.lastKnown.x - this.pos.x : dx, tz = lk ? this.lastKnown.z - this.pos.z : dz, tl = Math.hypot(tx, tz) || 1;
@@ -342,7 +350,7 @@ export class Mob {
     }
     if (this.pos.y < -5) { G.mobVanish(this, null); return; }
 
-    const canAttack = (this.type === 'watcher' ? !this.obs : this.turnedT <= 0) && this.stagT <= 0;
+    const canAttack = (this.type === 'watcher' ? !this.obs && !G.hidden : this.turnedT <= 0) && this.stagT <= 0;
     if (this.windT > 0) {
       this.windT -= dt;
       if (this.windT <= 0) {
@@ -357,7 +365,23 @@ export class Mob {
 
     // animation
     const moving = Math.hypot(this.vel.x, this.vel.z) > 0.2;
-    this.walk += dt * (moving ? speed * 2.4 : 0);
+    this.walk += dt * (moving ? speed * 2.4 * (HUMANS[this.type]?.stride || 1) : 0);
+    if (T.giant && this.rig) {
+      // every footfall lands; and the lanterns it carries clink as it comes
+      const ph = Math.sin(this.walk) > 0;
+      if (moving && ph !== this._ph) G.onStomp?.(this);
+      this._ph = ph;
+      this.chT = (this.chT || 0) - dt * (moving ? 1 : 0.25);
+      if (this.chT <= 0) { this.chT = 0.5 + Math.random() * 0.8; G.onChains?.(this); }
+      // under a low roof it folds itself down to fit
+      const fx = Math.floor(this.pos.x), fy = Math.floor(this.pos.y), fz = Math.floor(this.pos.z);
+      const low = SOLID[G.world.get(fx, fy + 2, fz)] || SOLID[G.world.get(fx, fy + 3, fz)] || SOLID[G.world.get(fx, fy + 4, fz)];
+      this.ceilK = (this.ceilK || 0) + ((low ? 1 : 0) - (this.ceilK || 0)) * Math.min(1, dt * 4);
+      const sc = HUMANS[this.type].scale; this.rig.root.scale.set(sc, sc * (1 - 0.6 * this.ceilK), sc);
+      const age = this.age || 0;
+      this.rig.lamps.forEach((l, i) => { l.rotation.x = Math.sin(age * 2.1 + i * 1.7) * 0.22 + (moving ? Math.sin(this.walk * 2 + i) * 0.3 : 0); l.rotation.z = Math.sin(age * 1.6 + i * 2.3) * 0.18; });
+      const k = 0.75 + Math.random() * 0.35; this.lampMat.color.setRGB(3.0 * k, 1.5 * k, 0.45 * k);
+    }
     if (this.rig) {
       this.mvK = (this.mvK || 0) + ((moving ? 1 : 0) - (this.mvK || 0)) * Math.min(1, dt * 8); this.age = (this.age || 0) + dt;
       const wk0 = this.windT > 0 ? 1 - this.windT / (T.wind || 0.5) : 0;
@@ -391,7 +415,7 @@ export class Mob {
     if (this.windT > 0) this.mat.uniforms.uHurt.value = Math.max(this.mat.uniforms.uHurt.value, 0.15 + 0.3 * wk);
     // glowing eyes fade with distance — sometimes they're all you see
     if (this.eyes.length) {
-      const o = Math.max(0, Math.min(1, (34 - dist) / 14));
+      const o = T.giant ? Math.max(0, Math.min(1, (60 - dist) / 20)) : Math.max(0, Math.min(1, (34 - dist) / 14));
       this.eyeMat.opacity = Math.min(1, o * (this.turnedT > 0 ? 0.3 : 1) + (this.windT > 0 ? 0.6 : 0));
       this.eyeMat.visible = o > 0.02;
     }
@@ -399,6 +423,6 @@ export class Mob {
   dispose(scene) {
     scene.remove(this.group);
     this.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-    this.mat.dispose(); this.eyeMat.dispose(); this.flameMat?.dispose();
+    this.mat.dispose(); this.eyeMat.dispose(); this.flameMat?.dispose(); this.lampMat?.dispose();
   }
 }
