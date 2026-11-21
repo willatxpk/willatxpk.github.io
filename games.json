@@ -98,6 +98,33 @@
                       "size":  216529
                   },
                   {
+                      "id":  "iron-banners",
+                      "title":  "Iron Banners",
+                      "tagline":  "Under development: history\u0027s great battles and conquests on one board.",
+                      "description":  "🚧 Still under development — expect changes, rough edges and balance shifts. A top-down war game mixing Catan, Risk, Civilization and War Thunder: 19 historically accurate battles from Thermopylae to Kursk, a Grand Campaign through five eras, and Conquest marches with Alexander, Caesar, the Viking Great Heathen Army, Genghis Khan and Napoleon. Command cards, painted miniatures and real historical decisions.",
+                      "tags":  [
+                                   "Strategy",
+                                   "History",
+                                   "In development"
+                               ],
+                      "icon":  "⚔️",
+                      "accent":  "#a8461f",
+                      "source":  "../iron-banners",
+                      "play":  true,
+                      "download":  true,
+                      "excludeDirs":  [
+                                          "playtest"
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "version":  1,
+                      "hash":  "d6759f4dbc61e6541c82a1e309af32fdbdbcf7843b87e0a49ef1f0a913c11432",
+                      "type":  "game",
+                      "updated":  "2026-11-20",
+                      "size":  206317
+                  },
+                  {
                       "id":  "ticker-tycoon",
                       "title":  "Ticker Tycoon",
                       "tagline":  "Trade your way from a small stake to a fortune.",

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iron Banners</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --wood:#2a1d14; --wood2:#3a281b; --paper:#efe3c6; --paper2:#e2d2ab; --ink:#2b2116; --muted:#7a6a52; --line:rgba(60,40,20,.25); --accent:#a8461f; --gold:#c99a2e; --good:#3f7d3a; --bad:#a8322a; --panel:#f3e9d2; }
+* { box-sizing: border-box; }
+html, body { margin:0; height:100%; overflow:hidden; background: radial-gradient(ellipse at 50% 30%, #4a3424, #1c130c 75%); color: var(--ink); font: 14px/1.45 Inter, system-ui, sans-serif; }
+h1, h2, h3, .title { font-family: Cinzel, Georgia, serif; letter-spacing: .02em; }
+button { font: inherit; color: var(--ink); background: linear-gradient(#f6ecd4, #e0cfa6); border: 1px solid #8a6a40; border-radius: 6px; padding: 6px 12px; cursor: pointer; box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 1px 2px rgba(0,0,0,.25); }
+button:hover:not(:disabled) { background: linear-gradient(#fff6de, #ead9b0); }
+button:disabled { opacity: .4; cursor: default; }
+button.primary { background: linear-gradient(#c0582a, #8e3a17); color: #fff4e0; border-color: #5e2810; font-weight: 600; }
+button.primary:hover:not(:disabled) { background: linear-gradient(#d0663a, #a0461f); }
+button.on { background: linear-gradient(#5b4026, #3e2a18); color: #ffe9bf; border-color: #2a1a0c; }
+button.small { padding: 2px 8px; font-size: 12px; }
+select { font: inherit; background: #fbf4e2; border: 1px solid #8a6a40; border-radius: 6px; padding: 4px 8px; color: var(--ink); }
+.muted { color: var(--muted); }
+.good { color: var(--good); } .bad { color: var(--bad); }
+.screen { position: fixed; inset: 0; display: none; }
+.screen.show { display: block; }
+.paper { background: linear-gradient(var(--panel), var(--paper2)); border: 1px solid #8a6a40; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.45), 0 0 0 4px rgba(0,0,0,.15); }
+
+/* Title */
+#title { display: none; align-items: center; justify-content: center; }
+#title.show { display: flex; }
+#title .box { width: min(760px, 94vw); padding: 34px 40px; text-align: center; }
+#title h1 { font-size: 54px; margin: 0; color: #4a2410; text-shadow: 0 2px 0 rgba(255,255,255,.5); }
+#title .tag { color: var(--muted); margin: 4px 0 26px; font-style: italic; }
+#title .wip { margin: -8px auto 14px; padding: 6px 12px; max-width: 560px; border: 1px dashed #a0662a; border-radius: 8px; background: rgba(224,164,40,.15); color: #6a3a10; font-size: 12px; }
+#title .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#title .menu button { padding: 16px; text-align: left; }
+#title .menu button b { display: block; font-family: Cinzel, serif; font-size: 18px; margin-bottom: 2px; }
+#title .menu button span { font-size: 12px; color: var(--muted); }
+#title .menu button.primary span { color: #f3d6b8; }
+#title .foot { margin-top: 18px; font-size: 12px; color: var(--muted); display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap; }
+
+/* Scenario picker */
+#picker { overflow: auto; padding: 28px; }
+#picker .wrap { max-width: 1100px; margin: 0 auto; }
+#picker h2 { color: #f0dcb0; margin: 0 0 4px; }
+#picker .sub { color: #c8b48c; margin-bottom: 18px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.card { padding: 14px 16px; cursor: pointer; transition: transform .12s; position: relative; }
+.card:hover { transform: translateY(-3px); }
+.card .yr { font-family: Cinzel, serif; font-size: 13px; color: var(--accent); }
+.card h3 { margin: 2px 0 4px; font-size: 20px; }
+.card .w { font-size: 12px; color: var(--muted); }
+.card .vs { margin-top: 8px; font-size: 13px; }
+.card .medal { position: absolute; top: 10px; right: 12px; font-size: 20px; }
+.eraBadge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: #5b4026; color: #ffe9bf; margin-left: 4px; }
+
+/* Modal */
+#modal { position: fixed; inset: 0; background: rgba(10,6,2,.6); display: none; align-items: center; justify-content: center; z-index: 50; }
+#modal.show { display: flex; }
+#modal .box { width: min(780px, 94vw); max-height: 90vh; overflow: auto; padding: 24px 28px; }
+#modal h2 { margin: 0 0 4px; }
+#modal .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+#modal .acts { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
+.sidepick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.sidepick button { text-align: left; padding: 10px 12px; }
+.sidepick button.on .muted { color: #d8c09a; }
+.plan { background: rgba(168,70,31,.08); border-left: 3px solid var(--accent); padding: 8px 12px; margin-top: 12px; border-radius: 4px; }
+.hist { background: rgba(60,40,20,.07); border-left: 3px solid #6a5030; padding: 8px 12px; margin-top: 12px; border-radius: 4px; }
+table.cas { width: 100%; border-collapse: collapse; margin-top: 10px; }
+table.cas td, table.cas th { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+
+/* Battle screen */
+#battle { display: none; grid-template-columns: 1fr 380px; grid-template-rows: auto 1fr; gap: 10px; padding: 10px; }
+#battle.show { display: grid; }
+#bHead { grid-column: 1 / 3; display: flex; align-items: center; gap: 14px; padding: 8px 14px; color: #f0dcb0; flex-wrap: wrap; }
+#bHead .nm { font-family: Cinzel, serif; font-size: 22px; }
+#bHead .rd { font-size: 13px; color: #c8b48c; }
+#bHead .sp { flex: 1; }
+#bField { position: relative; min-height: 0; }
+#bHand { display: flex; gap: 6px; align-items: stretch; justify-content: center; }
+#bHand:empty { display: none; }
+#bHand .cp { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 7px; background: rgba(24,14,6,.85); border: 1px solid #8a6a32; border-radius: 8px; color: #e8d4a0; font: 600 9px Inter; }
+#bHand .cp i { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #c9a44a; background: #2a1c0c; display: block; }
+#bHand .cp i.on { background: radial-gradient(circle at 35% 35%, #fff3b0, #e0a428 60%, #8a5a10); box-shadow: 0 0 6px #f0c040; }
+#bHand .card { position: relative; flex: 1; max-width: 104px; min-height: 84px; padding: 16px 5px 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center;
+  background: linear-gradient(#f6ead0, #e2cfa4); border: 2px solid #7a5a28; border-radius: 9px; box-shadow: 0 4px 10px rgba(0,0,0,.45); color: #2a1a0a; cursor: pointer; transition: transform .15s, box-shadow .15s; }
+#bHand .card:hover:not([disabled]) { transform: translateY(-4px) scale(1.04); box-shadow: 0 10px 18px rgba(0,0,0,.55); }
+#bHand .card.sel { transform: translateY(-4px); border-color: #e0a428; box-shadow: 0 0 0 3px #f0c040, 0 10px 18px rgba(0,0,0,.55); }
+#bHand .card[disabled] { filter: grayscale(.7) brightness(.8); cursor: not-allowed; }
+#bHand .card .cost { position: absolute; top: -7px; left: -7px; width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff3b0, #e0a428 60%, #8a5a10); border: 2px solid #5a3a10; font: 800 12px Inter; line-height: 18px; color: #2a1a0a; }
+#bHand .card .ic { font-size: 22px; line-height: 1; }
+#bHand .card b { font: 700 11px Cinzel, serif; line-height: 1.15; }
+#bHand .card .d { display: none; }
+
+#bCanvas { width: 100%; height: 100%; display: block; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5); cursor: pointer; }
+#bSide { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+#bOrders { padding: 10px 12px; }
+#bOrders h3 { margin: 0 0 6px; font-size: 15px; }
+.secRow { border-top: 1px solid var(--line); padding: 7px 0; }
+.secRow:first-of-type { border-top: 0; }
+.secRow .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.secRow .hd b { font-size: 13px; }
+.secRow .pw { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.secRow .ords { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.secRow .ords button { padding: 3px 7px; font-size: 12px; }
+.secRow .en { font-size: 11px; margin-top: 3px; }
+.chip { display: inline-block; font-size: 10px; padding: 0 5px; border-radius: 8px; background: #d9c497; color: #4a3420; margin-left: 3px; }
+#bInfo { padding: 10px 12px; font-size: 13px; }
+#bLog { padding: 8px 12px; flex: 1; overflow: auto; font-size: 12.5px; min-height: 80px; }
+#bLog .e { padding: 2px 0; border-bottom: 1px dotted var(--line); }
+#bLog .e.good { color: var(--good); } #bLog .e.bad, #bLog .e.rout { color: var(--bad); } #bLog .e.general { color: #7a2a8a; font-weight: 600; }
+#bLog .rh { font-family: Cinzel, serif; font-weight: 600; margin-top: 6px; }
+#bActs { display: flex; gap: 8px; padding: 10px 12px; flex-wrap: wrap; }
+#bActs .primary { flex: 1; }
+.statgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 8px; margin: 6px 0; font-size: 12px; }
+.statgrid div b { display: block; font-size: 14px; }
+.tip { font-size: 12px; color: var(--muted); }
+
+/* Campaign */
+#camp { display: none; }
+#camp.show { display: block; }
+#cCanvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+#cTop { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; pointer-events: none; }
+#cTop > * { pointer-events: auto; }
+#cRes { padding: 6px 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+#cRes .r { display: flex; flex-direction: column; align-items: center; line-height: 1.1; min-width: 34px; }
+#cRes .r b { font-size: 16px; }
+#cRes .r span { font-size: 10px; color: var(--muted); }
+#cTurn { padding: 6px 12px; display: flex; gap: 10px; align-items: center; }
+#cTurn .dice { font-size: 26px; letter-spacing: 2px; }
+#cTop .sp { flex: 1; }
+#cPanel { position: absolute; right: 10px; top: 80px; bottom: 10px; width: 360px; overflow: auto; padding: 12px 14px; }
+#cPanel h3 { margin: 4px 0 6px; }
+#cPanel .sec { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.cost { font-size: 11px; color: var(--muted); }
+.unitList { display: flex; flex-direction: column; gap: 3px; }
+.unitLine { display: flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 3px 6px; border-radius: 5px; background: rgba(255,255,255,.35); }
+.unitLine .bar { flex: 0 0 50px; height: 5px; background: rgba(0,0,0,.15); border-radius: 3px; overflow: hidden; }
+.unitLine .bar i { display: block; height: 100%; background: var(--good); }
+.unitLine .nm { flex: 1; }
+.unitLine.sel { outline: 2px solid var(--accent); }
+#cLog { position: absolute; left: 10px; bottom: 10px; width: 380px; max-height: 190px; overflow: auto; padding: 8px 12px; font-size: 12px; }
+#cLog .e { padding: 1px 0; }
+#cToast { position: absolute; left: 50%; top: 80px; transform: translateX(-50%); padding: 8px 18px; display: none; font-weight: 600; z-index: 20; }
+.recruit { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; font-size: 12.5px; }
+.recruit .nm b { font-weight: 600; }
+.tree { display: grid; grid-template-columns: 70px repeat(5, 1fr); gap: 6px; font-size: 12px; }
+.tree .h { font-family: Cinzel, serif; font-weight: 600; text-align: center; }
+.tree .t { padding: 6px; border-radius: 6px; border: 1px solid #8a6a40; background: #f7eed8; min-height: 54px; }
+.tree .t.done { background: #cfe0b8; border-color: #4f7d3a; }
+.tree .t.avail { background: #fff6dc; cursor: pointer; }
+.tree .t.avail:hover { background: #ffecb8; }
+.tree .t.locked { opacity: .5; }
+.tree .t .u { color: var(--muted); font-size: 11px; }
+
+/* Conquest */
+#qCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#qTop { position: absolute; left: 10px; top: 10px; display: flex; gap: 14px; align-items: center; padding: 6px 14px; flex-wrap: wrap; }
+#qTop .r { display: flex; flex-direction: column; align-items: center; line-height: 1.1; min-width: 44px; }
+#qTop .r b { font-size: 16px; } #qTop .r span { font-size: 10px; color: var(--muted); }
+#qPanel { position: absolute; right: 10px; top: 10px; bottom: 10px; width: 360px; overflow: auto; padding: 12px 14px; }
+#qPanel h3 { margin: 2px 0; }
+#qPanel .sec { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+#qLog { position: absolute; left: 10px; bottom: 10px; width: 420px; max-height: 150px; overflow: auto; padding: 8px 12px; font-size: 12px; }
+#qLog .e.good { color: var(--good); } #qLog .e.bad { color: var(--bad); } #qLog .e.note { color: #5a4630; }
+@media (max-width: 900px) { #qPanel { width: auto; left: 10px; top: auto; height: 45vh; } #qLog { display: none; } }
+
+/* Armory */
+#armory { overflow: auto; padding: 24px; }
+#armory .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
+.armGrid { display: grid; grid-template-columns: 110px repeat(5, 1fr); gap: 6px; font-size: 12px; }
+.armGrid .h { font-family: Cinzel, serif; font-weight: 700; text-align: center; padding: 4px; }
+.armGrid .b { font-family: Cinzel, serif; font-weight: 700; display: flex; align-items: center; }
+.armCell { display: flex; flex-direction: column; gap: 4px; }
+.armUnit { border: 1px solid #8a6a40; border-radius: 6px; padding: 5px 7px; background: #f7eed8; cursor: pointer; }
+.armUnit:hover { background: #fff3d0; }
+.armUnit .br { float: right; color: var(--accent); font-weight: 600; }
+.armUnit .s { color: var(--muted); font-size: 11px; }
+@media (max-width: 900px) {
+  #battle { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 66vh auto; overflow-x: hidden; overflow-y: auto; padding: 6px; gap: 6px; }
+  #battle > *, #bSide > * { min-width: 0; }
+  #bHand .card { min-width: 0; padding: 14px 3px 5px; }
+  #bHand .cp { padding: 4px; }
+  #bHead { gap: 6px 10px; padding: 4px 6px; }
+  #bHead .nm { font-size: 17px; }
+  #bHead .rd { font-size: 11px; width: 100%; order: 5; }
+  #bSidesLbl { font-size: 12px; }
+  #bHand .card { min-height: 74px; }
+  #bHand .card b { font-size: 10px; }
+  #title.show { align-items: flex-start; overflow-y: auto; padding: 10px 0; }
+  #title .box { padding: 22px 16px; }
+  #title h1 { font-size: 38px; }
+  #title .menu { gap: 8px; }
+  #title .menu button { padding: 12px; }
+  #title .menu button b { font-size: 15px; }
+  #mBox { padding: 14px !important; max-height: 88vh; overflow: auto; }
+  .sidepick { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .sidepick button { min-width: 0; }
+  table.cas { font-size: 12px; }
+  #bHead { grid-column: 1; }
+  #cPanel { width: auto; left: 10px; top: auto; height: 45vh; }
+  #cLog { display: none; }
+  .armGrid, .tree { grid-template-columns: 70px repeat(5, minmax(90px, 1fr)); overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<div id="title" class="screen show">
+  <div class="box paper">
+    <div class="wip">🚧 <b>Under development</b> — battles, balance and content are still changing, and saves may not carry over between versions.</div>
+    <h1>Iron Banners</h1>
+    <div class="tag">Five ages of war on one table — from Cannae to Kursk</div>
+    <div class="menu">
+      <button class="primary" id="mConquest" style="grid-column:1 / 3"><b>Conquests</b><span id="mConqSub">March with Alexander, Caesar, the Viking Great Heathen Army, Genghis Khan or Napoleon: one army, carried from battle to battle, across a map that turns your color as you take it.</span></button>
+      <button id="mBattles"><b>Historical Battles</b><span>Nineteen real battles. Command either side with the plan that won — or try to rewrite history.</span></button>
+      <button id="mCampaign"><b>Grand Campaign</b><span>Roll for resources, build cities, research through five eras, and conquer rival nations.</span></button>
+      <button id="mContinue"><b>Continue Campaign</b><span id="mContSub">No saved campaign.</span></button>
+      <button id="mArmory"><b>Armory</b><span>Every unit, by era and branch: armor, penetration, and history.</span></button>
+    </div>
+    <div class="foot">
+      <label>Animation speed <select id="sSpeed"><option value="2">Slow</option><option value="1" selected>Normal</option><option value="0.5">Fast</option><option value="0.15">Instant</option></select></label>
+      <span>·</span><span>How battles work: each round you give every sector an order. Both sides act at once.</span>
+    </div>
+  </div>
+</div>
+
+<div id="picker" class="screen"><div class="wrap">
+  <div style="display:flex;gap:10px;align-items:center"><button id="pBack">← Back</button><h2>Historical Battles</h2></div>
+  <div class="sub">Each battle uses the real order of battle, ground and plans. A medal marks battles you have won.</div>
+  <div class="cards" id="pCards"></div>
+</div></div>
+
+<div id="battle" class="screen">
+  <div id="bHead" class="">
+    <button id="bQuit" class="small">☰ Menu</button>
+    <span class="nm" id="bName"></span><span class="rd" id="bRound"></span>
+    <span class="sp"></span>
+    <span id="bSidesLbl"></span>
+    <button id="bMute" class="small" title="Sound on/off">🔊</button><button id="bHelp" class="small">How to play</button>
+  </div>
+  <div id="bField"><canvas id="bCanvas"></canvas></div>
+  <div id="bSide">
+    <div id="bHand"></div>
+    <div id="bOrders" class="paper"></div>
+    <div id="bInfo" class="paper"></div>
+    <div id="bLog" class="paper"></div>
+    <div id="bActs" class="paper"><button id="bGo" class="primary">Resolve Round ⚔</button><button id="bRetreat">Sound Retreat</button></div>
+  </div>
+</div>
+
+<div id="camp" class="screen">
+  <canvas id="cCanvas"></canvas>
+  <div id="cTop">
+    <div id="cTurn" class="paper"><button id="cMenu" class="small">☰</button><span class="dice" id="cDice">⚀⚀</span><div><b id="cTurnLbl">Turn 1</b><div class="tip" id="cEra"></div></div></div>
+    <div id="cRes" class="paper"></div>
+    <span class="sp"></span>
+    <div class="paper" style="padding:6px 10px;display:flex;gap:6px;align-items:center"><button id="cTech">Research</button><button id="cTrade">Trade</button><button id="cNations">Nations</button><button id="cEnd" class="primary">End Turn ▶</button></div>
+  </div>
+  <div id="cPanel" class="paper"></div>
+  <div id="cLog" class="paper"></div>
+  <div id="cToast" class="paper"></div>
+</div>
+
+<div id="conq" class="screen">
+  <canvas id="qCanvas"></canvas>
+  <div id="qTop" class="paper"></div>
+  <div id="qPanel" class="paper"></div>
+  <div id="qLog" class="paper"></div>
+</div>
+
+<div id="armory" class="screen"><div class="wrap paper" id="armWrap"></div></div>
+
+<div id="modal"><div class="box paper" id="mBox"></div></div>
+
+<script src="js/data.js?v=57"></script>
+<script src="js/scenarios.js?v=57"></script>
+<script src="js/scenarios2.js?v=57"></script>
+<script src="js/scenarios3.js?v=57"></script>
+<script src="js/scenarios4.js?v=57"></script>
+<script src="js/battle.js?v=57"></script>
+<script src="js/audio.js?v=57"></script>
+<script src="js/draw.js?v=57"></script>
+<script src="js/minis.js?v=57"></script>
+<script src="js/battleui.js?v=57"></script>
+<script src="js/campaign.js?v=57"></script>
+<script src="js/campui.js?v=57"></script>
+<script src="js/conquests.js?v=57"></script>
+<script src="js/conquests2.js?v=57"></script>
+<script src="js/conquests3.js?v=57"></script>
+<script src="js/conquests4.js?v=57"></script>
+<script src="js/conquest.js?v=57"></script>
+<script src="js/main.js?v=57"></script>
+</body>
+</html>
