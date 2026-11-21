@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Gloamreach</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet">
@@ -22,6 +25,21 @@
   /* ---------- HUD ---------- */
   #hud { position:fixed; inset:0; pointer-events:none; z-index:5; }
   .screen { z-index:10; }
+  /* ---- phones and tablets: a smaller HUD that keeps clear of the thumbs, menus scaled to fit */
+  body.touch { touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; }
+  body.touch input, body.touch select, body.touch textarea { -webkit-user-select:text; user-select:text; }
+  body.touch #topleft { zoom:.62; left:calc(10px + env(safe-area-inset-left)); }
+  body.touch #stats { zoom:.62; bottom:8px; left:34%; }
+  body.touch #hotbar { zoom:.6; bottom:150px; }
+  body.touch #loadout { zoom:.45; left:calc(14px + env(safe-area-inset-left)); bottom:70px; }
+  body.touch #log { zoom:.7; bottom:auto; top:32%; left:calc(12px + env(safe-area-inset-left)); width:min(470px, 46vw); }
+  body.touch #ability { display:none; }
+  body.touch .screen { touch-action:pan-x pan-y; }
+  body.touch #msg { zoom:.6; }
+  body.touch #stealth, body.touch #bossBar { zoom:.65; }
+  body.touch .screen { padding:6px; padding-left:calc(6px + env(safe-area-inset-left)); padding-right:calc(6px + env(safe-area-inset-right)); }
+  body.touch .screen > * { zoom:.72; }
+  @media (max-height:480px) { body.touch .screen > * { zoom:.6; } }
   #cross { position:absolute; left:50%; top:50%; width:18px; height:18px; transform:translate(-50%,-50%); }
   #cross::before, #cross::after { content:''; position:absolute; background:rgba(255,255,255,.75); mix-blend-mode:difference; }
   #cross::before { left:8px; top:0; width:2px; height:18px; } #cross::after { top:8px; left:0; height:2px; width:18px; }

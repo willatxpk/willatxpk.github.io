@@ -57,6 +57,7 @@
                       "accent":  "#b8763a",
                       "source":  "../gloamreach",
                       "play":  true,
+                      "playMobile":  true,
                       "download":  true,
                       "excludeDirs":  [
                                           "playtest"
@@ -64,10 +65,10 @@
                       "excludeFiles":  [
 
                                        ],
-                      "version":  2,
+                      "version":  3,
                       "updated":  "2026-11-20",
-                      "hash":  "462bf5b0ed3d4a515bab2613c55f2e924724654a5a5017da26d51e4b2d514dd2",
-                      "size":  174213,
+                      "hash":  "aa5b374b39b0fbb6702f89ef48d44ea59519ef734aea229bc882c8f080442f74",
+                      "size":  178500,
                       "type":  "game"
                   },
                   {

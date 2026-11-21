@@ -18,6 +18,11 @@ THREE.ColorManagement.enabled = false;
 const $ = id => document.getElementById(id);
 const isBlk = k => typeof k === 'string' && /^b\d+$/.test(k); // block items are 'b' + block id
 const TEST = location.search.includes('test');
+// phones and tablets: on-screen joystick and buttons instead of mouse capture (?touch forces it, ?desktop turns it off)
+const TOUCH = !/[?&]desktop/.test(location.search) && (/[?&]touch/.test(location.search) || (matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches));
+const NOLOCK = TEST || TOUCH;
+const joy = { f: 0, s: 0, run: false };
+if (TOUCH) document.body.classList.add('touch');
 const SAVE_KEY = 'gloamreach-save-v2', SET_KEY = 'gloamreach-settings-v1';
 // five save slots; slot 1 keeps the old key, so the save you already have is still there
 const SLOTS_N = 5, slotKey = n => (n === 1 ? SAVE_KEY : `${SAVE_KEY}-s${n}`);
@@ -279,7 +284,7 @@ if (!QUALITY[SET.quality]) {
   // first run: integrated / software GPUs start on Medium
   let gpu = '';
   try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ''; } catch (e) { /* unknown */ }
-  SET.quality = /intel|uhd|iris|microsoft basic|swiftshader|llvmpipe|mali|adreno|apple m1/i.test(gpu) ? 'medium' : 'high';
+  SET.quality = TOUCH ? 'low' : /intel|uhd|iris|microsoft basic|swiftshader|llvmpipe|mali|adreno|apple m1/i.test(gpu) ? 'medium' : 'high';
   SET.autoRes ??= true;
 }
 SET.autoRes ??= true; SET.showFps ??= false;
@@ -1352,7 +1357,7 @@ function beginPlay() {
   state = 'play'; ui = 'none';
   airPeak = P.pos.y; prevT = S.time;
   renderHotbar(); show(null); updateHUD(true);
-  if (!TEST) requestLock();
+  if (!NOLOCK) requestLock();
 }
 function saveGame() {
   if (!world || !S) return false;
@@ -1440,9 +1445,15 @@ let lockedAt = 0, avgMove = 8;
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
   lockedAt = performance.now();
-  if (!locked && state === 'play' && ui === 'none' && !TEST) openPause();
+  if (!locked && state === 'play' && ui === 'none' && !NOLOCK) openPause();
 });
-canvas.addEventListener('click', () => { if (state === 'play' && ui === 'none' && !locked) requestLock(); });
+canvas.addEventListener('click', () => { if (state === 'play' && ui === 'none' && !locked && !NOLOCK) requestLock(); });
+// turning the view: the mouse (when captured) and a finger on a touch screen both come here
+function lookBy(mx, my, s = 0.0022 * SET.sens) {
+  yaw -= mx * s; pitch = clamp(pitch - my * s, -1.55, 1.55);
+  if (hideSpot) { let d = yaw - hideSpot.yaw0; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw = hideSpot.yaw0 + clamp(d, -0.6, 0.6); pitch = clamp(pitch, -0.45, 0.45); }
+}
+if (TOUCH) import('./touch.js').then(m => m.initTouch({ canvas, joy, getState: () => ({ state, ui }), lookBy: (dx, dy) => lookBy(dx, dy, 0.0058 * SET.sens), crouched: () => crouch }));
 document.addEventListener('mousemove', e => {
   if (state !== 'play' || ui !== 'none' || !locked) return;
   if (performance.now() - lockedAt < 120) return; // the first events after locking carry the cursor's jump to centre
@@ -1450,13 +1461,11 @@ document.addEventListener('mousemove', e => {
   // browsers occasionally report a single bogus huge delta; drop anything wildly larger than recent motion
   if (mag > 180 && mag > avgMove * 12) return;
   avgMove = avgMove * 0.9 + Math.min(mag, 400) * 0.1;
-  const s = 0.0022 * SET.sens;
-  yaw -= mx * s; pitch = clamp(pitch - my * s, -1.55, 1.55);
-  if (hideSpot) { let d = yaw - hideSpot.yaw0; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw = hideSpot.yaw0 + clamp(d, -0.6, 0.6); pitch = clamp(pitch, -0.45, 0.45); }
+  lookBy(mx, my);
 });
 canvas.addEventListener('mousedown', e => {
   if (state !== 'play' || ui !== 'none') return;
-  if (!locked && !TEST) return;
+  if (!locked && !NOLOCK) return;
   if (e.button === 0) mouse.left = true;
   if (e.button === 2) { if (hideSpot) exitHide(); else if (wantsUse()) useAction(); else if (offHand() === 'sigil') castSpell(); else { guarding = true; guardAt = gameT; } }
 });
@@ -2832,14 +2841,16 @@ function update(dt) {
   prevT = t;
 
   // ---- player movement
-  const sprint = (keys.ShiftLeft || keys.ShiftRight) && keys.KeyW && !guarding && !crouch;
-  const fwd = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), str = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  const jOn = !!(joy.f || joy.s);
+  const sprint = ((keys.ShiftLeft || keys.ShiftRight) && keys.KeyW || joy.run) && !guarding && !crouch;
+  const fwd = jOn ? joy.f : (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), str = jOn ? joy.s : (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  const amp = jOn ? clamp(Math.hypot(joy.f, joy.s) * 1.25, 0.4, 1) : 1;
   const sn = Math.sin(yaw), cs = Math.cos(yaw);
   let vx = -sn * fwd + cs * str, vz = -cs * fwd - sn * str;
   const vl = Math.hypot(vx, vz); if (vl > 0) { vx /= vl; vz /= vl; }
   const fx0 = Math.floor(P.pos.x), fz0 = Math.floor(P.pos.z), fy0 = Math.floor(P.pos.y);
   const inWeb = world.get(fx0, fy0, fz0) === B.COBWEB || world.get(fx0, fy0 + 1, fz0) === B.COBWEB;
-  const speed = (sprint ? 6.1 : crouch ? 2.2 : 4.3) * (inWeb ? 0.3 : 1) * (guarding ? 0.45 : 1);
+  const speed = (sprint ? 6.1 : crouch ? 2.2 : 4.3) * (inWeb ? 0.3 : 1) * (guarding ? 0.45 : 1) * amp;
   const ctrl = P.onGround ? 1 : 0.6;
   if (dodgeT <= 0) {
     P.vel.x += (vx * speed - P.vel.x) * Math.min(1, dt * 14 * ctrl);
@@ -3110,7 +3121,8 @@ function quaff() {
 }
 function dodge() {
   if (dodgeCd > 0 || !P.onGround) return;
-  const fwd = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), str = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  const jOn = !!(joy.f || joy.s);
+  const fwd = jOn ? joy.f : (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), str = jOn ? joy.s : (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
   let f = fwd, s = str; if (!f && !s) f = -1; // no direction held: hop back
   const sn = Math.sin(yaw), cs = Math.cos(yaw);
   let vx = -sn * f + cs * s, vz = -cs * f - sn * s; const l = Math.hypot(vx, vz) || 1; vx /= l; vz /= l;
@@ -3420,7 +3432,7 @@ function frame(now) {
   const ft = now - last;
   const dt = Math.min(0.05, ft / 1000); last = now;
   if (state === 'play' && S && world) {
-    const active = ui === 'none' && (locked || TEST);
+    const active = ui === 'none' && (locked || NOLOCK);
     if (active) tunePerformance(ft, dt);
     if (active) update(dt); else snd.chase(0);
     snd.ambient(sunNow, S.dread, underK > 0.5);
@@ -3430,7 +3442,7 @@ function frame(now) {
     updateHUD();
     updateWaypoint();
     // if the mouse wasn't recaptured (browsers refuse right after Esc), say so instead of sitting frozen
-    const rs = !locked && !TEST && ui === 'none' ? 'block' : 'none'; if ($('resume').style.display !== rs) $('resume').style.display = rs;
+    const rs = !locked && !NOLOCK && ui === 'none' ? 'block' : 'none'; if ($('resume').style.display !== rs) $('resume').style.display = rs;
     renderShadows(); composer.render();
   } else if (state === 'dead') {
     composer.render();
