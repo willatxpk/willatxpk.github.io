@@ -71,6 +71,33 @@
                       "type":  "game"
                   },
                   {
+                      "id":  "office-hours",
+                      "title":  "Office Hours",
+                      "tagline":  "Run a physics lab from behind your desk.",
+                      "description":  "You\u0027re a physics professor. Students, postdocs, the chair and HR walk into your office with ideas, results, crises and personal lives. Brainstorm projects, chase grants, buy equipment, keep your people happy and try to make tenure without getting fired.",
+                      "tags":  [
+                                   "Simulation",
+                                   "3D"
+                               ],
+                      "icon":  "🔬",
+                      "accent":  "#4a8fd8",
+                      "source":  "../office-hours",
+                      "play":  true,
+                      "download":  true,
+                      "excludeDirs":  [
+                                          "playtest"
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "downloadNote":  "Open index.html through a local web server (for example: py -m http.server). Typed remarks can be judged by a local Ollama model if you have one; otherwise a word list is used.",
+                      "version":  1,
+                      "hash":  "533fabe37b24bef054cfb7f51a86aee74178595b5190fa30a949e2eb40eb980b",
+                      "type":  "game",
+                      "updated":  "2026-11-20",
+                      "size":  216529
+                  },
+                  {
                       "id":  "ticker-tycoon",
                       "title":  "Ticker Tycoon",
                       "tagline":  "Trade your way from a small stake to a fortune.",
