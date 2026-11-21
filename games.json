@@ -7,6 +7,11 @@
                          "blurb":  "Play in your browser, or download to keep."
                      },
                      {
+                         "type":  "learning",
+                         "title":  "Learning",
+                         "blurb":  "Physics practice and courses you can play through."
+                     },
+                     {
                          "type":  "app",
                          "title":  "Apps",
                          "blurb":  "Tools that run on your own computer."
@@ -94,7 +99,7 @@
                       "updated":  "2026-11-18",
                       "hash":  "535c71fa516f04d21bb27159c73d5a6e1a42c5aad0b97a7e7186b3f57f1aec18",
                       "size":  150433,
-                      "type":  "game"
+                      "type":  "learning"
                   },
                   {
                       "id":  "rydberg-lattice",
@@ -120,7 +125,7 @@
                       "updated":  "2026-11-18",
                       "hash":  "491cf218c479251d0146c97bd1000ee870ce32e2e8da43d4ec01500dd2e59a0f",
                       "size":  101597,
-                      "type":  "game"
+                      "type":  "learning"
                   },
                   {
                       "id":  "kerdos",
