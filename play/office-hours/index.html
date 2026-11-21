@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Office Hours</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -32,6 +32,8 @@ select, input[type=text] { font: inherit; color: var(--text); background: #1c223
 #hEnergyW { width: 90px; height: 8px; background: rgba(255,255,255,.12); border-radius: 4px; overflow: hidden; margin-top: 4px; }
 #hEnergy { height: 100%; transition: width .3s; }
 #hud .sp { flex: 1; }
+#hStats { display: contents; }
+button, select, input, textarea { touch-action: manipulation; }
 #hud .spd { padding: 3px 9px; }
 #hud .spd.on { background: #c98a2a; color: #1a1208; }
 #hDnd.on { background: #6a2a2a; }
@@ -57,7 +59,7 @@ select, input[type=text] { font: inherit; color: var(--text); background: #1c223
 #dName { font-weight: 700; font-size: 16px; color: var(--accent); }
 #dRole { color: var(--muted); font-size: 12px; }
 #dText { font-size: 16px; line-height: 1.5; min-height: 48px; cursor: pointer; }
-#dChoices { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 6px; margin-top: 12px; opacity: 0; transition: opacity .2s; }
+#dChoices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr)); gap: 6px; margin-top: 12px; opacity: 0; transition: opacity .2s; }
 #dChoices.show { opacity: 1; }
 .choice { display: grid; grid-template-columns: 22px 1fr; text-align: left; padding: 8px 12px; gap: 0 8px; }
 .choice .ck { grid-row: span 3; color: var(--muted); font-weight: 600; }
@@ -120,7 +122,7 @@ select, input[type=text] { font: inherit; color: var(--text); background: #1c223
 #osBody { padding: 16px 20px; overflow-y: auto; }
 #osBody h2 { margin: 0 0 8px; font-size: 20px; } #osBody h2 .muted { font-size: 13px; font-weight: 400; }
 #osBody h3 { margin: 18px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 10px; }
 .pcard, .jcard, .gcard, .scard { background: #20263280; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
 .ph { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
@@ -152,7 +154,7 @@ select, input[type=text] { font: inherit; color: var(--text); background: #1c223
 .scard .sp { font-weight: 600; color: var(--accent); }
 .scard button { align-self: flex-start; }
 .mail { display: grid; grid-template-columns: 300px 1fr; gap: 14px; height: 100%; }
-@media (max-width: 760px) { .mail { grid-template-columns: 1fr; } #os { grid-template-columns: 1fr; } #osSide { flex-direction: row; overflow-x: auto; } .osfoot { display: none; } }
+@media (max-width: 760px) { .mail { grid-template-columns: 1fr; } #os { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; } #osBar { grid-column: 1; min-height: 38px; } #osSide { flex-direction: row; overflow-x: auto; } .osfoot { display: none; } }
 .mlist { overflow-y: auto; border-right: 1px solid var(--line); max-height: 600px; }
 .mitem { padding: 8px 10px; cursor: pointer; border-radius: 6px; display: grid; grid-template-columns: 1fr auto; font-size: 13px; }
 .mitem span { grid-column: 1; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -184,6 +186,53 @@ select, input[type=text] { font: inherit; color: var(--text); background: #1c223
 .tbtns { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .tbtns button { padding: 10px 18px; font-size: 15px; }
 #goStats { color: var(--muted); margin: 12px 0 18px; }
+
+/* phones: compact top bar, full-width panels, no zoom-on-focus */
+@media (max-width: 600px) {
+  #hud { gap: 4px 10px; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }
+  #hud > .grp:first-child { flex: 1 1 0; min-width: 0; }
+  #hLab { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #hud .big { font-size: 14px; }
+  #hud .sub { font-size: 10px; }
+  #hStats { display: flex; flex: 1 1 100%; order: 3; align-items: center; gap: 14px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  #hStats::-webkit-scrollbar { display: none; }
+  #hStats .grp { flex: none; }
+  #hEnergyW { width: 54px; height: 5px; }
+  #hQueue, #hMail { order: -1; font-size: 13px; white-space: nowrap; }
+  #hQueue:empty, #hMail:empty { display: none; }
+  #hud .sp { order: 4; flex: 1 1 100%; height: 0; }
+  #hud > button { order: 5; flex: 1 1 0; padding: 6px 0; font-size: 14px; }
+  #hud .lbl { display: none; }
+  #hud .spd { padding: 5px 7px; }
+  #paused { top: calc(118px + env(safe-area-inset-top)); }
+  #awayBanner { top: calc(150px + env(safe-area-inset-top)); max-width: calc(100% - 24px); text-align: center; }
+  #toasts { top: calc(120px + env(safe-area-inset-top)); left: 8px; right: 8px; max-width: none; align-items: flex-end; }
+  #dialog { bottom: calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 16px); padding: 12px 14px; max-height: calc(100% - 140px - env(safe-area-inset-top)); border-radius: 12px; }
+  #dText { font-size: 15px; min-height: 0; }
+  #dChoices { margin-top: 10px; gap: 5px; }
+  .choice { padding: 6px 10px; }
+  .choice .ch { font-size: 11px; }
+  .bwrap { gap: 10px; }
+  .blbl { width: 100%; }
+  .bcard { width: 74px; }
+  .btitle { font-size: 19px; }
+  #os { width: 100%; height: 100%; border-radius: 0; grid-template-rows: auto auto 1fr; padding-top: env(safe-area-inset-top); }
+  #osBar { padding: 6px 10px; }
+  #osBar .muted { display: none; }
+  #osSide { padding: 6px; gap: 4px; }
+  .osapp { flex: none; padding: 6px 10px; }
+  .osapp em { position: static; margin-left: 2px; }
+  #osBody { padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); }
+  .mail { height: auto; grid-template-rows: auto; align-content: start; }
+  .mlist { max-height: 240px; border-right: none; border-bottom: 1px solid var(--line); }
+  .smeter { grid-template-columns: 80px 1fr 28px; }
+  .set { flex-wrap: wrap; } .set select, .set input { max-width: 100%; }
+  .grid3 { gap: 6px; }
+  .tbox { padding: 18px 16px; }
+  .tbox h1 { font-size: 46px; }
+  #homes { grid-template-columns: 1fr; }
+  input[type=text], select, textarea, .saybox textarea { font-size: 16px; }
+}
 </style>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
@@ -193,6 +242,7 @@ select, input[type=text] { font: inherit; color: var(--text); background: #1c223
 <div id="hud">
   <div class="grp"><span class="big" id="hLab"></span><span class="sub" id="hDate"></span></div>
   <div class="grp" title="Lab funds"><span class="big">💰 <span id="hMoney"></span></span><span class="sub" id="hDelta"></span></div>
+  <div id="hStats">
   <div class="grp"><span class="sub" id="hRunway"></span></div>
   <div class="grp" title="Reputation"><span class="big">⭐ <span id="hRep"></span></span><span class="sub">reputation</span></div>
   <div class="grp" title="Your energy. Recovers every week."><span class="big">⚡ <span id="hEnergyN"></span></span><div id="hEnergyW"><div id="hEnergy"></div></div></div>
@@ -202,9 +252,10 @@ select, input[type=text] { font: inherit; color: var(--text); background: #1c223
   <div class="grp" id="hSelfW"><span class="big">🧘 <span id="hSelf"></span></span><span class="sub">wellbeing</span></div>
   <div class="grp" title="Your personal net worth (Ventures app)"><span class="big">💼 <span id="hWorth"></span></span><span class="sub">net worth</span></div>
   <span id="hQueue"></span><span id="hMail" title="Unread mail"></span>
+  </div>
   <span class="sp"></span>
-  <button id="hPC">🖥️ Computer</button>
-  <button id="hLap" title="Walk around the lab">🚶 Take a lap</button>
+  <button id="hPC" title="Computer">🖥️<span class="lbl"> Computer</span></button>
+  <button id="hLap" title="Walk around the lab">🚶<span class="lbl"> Take a lap</span></button>
   <button id="hDnd">🚪 Door open</button>
   <button class="spd" data-s="0" title="Pause (space)">⏸</button>
   <button class="spd" data-s="20" title="20 s per week">▶</button>

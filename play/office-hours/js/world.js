@@ -657,7 +657,16 @@ export function updateWorld(dt) {
   W.pitch += (W.tPitch - W.pitch) * Math.min(1, dt * 6);
   W.fov += (W.tFov - W.fov) * Math.min(1, dt * 6);
   W.camera.rotation.set(W.pitch, W.yaw, 0);
-  if (Math.abs(W.camera.fov - W.fov) > 0.01) { W.camera.fov = W.fov; W.camera.updateProjectionMatrix(); }
+  const vf = fitFov(W.fov);
+  if (Math.abs(W.camera.fov - vf) > 0.01) { W.camera.fov = vf; W.camera.updateProjectionMatrix(); }
+  // tall screens: while a conversation box covers the bottom half, lift the picture so the person you're
+  // talking to sits in the visible upper part instead of behind the box
+  const h = window.innerHeight, w = window.innerWidth;
+  const dlg = document.getElementById('dialog');
+  const want = w / h < 0.8 && dlg && dlg.classList.contains('show') ? Math.min(dlg.offsetHeight * 0.4, h * 0.16) : 0;
+  W.shift = (W.shift || 0) + (want - (W.shift || 0)) * Math.min(1, dt * 5);
+  if (Math.abs(W.shift) > 0.5) { W.camera.setViewOffset(w, h, 0, W.shift, w, h); W.offsetOn = true; }
+  else if (W.offsetOn) { W.camera.clearViewOffset(); W.offsetOn = false; }
   // door
   W.doorOpen += (W.doorTarget - W.doorOpen) * Math.min(1, dt * 4);
   W.door.rotation.y = W.doorOpen * Math.PI * 0.48;
@@ -676,6 +685,15 @@ export function updateWorld(dt) {
     else { ct.g.position.addScaledVector(d.normalize(), Math.min(d.length(), dt * 0.6)); ct.g.rotation.y = Math.atan2(d.x, d.z); }
     W.catTail.rotation.z = Math.sin(W.t * 2) * 0.4;
   }
+}
+
+// three.js FOV is vertical, so a tall phone screen would see only a narrow sliver. Keep the horizontal view
+// at least as wide as on a 1.25:1 screen, which shows a portrait player about the same scene as a laptop.
+function fitFov(f) {
+  const a = W.camera.aspect, ref = 1.25;
+  if (a >= ref) return f;
+  const v = 2 * Math.atan(Math.tan(f * Math.PI / 360) * ref / a) * 180 / Math.PI;
+  return Math.min(v, 105);
 }
 
 export function render() { renderFrame(W.renderer, W.scene, W.camera); }

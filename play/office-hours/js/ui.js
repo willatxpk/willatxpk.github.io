@@ -10,7 +10,7 @@ import { QUALITY, setQuality } from './gfx.js';
 import { sayTo, judgeRemark, AI, aiStatus } from './say.js';
 import { interestText, fitScore } from './career.js';
 const fitTag = (p, pr) => { const f = fitScore(p, pr); return f >= 1.5 ? '💚 dream fit' : f >= 1 ? '✓ in their area' : '✗ not their interest'; };
-const interestBlock = p => { const t = interestText(p); return `<div class="prow" style="font-size:12px">🧭 <b>Wants to work on</b> ${esc(t.plats)}${t.goal ? `, toward <b>${esc(t.goal)}</b>` : ''} · prefers ${esc(t.style)}. Dream: ${esc(t.dream)}.</div>`; };
+const interestBlock = p => { const t = interestText(p); return `<div style="font-size:12px;margin-top:8px">🧭 <b>Wants to work on</b> ${esc(t.plats)}${t.goal ? `, toward <b>${esc(t.goal)}</b>` : ''} · prefers ${esc(t.style)}. Dream: ${esc(t.dream)}.</div>`; };
 import { fin, netWorth, salaryWeekly, livingWeekly, equityValue, healthWord, STAGES, foundWithStudent } from './money.js';
 
 const $ = s => document.querySelector(s);
@@ -53,7 +53,8 @@ export function hud() {
   const q = G.queue.length;
   $('#hQueue').textContent = q ? `🚪 ${q} waiting` : '';
   $('#hDnd').classList.toggle('on', !!G.dnd);
-  $('#hDnd').textContent = G.dnd ? '🚫 Door closed' : '🚪 Door open';
+  $('#hDnd').innerHTML = G.dnd ? '🚫<span class="lbl"> Door closed</span>' : '🚪<span class="lbl"> Door open</span>';
+  $('#hDnd').title = G.dnd ? 'Door closed' : 'Door open';
   const unread = G.inbox.filter(m => !m.read).length;
   $('#hMail').textContent = unread ? `✉️ ${unread}` : '';
   document.querySelectorAll('.spd').forEach(b => b.classList.toggle('on', (+b.dataset.s === 0 && G.paused) || (!G.paused && +b.dataset.s === G.speed)));
@@ -233,6 +234,7 @@ export function renderComputer() {
   const unread = G.inbox.filter(m => !m.read).length;
   $('#osSide').innerHTML = APPS.map(([k, i, n]) => `<button class="osapp ${UI.app === k ? 'on' : ''}" data-app="${k}"><span>${i}</span>${n}${k === 'mail' && unread ? `<em>${unread}</em>` : ''}${k === 'hiring' && G.applicants.length ? `<em>${G.applicants.length}</em>` : ''}</button>`).join('') + `<div class="osfoot">${esc(dateStr())}<br>${fmtK(G.money)} · ⚡${Math.round(G.energy)}</div>`;
   $('#osSide').querySelectorAll('.osapp').forEach(b => b.onclick = () => { UI.app = b.dataset.app; renderComputer(); });
+  { const on = $('#osSide .osapp.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } // phones: the app bar scrolls sideways
   const body = $('#osBody');
   const scroll = body.scrollTop;
   body.innerHTML = (APP_RENDER[UI.app] || (() => ''))();

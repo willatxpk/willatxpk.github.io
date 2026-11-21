@@ -91,11 +91,11 @@
 
                                        ],
                       "downloadNote":  "Open index.html through a local web server (for example: py -m http.server). Typed remarks can be judged by a local Ollama model if you have one; otherwise a word list is used.",
-                      "version":  1,
-                      "hash":  "533fabe37b24bef054cfb7f51a86aee74178595b5190fa30a949e2eb40eb980b",
+                      "version":  2,
+                      "hash":  "a94dad39283949f2c35e31f9066a8ac26647968e487df3c2d90577c71c7af3ba",
                       "type":  "game",
                       "updated":  "2026-11-20",
-                      "size":  216529
+                      "size":  217743
                   },
                   {
                       "id":  "iron-banners",
