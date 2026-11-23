@@ -1126,14 +1126,14 @@ function endRaid(dawn) {
 }
 // [Tab]: trade the shield and the Sigil between your left hand and your pack
 function swapOffhand() {
-  const cur = offHand(), shields = ['towershield', 'shield'].filter(k => count(k));
-  let next;
-  if (cur === 'sigil') next = (S.eq.lhAlt && count(S.eq.lhAlt) && S.eq.lhAlt !== 'sigil') ? S.eq.lhAlt : shields[0];
-  else next = count('sigil') ? 'sigil' : null;
-  if (!next) { log(cur === 'sigil' ? 'You have no shield to take up.' : 'You have no Sigil yet.', 'miss'); return; }
+  const cur = offHand();
+  const owned = Object.keys(ITEMS).filter(k => ITEMS[k].slot === 'lh' && count(k));
+  if (!owned.length || (owned.length === 1 && owned[0] === cur)) { log(cur ? `The ${itemName(cur)} is the only thing you have for your left hand.` : 'You have nothing to hold in your left hand. Shields are sold by Tamsin.', 'miss'); return; }
+  const next = owned[(owned.indexOf(cur) + 1) % owned.length];
   if (cur) S.eq.lhAlt = cur;
   S.eq.lh = next; guarding = false; snd.place(); renderHotbar();
-  log(next === 'sigil' ? 'You take up the Sigil. [RMB] casts.' : `You take up the ${itemName(next)}. [RMB] guards.`, 'miss');
+  const use = TOUCH ? 'USE·GUARD' : '[RMB]';
+  log(next === 'sigil' ? `You take up the Sigil. ${use} casts${TOUCH ? ', swipe the left slot to change spell' : ''}.` : `You take up the ${itemName(next)}. ${use} guards.`, 'miss');
 }
 function swapWeapon() {
   const o = 1 - S.eq.rhSel, k = S.eq.rh[o];
@@ -1173,6 +1173,13 @@ function cycleBelt(dir = 1) {
   log(S.belt.some(b => b && count(b)) ? 'That is the only thing on your belt.' : 'Your belt is empty. Potions, oil and special arrows go there.', 'miss');
 }
 function setBuild(on) { S.build = on; renderHotbar(); }
+function pickHotbar(i) {
+  if (S.build && S.sel === i) { setBuild(false); return; }
+  S.sel = i; setBuild(true);
+  const k = S.hotbar[i];
+  if (!k) log(TOUCH ? 'That build slot is empty. Open 🎒, tap a block, then tap this slot to put it there.' : 'That hotbar slot is empty. Open [E], click a block, then a hotbar slot.', 'miss');
+  else if (TOUCH) hint('touchBuild', `<b>Building with ${itemName(k)}.</b> Aim at a block: <b>USE</b> places, <b>ATTACK</b> breaks. Tap the slot again to put it away.`, 9);
+}
 function migrateLoadout() {
   if (S.eq) return;
   S.eq = { rh: [null, null], rhSel: 0, lh: null, head: null, chest: null, hands: null, legs: null, charm: null };
@@ -1364,7 +1371,7 @@ function beginPlay() {
   airPeak = P.pos.y; prevT = S.time;
   renderHotbar(); show(null); updateHUD(true);
   if (!NOLOCK) requestLock();
-  if (TOUCH) setTimeout(() => hint('touchSlots', 'The <b>diamond of slots</b> is touchable. Tap the <b>bottom</b> slot to drink or use your quick item, <b>swipe</b> it to change items. Tap your <b>weapon</b> to swap it, the <b>left</b> slot to swap shield and Sigil, the <b>top</b> one for your ability.', 12), 4000);
+  if (TOUCH) setTimeout(() => hint('touchSlots', 'The <b>diamond of slots</b> is touchable. Tap the <b>bottom</b> slot to drink or use your quick item, <b>swipe</b> it to change items. Tap your <b>weapon</b> to swap it, the <b>left</b> slot to change what is in your left hand, the <b>top</b> one for your ability. Tap the <b>build bar</b> to build.', 12), 4000);
 }
 function saveGame() {
   if (!world || !S) return false;
@@ -1460,7 +1467,7 @@ function lookBy(mx, my, s = 0.0022 * SET.sens) {
   yaw -= mx * s; pitch = clamp(pitch - my * s, -1.55, 1.55);
   if (hideSpot) { let d = yaw - hideSpot.yaw0; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw = hideSpot.yaw0 + clamp(d, -0.6, 0.6); pitch = clamp(pitch, -0.45, 0.45); }
 }
-if (TOUCH) import('./touch.js').then(m => m.initTouch({ canvas, joy, getState: () => ({ state, ui }), lookBy: (dx, dy) => lookBy(dx, dy, 0.0058 * SET.sens), crouched: () => crouch }));
+if (TOUCH) import('./touch.js').then(m => m.initTouch({ canvas, joy, getState: () => ({ state, ui }), lookBy: (dx, dy) => lookBy(dx, dy, 0.0058 * SET.sens), crouched: () => crouch, building: () => !!S?.build }));
 document.addEventListener('mousemove', e => {
   if (state !== 'play' || ui !== 'none' || !locked) return;
   if (performance.now() - lockedAt < 120) return; // the first events after locking carry the cursor's jump to centre
@@ -1499,7 +1506,7 @@ addEventListener('keydown', e => {
   if (state !== 'play') return;
   if (e.code === 'KeyE' || (e.code === 'Escape' && ui === 'panel')) { if (ui === 'panel') closePanel(); else if (ui === 'none' && e.code === 'KeyE') openPanel(); return; }
   if (ui !== 'none') return;
-  if (e.code.startsWith('Digit')) { const n = +e.code.slice(5); if (n >= 1 && n <= 9) { if (S.build && S.sel === n - 1) setBuild(false); else { S.sel = n - 1; setBuild(true); } } }
+  if (e.code.startsWith('Digit')) { const n = +e.code.slice(5); if (n >= 1 && n <= 9) pickHotbar(n - 1); }
   if (e.code === 'KeyF') toggleLantern();
   if (e.code === 'KeyG') toggleGoggles();
   if (e.code === 'KeyR') classAbility();
@@ -3346,7 +3353,7 @@ const setA = (id, v) => { v = (+v).toFixed(1); if (changed(id + ':a', v)) $(id).
 function renderHotbar() {
   if (!S) return;
   $('hotbar').classList.toggle('idle', !S.build);
-  $('hotbar').innerHTML = `<div class="hbLabel">${S.build ? 'Building — [B] to put away' : 'Crafting hotbar — [1–9] or [B]'}</div>` + S.hotbar.map((k, i) => `<div class="slot${S.build && i === S.sel ? ' sel' : ''}"><span class="k">${i + 1}</span>${k ? itemIcon(k) + `<span class="n">${count(k) > 1 ? count(k) : ''}</span>` : ''}</div>`).join('');
+  $('hotbar').innerHTML = `<div class="hbLabel">${TOUCH ? (S.build ? 'Building — ATTACK breaks · USE places · tap the slot again to stop' : 'Build bar — tap a slot to build') : S.build ? 'Building — [B] to put away' : 'Crafting hotbar — [1–9] or [B]'}</div>` + S.hotbar.map((k, i) => `<div class="slot${S.build && i === S.sel ? ' sel' : ''}" data-hb="${i}"><span class="k">${i + 1}</span>${k ? itemIcon(k) + `<span class="n">${count(k) > 1 ? count(k) : ''}</span>` : ''}</div>`).join('');
   renderCross();
 }
 // the loadout at a glance: off-hand, weapon, ability, quick item
@@ -3366,6 +3373,12 @@ function renderCross() {
     `<div class="cap"><b>${rh ? itemName(rh) : 'Fists'}</b>${ITEMS[rh]?.weapon?.ranged ? ` · ${count('arrows')} arrows` : ''}${lh ? ' · ' + itemName(lh) : ''}<br>${bk && count(bk) ? `${itemName(bk)} ×${count(bk)}` : 'belt empty'}</div>`;
 }
 if (TOUCH) {
+  // the build bar: tap a slot to build with it, tap it again to stop
+  $('hotbar').addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  $('hotbar').addEventListener('touchend', e => {
+    const s = e.target.closest('[data-hb]'); if (!s || state !== 'play' || ui !== 'none') return;
+    pickHotbar(+s.dataset.hb);
+  });
   const L = $('loadout'); let t0 = null;
   L.addEventListener('touchstart', e => { e.preventDefault(); const t = e.changedTouches[0]; t0 = { x: t.clientX, y: t.clientY, cell: e.target.closest('.up,.lf,.rt,.dn') }; }, { passive: false });
   L.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
@@ -3421,7 +3434,7 @@ function updateHUD(force) {
   if (S.cls === 'fighter') ab.push(`<span class="${S.uses.second ? '' : 'used'}">[R] Second Wind</span>`);
   if (S.cls === 'rogue') ab.push(`<span class="${S.uses.shadow ? '' : 'used'}">[R] Shadowstep</span>`, `Sneak Attack ${Math.ceil(S.level / 2)}d6`);
   if (S.cls === 'cleric') ab.push(`<span class="${S.slots ? '' : 'used'}">[R] Cure Wounds (${S.slots})</span>`, `<span class="${S.uses.turn ? '' : 'used'}">[T] Turn Undead</span>`);
-  if (offHand() === 'sigil') { const sp = SPELLS[S.spellSlots[S.spellSel]]; ab.push(sp ? `<span class="${(S.aether || 0) >= sp.cost ? 'on' : 'used'}">[RMB] ${sp.icon} ${sp.name} (${sp.cost}) · [Z] next</span>` : '<span class="used">No spell prepared — set one in your pack [E]</span>'); }
+  if (offHand() === 'sigil') { const sp = SPELLS[S.spellSlots?.[S.spellSel]]; ab.push(sp ? `<span class="${(S.aether || 0) >= sp.cost ? 'on' : 'used'}">[RMB] ${sp.icon} ${sp.name} (${sp.cost}) · [Z] next</span>` : '<span class="used">No spell prepared — set one in your pack [E]</span>'); }
   ab.push('<span style="color:var(--dim)">[M] map · [J] journal</span>');
   if (S.flags.magic) { setW('aeFill', (100 * (S.aether || 0) / maxAether()) + '%'); setT('aeText', `Lumen ${Math.floor(S.aether || 0)} / ${maxAether()}`); setO('aeBar', '1'); } else setO('aeBar', '0');
   setH('colonyTag', `⌂ ${colonyRank()}${S.raid?.active ? ` · <b style="color:#ff8a7a">RAID ${S.raid.killed}/${S.raid.total}</b>` : ''}`);

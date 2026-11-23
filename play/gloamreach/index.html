@@ -30,9 +30,11 @@
   body.touch input, body.touch select, body.touch textarea { -webkit-user-select:text; user-select:text; }
   body.touch #topleft { zoom:.62; left:calc(10px + env(safe-area-inset-left)); }
   body.touch #stats { zoom:.62; bottom:8px; left:34%; }
-  body.touch #hotbar { zoom:.6; bottom:150px; }
+  body.touch #hotbar { zoom:.62; left:43%; bottom:98px; pointer-events:auto; touch-action:none; }
+  body.touch #hotbar.idle { opacity:.7; }
+  body.touch #hotbar .hbLabel { font-size:14px; color:#cdbf9f; white-space:nowrap; }
   body.touch #hud { z-index:9; }
-  body.touch #loadout { zoom:.6; left:31%; bottom:150px; pointer-events:auto; touch-action:none; }
+  body.touch #loadout { zoom:.6; left:31%; bottom:215px; pointer-events:auto; touch-action:none; }
   body.touch #loadout .slot { border-color:#8a6a3a; }
   body.touch #loadout .tapped .slot, body.touch #loadout > div.tapped > .slot { background:rgba(120,90,50,.85); }
   body.touch #loadout .cap { display:none; }

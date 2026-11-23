@@ -25,7 +25,7 @@ const CSS = `
 #tTop .tb { position:relative; width:44px; height:44px; border-radius:10px; font-size:18px; }
 `;
 
-export function initTouch({ canvas, getState, lookBy, joy, crouched }) {
+export function initTouch({ canvas, getState, lookBy, joy, crouched, building }) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const ui = document.createElement('div'); ui.id = 'touchUI';
   const R = 'calc(%spx + env(safe-area-inset-right))', B = 'calc(%spx + env(safe-area-inset-bottom))';
@@ -124,7 +124,11 @@ export function initTouch({ canvas, getState, lookBy, joy, crouched }) {
       shown = on; ui.classList.toggle('off', !on);
       if (!on) { jt = null; joy.f = joy.s = 0; joy.run = false; J.style.display = 'none'; last.clear(); mouse(0, false); mouse(2, false); key('Space', false); for (const b of ui.querySelectorAll('.down')) b.classList.remove('down'); }
     }
-    if (on) $('tCrouch').classList.toggle('on', crouched());
+    if (on) {
+      $('tCrouch').classList.toggle('on', crouched());
+      const b = building();
+      if (b !== tick.b) { tick.b = b; $('tAtk').innerHTML = b ? '⛏<small>BREAK</small>' : '⚔<small>ATTACK</small>'; $('tUse').innerHTML = b ? '▣<small>PLACE</small>' : '✋<small>USE·GUARD</small>'; }
+    }
     const portrait = s.state === 'play' && innerHeight > innerWidth * 1.1;
     if (portrait !== rot._on) { rot._on = portrait; rot.style.display = portrait ? 'flex' : 'none'; }
     requestAnimationFrame(tick);
