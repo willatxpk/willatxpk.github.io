@@ -1132,8 +1132,7 @@ function swapOffhand() {
   const next = owned[(owned.indexOf(cur) + 1) % owned.length];
   if (cur) S.eq.lhAlt = cur;
   S.eq.lh = next; guarding = false; snd.place(); renderHotbar();
-  const use = TOUCH ? 'USE·GUARD' : '[RMB]';
-  log(next === 'sigil' ? `You take up the Sigil. ${use} casts${TOUCH ? ', swipe the left slot to change spell' : ''}.` : `You take up the ${itemName(next)}. ${use} guards.`, 'miss');
+  log(next === 'sigil' ? `You take up the Sigil. ${TOUCH ? 'A second finger on the screen casts; ✦ Skills changes spell' : '[RMB] casts'}.` : `You take up the ${itemName(next)}. ${TOUCH ? 'Hold a second finger on the screen to guard' : '[RMB] guards'}.`, 'miss');
 }
 function swapWeapon() {
   const o = 1 - S.eq.rhSel, k = S.eq.rh[o];
@@ -1143,7 +1142,7 @@ function swapWeapon() {
 const BELTABLE = k => k === 'healing' || k === 'elixir' || k === 'lumendraught' || k === 'oil' || (typeof k === 'string' && k.startsWith('arrow_'));
 function useBelt() {
   const k = S.belt[S.beltSel];
-  if (!k || !count(k)) { log(TOUCH ? 'That belt slot is empty. Swipe the bottom slot to change it, or set items in your pack 🎒.' : 'That belt slot is empty. Press [X] to cycle, or set items in your pack [E].', 'miss'); return; }
+  if (!k || !count(k)) { log(TOUCH ? 'That item slot is empty. Swipe the ITEM button to change it, or set items in your pack 🎒.' : 'That belt slot is empty. Press [X] to cycle, or set items in your pack [E].', 'miss'); return; }
   useItem(k);
 }
 function useItem(k) {
@@ -1371,7 +1370,7 @@ function beginPlay() {
   airPeak = P.pos.y; prevT = S.time;
   renderHotbar(); show(null); updateHUD(true);
   if (!NOLOCK) requestLock();
-  if (TOUCH) setTimeout(() => hint('touchSlots', '<b>Tap</b> the screen to strike, talk or open things; <b>hold</b> it to dig. The <b>diamond of slots</b> is touchable. Tap the <b>bottom</b> slot to drink or use your quick item, <b>swipe</b> it to change items. Tap your <b>weapon</b> to swap it, the <b>left</b> slot to change what is in your left hand, the <b>top</b> one for your ability. Tap the <b>build bar</b> to build.', 12), 4000);
+  if (TOUCH) setTimeout(() => hint('touchSlots', '<b>Tap</b> the screen to strike, talk, open or place. <b>Hold</b> it to dig or break. <b>Two fingers</b> raise your shield or cast. Tap the <b>left side</b> to crouch, double-tap to dodge. <b>ITEM</b>: tap to use, swipe to change. <b>✦ Skills</b> has the rest.', 14), 4000);
 }
 function saveGame() {
   if (!world || !S) return false;
@@ -1467,7 +1466,19 @@ function lookBy(mx, my, s = 0.0022 * SET.sens) {
   yaw -= mx * s; pitch = clamp(pitch - my * s, -1.55, 1.55);
   if (hideSpot) { let d = yaw - hideSpot.yaw0; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw = hideSpot.yaw0 + clamp(d, -0.6, 0.6); pitch = clamp(pitch, -0.45, 0.45); }
 }
-if (TOUCH) import('./touch.js').then(m => m.initTouch({ canvas, joy, getState: () => ({ state, ui }), lookBy: (dx, dy) => lookBy(dx, dy, 0.0058 * SET.sens), crouched: () => crouch, tap: touchTap, press: on => { if (state === 'play' && ui === 'none') mouse.left = on; else mouse.left = false; } }));
+if (TOUCH) import('./touch.js').then(m => m.initTouch({ canvas, joy, getState: () => ({ state, ui }), lookBy: (dx, dy) => lookBy(dx, dy, 0.0058 * SET.sens), tap: touchTap, act: { useBelt: () => useBelt(), cycleBelt: d => cycleBelt(d), dodge: () => dodge(), crouch: () => setCrouch(!crouch) },
+  hud: () => {
+    const rh = rightHand(), bk = S.belt[S.beltSel];
+    return {
+      weapon: rh ? itemIcon(rh) : '✊', item: bk && count(bk) ? itemIcon(bk) : '', itemCount: bk && count(bk) ? count(bk) : 0,
+      build: !!S.build, lamp: !!S.lanternOn, glow: !!(S.gogOn || S.nvT > 0), crouch,
+      cleric: S.cls === 'cleric', magic: !!(S.flags.magic && count('sigil')),
+      offhands: Object.keys(ITEMS).filter(k => ITEMS[k].slot === 'lh' && count(k)).length,
+      abilityIcon: S.cls === 'fighter' ? '💨' : S.cls === 'rogue' ? '🌫️' : '✨',
+      abilityName: S.cls === 'fighter' ? 'Second Wind' : S.cls === 'rogue' ? 'Shadowstep' : 'Cure Wounds',
+    };
+  },
+  press: on => { if (state === 'play' && ui === 'none') mouse.left = on; else mouse.left = false; } }));
 // a quick tap on the screen does the obvious thing for what you're looking at: talk, open, place the block in hand, or strike
 let tapT = null;
 function touchTap() {
@@ -2445,7 +2456,7 @@ const _pv = new THREE.Vector3();
 function setCrouch(on) {
   if (hideSpot || state !== 'play') return;
   crouch = on; snd.rustle(0.35);
-  if (on) hint('crouch', '<b>Crouched</b> [Ctrl to stand]: slow and quiet. Things notice you from half as far.<br>Crouch inside a <b>bramble thicket</b> and keep still to vanish.', 11);
+  if (on) hint('crouch', (TOUCH ? '<b>Crouched</b> (tap the left side to stand): ' : '<b>Crouched</b> [Ctrl to stand]: ') + 'slow and quiet. Things notice you from half as far.<br>Crouch inside a <b>bramble thicket</b> and keep still to vanish.', 11);
 }
 // how loud and how visible you are
 function noiseMult() {
@@ -3364,7 +3375,7 @@ const setA = (id, v) => { v = (+v).toFixed(1); if (changed(id + ':a', v)) $(id).
 function renderHotbar() {
   if (!S) return;
   $('hotbar').classList.toggle('idle', !S.build);
-  $('hotbar').innerHTML = `<div class="hbLabel">${TOUCH ? (S.build ? 'Building — tap the screen to place · hold to break · tap the slot again to stop' : 'Build bar — tap a slot to build') : S.build ? 'Building — [B] to put away' : 'Crafting hotbar — [1–9] or [B]'}</div>` + S.hotbar.map((k, i) => `<div class="slot${S.build && i === S.sel ? ' sel' : ''}" data-hb="${i}"><span class="k">${i + 1}</span>${k ? itemIcon(k) + `<span class="n">${count(k) > 1 ? count(k) : ''}</span>` : ''}</div>`).join('');
+  $('hotbar').innerHTML = `<div class="hbLabel">${TOUCH ? (S.build ? 'Building — tap the screen to place · hold to break · tap the slot again to stop' : 'Build bar — tap a slot (or ⚔/⚒) to build') : S.build ? 'Building — [B] to put away' : 'Crafting hotbar — [1–9] or [B]'}</div>` + S.hotbar.map((k, i) => `<div class="slot${S.build && i === S.sel ? ' sel' : ''}" data-hb="${i}"><span class="k">${i + 1}</span>${k ? itemIcon(k) + `<span class="n">${count(k) > 1 ? count(k) : ''}</span>` : ''}</div>`).join('');
   renderCross();
 }
 // the loadout at a glance: off-hand, weapon, ability, quick item

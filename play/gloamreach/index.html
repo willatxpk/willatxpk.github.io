@@ -31,16 +31,12 @@
   body.touch { touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; }
   body.touch input, body.touch select, body.touch textarea { -webkit-user-select:text; user-select:text; }
   body.touch #topleft { zoom:.62; left:calc(10px + env(safe-area-inset-left)); }
-  body.touch #stats { zoom:.62; bottom:8px; left:34%; }
+  body.touch #stats { zoom:.62; bottom:8px; left:43%; }
   body.touch #hotbar { zoom:.62; left:43%; bottom:98px; pointer-events:auto; touch-action:none; }
   body.touch #hotbar.idle { opacity:.7; }
   body.touch #hotbar .hbLabel { font-size:14px; color:#cdbf9f; white-space:nowrap; }
   body.touch #hud { z-index:9; }
-  body.touch #loadout { zoom:.6; left:31%; bottom:215px; pointer-events:auto; touch-action:none; }
-  body.touch #loadout .slot { border-color:#8a6a3a; }
-  body.touch #loadout .tapped .slot, body.touch #loadout > div.tapped > .slot { background:rgba(120,90,50,.85); }
-  body.touch #loadout .cap { display:none; }
-  body.touch #loadout .dn::after { content:'⇆'; position:absolute; left:74px; top:22px; color:#d6a84a; font-size:22px; opacity:.8; }
+  body.touch #loadout { display:none; }
   body.touch #log { zoom:.7; bottom:auto; top:32%; left:calc(12px + env(safe-area-inset-left)); width:min(470px, 46vw); }
   body.touch #ability { display:none; }
   body.touch .screen { touch-action:pan-x pan-y; }
