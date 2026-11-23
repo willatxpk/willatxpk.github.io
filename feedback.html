@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Feedback</title>
+<meta name="description" content="Tell me what you liked, what didn't work, and what you'd add.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="wrap topnav" style="max-width:760px"><a href="./">Home</a><a href="about.html">About</a></nav>
+<main class="wrap guide feedback" id="page">
+  <p class="empty">Loading…</p>
+</main>
+
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const page = document.getElementById("page");
+const id = new URLSearchParams(location.search).get("game");
+
+fetch("games.json", { cache: "no-cache" })
+  .then(r => r.json())
+  .then(data => {
+    const g = (data.games || []).find(x => x.id === id && x.version > 0);
+    if (!g) {
+      page.innerHTML = `<h1>Feedback</h1><p>Pick a game to leave feedback on:</p>
+        <ul>${(data.games || []).filter(x => x.version > 0).map(x => `<li><a href="feedback.html?game=${encodeURIComponent(x.id)}">${esc(x.icon)} ${esc(x.title)}</a></li>`).join("")}</ul>`;
+      return;
+    }
+    document.title = `${g.title} Feedback`;
+    document.body.style.setProperty("--accent", g.accent || "#888");
+    const play = g.play ? `<a class="btn" href="play/${encodeURIComponent(g.id)}/">▶ Play</a>` : g.guide ? `<a class="btn" href="${esc(g.guide)}">Setup guide</a>` : "";
+    page.innerHTML = `
+      <section class="fb-head">
+        <div class="fb-icon">${esc(g.icon || "🎮")}</div>
+        <div>
+          <h1>${esc(g.title)} feedback</h1>
+          <p class="lede">${esc(g.tagline)}</p>
+          <div class="actions">${play}<a class="btn ghost" href="./">← All games</a></div>
+        </div>
+      </section>
+      <div class="callout">
+        <b>I'd love to hear from you.</b> Anything helps:
+        <ul style="margin:6px 0 0">
+          <li>👍 What you liked</li>
+          <li>👎 What felt confusing, too hard, too slow, or broken</li>
+          <li>💡 Ideas for new features, levels or modes</li>
+        </ul>
+        <p class="note" style="margin-top:8px">Comments are public. Sign in with a free GitHub account to post, or just leave an emoji reaction.</p>
+      </div>
+      <div id="comments"></div>`;
+
+    const c = data.giscus || {};
+    if (!c.repoId || !c.categoryId) {
+      document.getElementById("comments").innerHTML = `<p class="empty">Comments aren't switched on yet. Check back soon!</p>`;
+      return;
+    }
+    const s = document.createElement("script");
+    const attrs = {
+      src: "https://giscus.app/client.js",
+      "data-repo": c.repo, "data-repo-id": c.repoId,
+      "data-category": c.category, "data-category-id": c.categoryId,
+      // One thread per game, keyed by its id so it survives renames and URL changes.
+      "data-mapping": "specific", "data-term": `Feedback: ${g.id}`, "data-strict": "1",
+      "data-reactions-enabled": "1", "data-emit-metadata": "0", "data-input-position": "top",
+      "data-theme": "preferred_color_scheme", "data-lang": "en", "data-loading": "lazy",
+      crossorigin: "anonymous",
+    };
+    for (const k in attrs) s.setAttribute(k, attrs[k]);
+    s.async = true;
+    document.getElementById("comments").appendChild(s);
+  })
+  .catch(() => { page.innerHTML = `<p class="empty">Couldn't load this page.</p>`; });
+</script>
+</body>
+</html>

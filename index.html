@@ -30,6 +30,7 @@ function card(g) {
   if (g.playMobile) buttons.push(`<a class="btn" href="play/${esc(g.id)}/?touch">📱 Play on phone</a>`);
   if (g.guide) buttons.push(`<a class="btn" href="${esc(g.guide)}">Setup guide</a>`);
   if (g.download) buttons.push(`<a class="btn ghost" href="downloads/${esc(g.id)}.zip" download>⬇ Download${g.size ? " · " + fmtSize(g.size) : ""}</a>`);
+  buttons.push(`<a class="btn ghost" href="feedback.html?game=${encodeURIComponent(g.id)}">💬 Feedback</a>`);
   const meta = g.version ? `Version ${g.version} · updated ${fmtDate(g.updated)}` : "";
   return `<article class="card" style="--accent:${esc(g.accent || "#888")}">
     <div class="cover">${esc(g.icon || "🎮")}${g.image ? `<img src="${esc(g.image)}" alt="">` : ""}</div>
