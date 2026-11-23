@@ -592,17 +592,19 @@ function equip(k) {
 // gear you buy goes straight on: a new weapon takes the weaker hand (a digging tool counts as weakest)
 let buying = false;
 function wearBought(k) {
-  const it = ITEMS[k]; if (!it?.slot || wearing(k)) return;
+  const it = ITEMS[k]; if (!it?.slot) return;
+  const packKey = TOUCH ? '🎒' : '[E]';
+  if (wearing(k)) { log(`You buy another <b>${it.name}</b>. You already have one on, so the spare goes in your pack (you now have ${count(k)}). ${packKey} shows it.`, 'good'); return; }
   if (it.slot === 'rh') {
     const rh = S.eq.rh, rate = j => (rh[j] && count(rh[j]) ? attackRating(rh[j]) - (ITEMS[rh[j]].tool ? 1000 : 0) : -1e9);
     const j = rate(0) <= rate(1) ? 0 : 1, old = rh[j];
     rh[j] = k; S.eq.rhSel = j;
-    log(`You take up the <b>${it.name}</b>${old && count(old) ? ` (the ${itemName(old)} goes in your pack)` : ''}. [V] swaps weapons · [I] shows your gear.`, 'good');
+    log(`You take up the <b>${it.name}</b>${old && count(old) ? ` (the ${itemName(old)} goes in your pack)` : ''}. ${TOUCH ? 'Tap your weapon slot to swap · 🎒 shows your gear.' : '[V] swaps weapons · [E] shows your gear.'}`, 'good');
   } else {
     const old = eqItem(it.slot);
-    if (old && (ITEMS[old]?.ac || 0) > (it.ac || 0)) { log(`${it.name} is in your pack — [I] to wear it.`, 'good'); return; }
+    if (old && (ITEMS[old]?.ac || 0) > (it.ac || 0)) { log(`<b>${it.name}</b> is in your pack. Your ${itemName(old)} is better, so you keep that on. Open ${TOUCH ? '🎒' : '[E]'} and click it to wear it instead.`, 'good'); return; }
     S.eq[it.slot] = k;
-    log(`You put on the <b>${it.name}</b>.`, 'good');
+    log(`You put on the <b>${it.name}</b>${old ? ` (your ${itemName(old)} goes in your pack)` : ''}. AC is now ${playerAC()}.`, 'good');
   }
   renderHotbar();
 }
@@ -1199,8 +1201,8 @@ function addItem(k, n = 1) {
     const it = ITEMS[k];
     if (!had && it?.slot) {
       const free = it.slot === 'rh' ? S.eq.rh.some(r => !r || !count(r)) : !eqItem(it.slot);
-      if (free) { equip(k); if (state === 'play') log(`Equipped: <b>${it.name}</b>.`, 'good'); }
-      else if (state === 'play' && it.slot === 'rh' && !buying) log(`<b>${it.name}</b> is in your pack — open [I] and click it to wield it.`, 'good');
+      if (free) { equip(k); if (state === 'play' && !buying) log(`Equipped: <b>${it.name}</b>.`, 'good'); }
+      else if (state === 'play' && it.slot === 'rh' && !buying) log(`<b>${it.name}</b> is in your pack — open ${TOUCH ? '🎒' : '[E]'} and click it to wield it.`, 'good');
     }
   }
   if (k === 'b5') S.flags.wood = true;
@@ -1601,7 +1603,7 @@ function renderPanel() {
     <div class="eqrow"><div><div class="eqh">Belt — [Q] use · [X] next</div>${S.belt.map((k, i) => `<div class="slot eqs${k && count(k) ? '' : ' empty'}${i === S.beltSel ? ' sel' : ''}" data-belt="${i}">${k && count(k) ? itemIcon(k) + `<span class="n">${count(k)}</span>` : '<span class="ph">—</span>'}</div>`).join('')}</div></div>
     <div class="load">AC <b>${playerAC()}</b> · Equip load <b>${L.w}</b> / ${Math.round(L.cap)} <span class="lc ${lc}">${lc} roll</span></div>`;
   const combatKeys = Object.keys(S.inv).filter(k => S.inv[k] > 0 && (ITEMS[k]?.slot || BELTABLE(k)));
-  $('gearGrid').innerHTML = combatKeys.map(k => `<div class="slot${wearing(k) || S.belt.includes(k) ? ' worn' : ''}" data-k="${k}" title="${itemName(k)}">${itemIcon(k)}${S.inv[k] > 1 ? `<span class="n">${S.inv[k]}</span>` : ''}</div>`).join('') || '<div style="color:var(--dim)">Nothing.</div>';
+  $('gearGrid').innerHTML = combatKeys.map(k => `<div class="slot${wearing(k) || S.belt.includes(k) ? ' worn' : ''}" data-k="${k}" title="${itemName(k)}${wearing(k) ? ' (worn)' : ''}">${itemIcon(k)}${wearing(k) ? '<span class="wornTick">✓</span>' : ''}${S.inv[k] > 1 ? `<span class="n">${S.inv[k]}</span>` : ''}</div>`).join('') || '<div style="color:var(--dim)">Nothing.</div>';
   // ---- the pack: materials and things you build with
   const keysInv = Object.keys(S.inv).filter(k => S.inv[k] > 0 && !ITEMS[k]?.slot && !BELTABLE(k));
   $('invGrid').innerHTML = keysInv.map(k => `<div class="slot${pick === k ? ' pick' : ''}" data-k="${k}" title="${itemName(k)}">${itemIcon(k)}<span class="n">${S.inv[k]}</span></div>`).join('') || '<div style="color:var(--dim)">Empty.</div>';
@@ -2395,7 +2397,7 @@ function renderOffer(id) {
 function renderShop() {
   const sh = SHOPS[talkNpc.def.shop];
   $('talkText').innerHTML = `“Have a look.” <span class="dim">You carry ${count('gold')} gold.</span>`;
-  const buy = sh.sell.map(([k, p, q = 1], i) => `<div class="recipe"><div class="slot" style="width:38px;height:38px;font-size:20px">${itemIcon(k)}</div><div class="nm">${q > 1 ? q + '× ' : ''}${itemName(k)}<div class="need">${p} gold</div></div><button data-buy="${i}" ${count('gold') >= p ? '' : 'disabled'}>Buy</button></div>`).join('');
+  const buy = sh.sell.map(([k, p, q = 1], i) => `<div class="recipe"><div class="slot" style="width:38px;height:38px;font-size:20px">${itemIcon(k)}</div><div class="nm">${q > 1 ? q + '× ' : ''}${itemName(k)}<div class="need">${p} gold${wearing(k) ? ' · <span style="color:#9fc98a">wearing</span>' : count(k) ? ` · you have ${count(k)}` : ''}</div></div><button data-buy="${i}" ${count('gold') >= p ? '' : 'disabled'}>Buy</button></div>`).join('');
   const sellKeys = Object.keys(sh.buys).filter(k => count(k) > 0);
   const sell = sellKeys.map(k => `<div class="recipe"><div class="slot" style="width:38px;height:38px;font-size:20px">${itemIcon(k)}</div><div class="nm">${itemName(k)} <span class="dim">×${count(k)}</span><div class="need">${sh.buys[k]} gold each</div></div><button data-sell="${k}">Sell 1</button></div>`).join('') || '<div class="dim">Nothing they want.</div>';
   $('talkShop').innerHTML = `<div class="row"><div class="col"><h3>Buy</h3>${buy}</div><div class="col"><h3>Sell</h3>${sell}</div></div>`;
@@ -2405,7 +2407,10 @@ $('talkShop').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || !talkNpc) return;
   if (b.dataset.buy == null && !b.dataset.sell) return;
   const sh = SHOPS[talkNpc.def.shop];
-  if (b.dataset.buy != null) { const [k, p, q = 1] = sh.sell[+b.dataset.buy]; if (count('gold') >= p) { removeItem('gold', p); buying = true; addItem(k, q); buying = false; wearBought(k); snd.pickup(); } }
+  if (b.dataset.buy != null) { const [k, p, q = 1] = sh.sell[+b.dataset.buy]; if (count('gold') >= p) { removeItem('gold', p); const had = count(k), wasOn = wearing(k); buying = true; addItem(k, q); buying = false;
+      if (ITEMS[k]?.slot) { if (!had && wearing(k)) log(`You put on the <b>${itemName(k)}</b>. AC is now ${playerAC()}.`, 'good'); else if (wasOn || !wearing(k)) wearBought(k); }
+      else log(`Bought ${q > 1 ? q + '× ' : ''}<b>${itemName(k)}</b>. It is in your pack (${count(k)}).`, 'good');
+      snd.pickup(); } }
   if (b.dataset.sell) { const k = b.dataset.sell; if (count(k)) { removeItem(k, 1); if (sh.buys[k]) addItem('gold', sh.buys[k]); snd.pickup(); } }
   renderShop();
 });

@@ -128,6 +128,7 @@
   #equip .lc { padding:1px 6px; border-radius:3px; margin-left:4px; font-size:12px; }
   #equip .lc.light { background:#2a4a2a; } #equip .lc.medium { background:#4a4a2a; } #equip .lc.heavy { background:#5a2a22; }
   .grid .slot.worn { border-color:#6a8a5a; }
+  .grid .slot .wornTick { position:absolute; left:2px; top:0; font-size:11px; color:#9fc98a; text-shadow:0 1px 2px #000; }
   #gearInfo { font-size:14px; color:#cdbf9f; min-height:2.6em; margin-top:6px; }
   .slot { width:52px; height:52px; background:rgba(10,8,6,.75); border:2px solid #3a2f22; position:relative; display:flex; align-items:center; justify-content:center; font-size:26px; }
   .slot.sel { border-color:var(--gold); box-shadow:0 0 10px rgba(214,168,74,.5); }
@@ -350,7 +351,7 @@
       <div class="col">
         <h3 style="margin-top:0">Equipment</h3>
         <div id="equip"></div>
-        <h3>Weapons, armour &amp; potions</h3>
+        <h3>Weapons, armour &amp; potions <span style="font-size:12px;color:#9fc98a;font-family:serif;white-space:nowrap">✓ worn</span></h3>
         <div class="grid" id="gearGrid"></div>
         <div id="gearInfo">Click gear to wear it. Click a worn slot to take it off.</div>
       </div>
