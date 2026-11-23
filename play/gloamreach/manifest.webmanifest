@@ -1,0 +1,10 @@
+{
+  "name": "Gloamreach",
+  "short_name": "Gloamreach",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b0907",
+  "theme_color": "#0b0907"
+}

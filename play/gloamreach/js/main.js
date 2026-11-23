@@ -1178,7 +1178,7 @@ function pickHotbar(i) {
   S.sel = i; setBuild(true);
   const k = S.hotbar[i];
   if (!k) log(TOUCH ? 'That build slot is empty. Open 🎒, tap a block, then tap this slot to put it there.' : 'That hotbar slot is empty. Open [E], click a block, then a hotbar slot.', 'miss');
-  else if (TOUCH) hint('touchBuild', `<b>Building with ${itemName(k)}.</b> Aim at a block: <b>USE</b> places, <b>ATTACK</b> breaks. Tap the slot again to put it away.`, 9);
+  else if (TOUCH) hint('touchBuild', `<b>Building with ${itemName(k)}.</b> Aim at a block, then <b>tap</b> the screen to place it or <b>hold</b> to break. Tap the slot again to put it away.`, 9);
 }
 function migrateLoadout() {
   if (S.eq) return;
@@ -1371,7 +1371,7 @@ function beginPlay() {
   airPeak = P.pos.y; prevT = S.time;
   renderHotbar(); show(null); updateHUD(true);
   if (!NOLOCK) requestLock();
-  if (TOUCH) setTimeout(() => hint('touchSlots', 'The <b>diamond of slots</b> is touchable. Tap the <b>bottom</b> slot to drink or use your quick item, <b>swipe</b> it to change items. Tap your <b>weapon</b> to swap it, the <b>left</b> slot to change what is in your left hand, the <b>top</b> one for your ability. Tap the <b>build bar</b> to build.', 12), 4000);
+  if (TOUCH) setTimeout(() => hint('touchSlots', '<b>Tap</b> the screen to strike, talk or open things; <b>hold</b> it to dig. The <b>diamond of slots</b> is touchable. Tap the <b>bottom</b> slot to drink or use your quick item, <b>swipe</b> it to change items. Tap your <b>weapon</b> to swap it, the <b>left</b> slot to change what is in your left hand, the <b>top</b> one for your ability. Tap the <b>build bar</b> to build.', 12), 4000);
 }
 function saveGame() {
   if (!world || !S) return false;
@@ -1467,7 +1467,18 @@ function lookBy(mx, my, s = 0.0022 * SET.sens) {
   yaw -= mx * s; pitch = clamp(pitch - my * s, -1.55, 1.55);
   if (hideSpot) { let d = yaw - hideSpot.yaw0; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw = hideSpot.yaw0 + clamp(d, -0.6, 0.6); pitch = clamp(pitch, -0.45, 0.45); }
 }
-if (TOUCH) import('./touch.js').then(m => m.initTouch({ canvas, joy, getState: () => ({ state, ui }), lookBy: (dx, dy) => lookBy(dx, dy, 0.0058 * SET.sens), crouched: () => crouch, building: () => !!S?.build }));
+if (TOUCH) import('./touch.js').then(m => m.initTouch({ canvas, joy, getState: () => ({ state, ui }), lookBy: (dx, dy) => lookBy(dx, dy, 0.0058 * SET.sens), crouched: () => crouch, tap: touchTap, press: on => { if (state === 'play' && ui === 'none') mouse.left = on; else mouse.left = false; } }));
+// a quick tap on the screen does the obvious thing for what you're looking at: talk, open, place the block in hand, or strike
+let tapT = null;
+function touchTap() {
+  if (state !== 'play' || ui !== 'none' || !S) return;
+  if (hideSpot) return; // leaving a hiding place takes a deliberate USE or JUMP, never a stray tap
+  const placing = S.build && heldKey() && isBlk(heldKey()) && target && !targetMob;
+  if (placing || (wantsUse() && !targetMob)) { useAction(); return; }
+  if (weapon().ranged && !S.build) { log('Bows are drawn by holding: <b>hold</b> the screen, then let go to loose.', 'miss'); return; }
+  // a strike: press for a moment, long enough for one swing to land but not to start digging
+  mouse.left = true; clearTimeout(tapT); tapT = setTimeout(() => { mouse.left = false; }, 140);
+}
 document.addEventListener('mousemove', e => {
   if (state !== 'play' || ui !== 'none' || !locked) return;
   if (performance.now() - lockedAt < 120) return; // the first events after locking carry the cursor's jump to centre
@@ -2731,7 +2742,7 @@ function updateHideNear(dt) {
     if (d < bd && Math.abs(h[1] - P.pos.y) < 6 && world.get(h[0], h[1], h[2]) === h[3]) { bd = d; best = h; }
   }
   hideNear = best ? { x: best[0], y: best[1], z: best[2], b: best[3], d: bd } : null;
-  if (hideNear && hideNear.d < 9 && !hunter) hint('hidespot', `There's a <b>hiding place</b> close by: ${hideNear.b === B.WARDROBE ? 'an <b>old wardrobe</b> (right-click to step inside)' : hideNear.b === B.HOLLOWLOG ? 'a <b>hollow log</b> (right-click to crawl inside)' : 'a <b>bramble thicket</b> (crouch inside with Ctrl and keep still)'}.<br>When something hunts you, the nearest one is shown at the bottom of the screen.`, 12);
+  if (hideNear && hideNear.d < 9 && !hunter) hint('hidespot', `There's a <b>hiding place</b> close by: ${hideNear.b === B.WARDROBE ? `an <b>old wardrobe</b> (${TOUCH ? 'tap' : 'right-click'} to step inside)` : hideNear.b === B.HOLLOWLOG ? `a <b>hollow log</b> (${TOUCH ? 'tap' : 'right-click'} to crawl inside)` : `a <b>bramble thicket</b> (crouch inside with ${TOUCH ? 'CROUCH' : 'Ctrl'} and keep still)`}.<br>When something hunts you, the nearest one is shown at the bottom of the screen.`, 12);
 }
 function hideArrow(h) {
   const dx = h.x + 0.5 - P.pos.x, dz = h.z + 0.5 - P.pos.z;
@@ -3353,7 +3364,7 @@ const setA = (id, v) => { v = (+v).toFixed(1); if (changed(id + ':a', v)) $(id).
 function renderHotbar() {
   if (!S) return;
   $('hotbar').classList.toggle('idle', !S.build);
-  $('hotbar').innerHTML = `<div class="hbLabel">${TOUCH ? (S.build ? 'Building — ATTACK breaks · USE places · tap the slot again to stop' : 'Build bar — tap a slot to build') : S.build ? 'Building — [B] to put away' : 'Crafting hotbar — [1–9] or [B]'}</div>` + S.hotbar.map((k, i) => `<div class="slot${S.build && i === S.sel ? ' sel' : ''}" data-hb="${i}"><span class="k">${i + 1}</span>${k ? itemIcon(k) + `<span class="n">${count(k) > 1 ? count(k) : ''}</span>` : ''}</div>`).join('');
+  $('hotbar').innerHTML = `<div class="hbLabel">${TOUCH ? (S.build ? 'Building — tap the screen to place · hold to break · tap the slot again to stop' : 'Build bar — tap a slot to build') : S.build ? 'Building — [B] to put away' : 'Crafting hotbar — [1–9] or [B]'}</div>` + S.hotbar.map((k, i) => `<div class="slot${S.build && i === S.sel ? ' sel' : ''}" data-hb="${i}"><span class="k">${i + 1}</span>${k ? itemIcon(k) + `<span class="n">${count(k) > 1 ? count(k) : ''}</span>` : ''}</div>`).join('');
   renderCross();
 }
 // the loadout at a glance: off-hand, weapon, ability, quick item
@@ -3458,7 +3469,7 @@ function updateHUD(force) {
   else if (target && target.b === B.HOLLOWLOG && !hideSpot) tg = 'Hollow Log — right-click to crawl inside and hide';
   else if (target && target.b === B.THICKET && !hideSpot) tg = 'Bramble Thicket — step inside, crouch [Ctrl] and keep still to hide';
   else if (target && (target.b === B.CHEST || target.b === B.CAMPFIRE)) tg = target.b === B.CHEST ? (world.opened.has(world.idx(target.x, target.y, target.z)) ? 'Old Chest (empty)' : 'Old Chest — right-click to open') : (sunNow < 0.35 ? 'Campfire — right-click for a long rest' : 'Campfire — right-click to rest');
-  setT('target', tg);
+  setT('target', TOUCH ? tg.replace('right-click', 'tap') : tg);
 }
 
 // ================================================================ loop

@@ -22,10 +22,13 @@ const CSS = `
 #tTop { position:absolute; top:calc(8px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); display:flex; gap:8px; pointer-events:none; }
 #tRotate { position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center; flex-direction:column; gap:12px; background:#0b0907; color:#e8dcc4; font-size:20px; text-align:center; padding:24px; pointer-events:auto; }
 #tRotate div { font-size:56px; }
+#tFullHelp { position:fixed; inset:0; z-index:31; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.8); pointer-events:auto; }
+#tFullHelp .box { max-width:420px; margin:16px; padding:18px 20px; background:#15110c; border:1px solid #6a5534; border-radius:8px; color:#e8dcc4; font:15px/1.45 serif; }
+#tFullHelp b { color:#f0c878; } #tFullHelp .ok { margin-top:12px; text-align:right; } #tFullHelp button { font:inherit; padding:6px 16px; background:#3a2c18; color:#e8dcc4; border:1px solid #8a6a3a; border-radius:4px; }
 #tTop .tb { position:relative; width:44px; height:44px; border-radius:10px; font-size:18px; }
 `;
 
-export function initTouch({ canvas, getState, lookBy, joy, crouched, building }) {
+export function initTouch({ canvas, getState, lookBy, joy, crouched, tap: screenTap, press }) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const ui = document.createElement('div'); ui.id = 'touchUI';
   const R = 'calc(%spx + env(safe-area-inset-right))', B = 'calc(%spx + env(safe-area-inset-bottom))';
@@ -51,6 +54,7 @@ export function initTouch({ canvas, getState, lookBy, joy, crouched, building })
       <div class="tb" data-key="KeyJ" title="Journal">📜</div>
       <div class="tb" data-key="KeyM" title="Map">🗺</div>
       <div class="tb" data-key="KeyE" title="Pack">🎒</div>
+      <div class="tb" id="tFull" title="Full screen">⛶</div>
       <div class="tb" data-key="Escape" title="Pause">☰</div>
     </div>`;
   document.body.appendChild(ui);
@@ -90,15 +94,38 @@ export function initTouch({ canvas, getState, lookBy, joy, crouched, building })
 
   // ---- look: drag on the right half (several fingers can rest there; each one steers while it moves)
   const lookZone = $('tzLook'), last = new Map();
-  lookZone.addEventListener('touchstart', e => { e.preventDefault(); for (const t of e.changedTouches) last.set(t.identifier, [t.clientX, t.clientY]); }, { passive: false });
+  const HOLD_MS = 260, SLOP = 12;
+  let act = null; // the one finger that may become a tap or a hold
+  lookZone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      last.set(t.identifier, [t.clientX, t.clientY]);
+      if (!act) {
+        const a = act = { id: t.identifier, x: t.clientX, y: t.clientY, moved: false, held: false };
+        a.timer = setTimeout(() => { if (act === a && !a.moved) { a.held = true; press(true); } }, HOLD_MS);
+      }
+    }
+  }, { passive: false });
   lookZone.addEventListener('touchmove', e => {
     e.preventDefault();
     for (const t of e.changedTouches) {
       const p = last.get(t.identifier); if (!p) continue;
+      if (act && act.id === t.identifier && !act.held && Math.hypot(t.clientX - act.x, t.clientY - act.y) > SLOP) act.moved = true;
+      // until a still finger has proved itself a tap or a hold, tiny wobbles don't turn the view
+      if (act && act.id === t.identifier && !act.moved && !act.held) continue;
       lookBy(t.clientX - p[0], t.clientY - p[1]); last.set(t.identifier, [t.clientX, t.clientY]);
     }
   }, { passive: false });
-  const lookEnd = e => { for (const t of e.changedTouches) last.delete(t.identifier); };
+  const lookEnd = e => {
+    for (const t of e.changedTouches) {
+      last.delete(t.identifier);
+      if (act && act.id === t.identifier) {
+        clearTimeout(act.timer);
+        if (act.held) press(false); else if (!act.moved && e.type === 'touchend') screenTap();
+        act = null;
+      }
+    }
+  };
   lookZone.addEventListener('touchend', lookEnd); lookZone.addEventListener('touchcancel', lookEnd);
 
   // ---- buttons. Attack and guard are held; a finger on a button can also slide to look around
@@ -116,19 +143,40 @@ export function initTouch({ canvas, getState, lookBy, joy, crouched, building })
   hold($('tCrouch'), () => key('ControlLeft', true), () => key('ControlLeft', false));
   for (const el of ui.querySelectorAll('[data-key]')) hold(el, () => tap(el.dataset.key));
 
+  // ---- full screen. Browsers that allow it (Android, iPad) go full screen; Safari on iPhone only does it for pages
+  // opened from the Home Screen, so there the button says how.
+  const standalone = () => navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+  const root = document.documentElement;
+  const canFull = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+  const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const help = document.createElement('div'); help.id = 'tFullHelp';
+  help.innerHTML = `<div class="box"><b>Full screen on iPhone</b><br>Safari only hides its address bar for games opened from your Home Screen:<br><br>1. Tap the <b>Share</b> button (the square with the arrow) in Safari.<br>2. Choose <b>Add to Home Screen</b>, then <b>Add</b>.<br>3. Open Gloamreach from the new icon. It fills the whole screen.<br><br><span style="opacity:.75">Your saves stay in Safari, so the first time from the icon you start fresh.</span><div class="ok"><button>Got it</button></div></div>`;
+  document.body.appendChild(help);
+  help.querySelector('button').addEventListener('click', () => { help.style.display = 'none'; });
+  const full = $('tFull');
+  if (standalone()) full.style.display = 'none';
+  full.addEventListener('touchstart', e => { e.preventDefault(); full.classList.add('down'); }, { passive: false });
+  full.addEventListener('touchend', e => {
+    e.preventDefault(); full.classList.remove('down');
+    if (isFull()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    if (canFull) {
+      const p = (root.requestFullscreen || root.webkitRequestFullscreen).call(root, { navigationUI: 'hide' });
+      if (p && p.catch) p.catch(() => { help.style.display = 'flex'; });
+      try { screen.orientation?.lock?.('landscape').catch(() => {}); } catch (err) { /* not allowed here */ }
+    } else help.style.display = 'flex';
+  });
+  const onFs = () => { full.textContent = isFull() ? '🗗' : '⛶'; };
+  document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
+
   // only while you are actually walking about; menus, maps and talk use plain taps
   let shown = null;
   (function tick() {
     const s = getState(), on = s.state === 'play' && s.ui === 'none';
     if (on !== shown) {
       shown = on; ui.classList.toggle('off', !on);
-      if (!on) { jt = null; joy.f = joy.s = 0; joy.run = false; J.style.display = 'none'; last.clear(); mouse(0, false); mouse(2, false); key('Space', false); for (const b of ui.querySelectorAll('.down')) b.classList.remove('down'); }
+      if (!on) { if (act) { clearTimeout(act.timer); if (act.held) press(false); act = null; } jt = null; joy.f = joy.s = 0; joy.run = false; J.style.display = 'none'; last.clear(); mouse(0, false); mouse(2, false); key('Space', false); for (const b of ui.querySelectorAll('.down')) b.classList.remove('down'); }
     }
-    if (on) {
-      $('tCrouch').classList.toggle('on', crouched());
-      const b = building();
-      if (b !== tick.b) { tick.b = b; $('tAtk').innerHTML = b ? '⛏<small>BREAK</small>' : '⚔<small>ATTACK</small>'; $('tUse').innerHTML = b ? '▣<small>PLACE</small>' : '✋<small>USE·GUARD</small>'; }
-    }
+    if (on) $('tCrouch').classList.toggle('on', crouched());
     const portrait = s.state === 'play' && innerHeight > innerWidth * 1.1;
     if (portrait !== rot._on) { rot._on = portrait; rot.style.display = portrait ? 'flex' : 'none'; }
     requestAnimationFrame(tick);
