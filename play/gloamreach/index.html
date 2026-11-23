@@ -31,7 +31,12 @@
   body.touch #topleft { zoom:.62; left:calc(10px + env(safe-area-inset-left)); }
   body.touch #stats { zoom:.62; bottom:8px; left:34%; }
   body.touch #hotbar { zoom:.6; bottom:150px; }
-  body.touch #loadout { zoom:.45; left:calc(14px + env(safe-area-inset-left)); bottom:70px; }
+  body.touch #hud { z-index:9; }
+  body.touch #loadout { zoom:.6; left:31%; bottom:150px; pointer-events:auto; touch-action:none; }
+  body.touch #loadout .slot { border-color:#8a6a3a; }
+  body.touch #loadout .tapped .slot, body.touch #loadout > div.tapped > .slot { background:rgba(120,90,50,.85); }
+  body.touch #loadout .cap { display:none; }
+  body.touch #loadout .dn::after { content:'⇆'; position:absolute; left:74px; top:22px; color:#d6a84a; font-size:22px; opacity:.8; }
   body.touch #log { zoom:.7; bottom:auto; top:32%; left:calc(12px + env(safe-area-inset-left)); width:min(470px, 46vw); }
   body.touch #ability { display:none; }
   body.touch .screen { touch-action:pan-x pan-y; }
@@ -115,6 +120,7 @@
   #loadout .slot .ic { font-size:24px; }
   #equip .eqrow { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:8px; }
   #equip .eqh { font-size:12px; color:var(--dim); margin-bottom:3px; }
+  button.useNow { padding:3px 10px; margin-right:6px; font-size:13px; pointer-events:auto; }
   #equip .eqs { display:inline-flex; margin-right:4px; cursor:pointer; pointer-events:auto; }
   #equip .eqs.empty .ph { font-size:10px; color:#6d6255; text-align:center; }
   #equip .eqs:hover { border-color:#7a6440; }

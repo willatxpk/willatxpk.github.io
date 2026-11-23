@@ -1141,7 +1141,11 @@ function swapWeapon() {
 const BELTABLE = k => k === 'healing' || k === 'elixir' || k === 'lumendraught' || k === 'oil' || (typeof k === 'string' && k.startsWith('arrow_'));
 function useBelt() {
   const k = S.belt[S.beltSel];
-  if (!k || !count(k)) { log('That belt slot is empty. Press [X] to cycle, or set items in your pack [E].', 'miss'); return; }
+  if (!k || !count(k)) { log(TOUCH ? 'That belt slot is empty. Swipe the bottom slot to change it, or set items in your pack 🎒.' : 'That belt slot is empty. Press [X] to cycle, or set items in your pack [E].', 'miss'); return; }
+  useItem(k);
+}
+function useItem(k) {
+  if (!count(k)) return;
   if (k === 'healing') quaff();
   else if (k === 'elixir') { if (S.nvT > 0 || S.gogOn) { log('Your eyes are already open to the dark. [G] to close them.', 'miss'); return; } removeItem('elixir'); S.nvT = 120; snd.drink(); log('You drink the Nightshade Elixir. The dark peels open in shades of green. [G] ends it early.', 'good'); }
   else if (k === 'lumendraught') drinkLumen();
@@ -1157,11 +1161,11 @@ function drinkLumen() {
   floater(`+${g} Lumen`, P.pos.clone().add(new THREE.Vector3(0, 2, 0)), '#9fd8ff', 1.1);
   log(`You drink the Lumen Draught. Cold light runs down your arms into the Sigil: <b>+${g} Lumen</b>.`, 'good');
 }
-function cycleBelt() {
+function cycleBelt(dir = 1) {
   // anything you carry that belongs on the belt goes onto it, if there's room
   for (const k of Object.keys(S.inv)) if (BELTABLE(k) && count(k) && !S.belt.includes(k)) { const e = S.belt.findIndex(b => !b || !count(b)); if (e >= 0) S.belt[e] = k; }
   for (let i = 1; i <= 4; i++) {
-    const j = (S.beltSel + i) % 4;
+    const j = (S.beltSel + i * dir + 8) % 4;
     if (S.belt[j] && count(S.belt[j])) { S.beltSel = j; snd.place(); renderHotbar(); log(`Belt: <b>${itemName(S.belt[j])}</b> ×${count(S.belt[j])} — [Q] to use`, 'miss'); return; }
   }
   log(S.belt.some(b => b && count(b)) ? 'That is the only thing on your belt.' : 'Your belt is empty. Potions, oil and special arrows go there.', 'miss');
@@ -1358,6 +1362,7 @@ function beginPlay() {
   airPeak = P.pos.y; prevT = S.time;
   renderHotbar(); show(null); updateHUD(true);
   if (!NOLOCK) requestLock();
+  if (TOUCH) setTimeout(() => hint('touchSlots', 'The <b>diamond of slots</b> is touchable. Tap the <b>bottom</b> slot to drink or use your quick item, <b>swipe</b> it to change items. Tap your <b>weapon</b> to swap it, the <b>left</b> slot to swap shield and Sigil, the <b>top</b> one for your ability.', 12), 4000);
 }
 function saveGame() {
   if (!world || !S) return false;
@@ -1636,14 +1641,24 @@ $('gearGrid').addEventListener('click', e => {
   const k = s.dataset.k, it = ITEMS[k];
   if (BELTABLE(k)) { if (!S.belt.includes(k)) { const e2 = S.belt.findIndex(b => !b || !count(b)); S.belt[e2 >= 0 ? e2 : S.beltSel] = k; } }
   else if (it?.slot) equip(k);
-  $('gearInfo').innerHTML = `<b>${itemName(k)}</b> — ${it?.desc || ''}${it?.weapon ? ` <span class="dim">(${it.weapon.dice[0]}d${it.weapon.dice[1]}, weight ${it.wt})</span><br>Attack rating <b>${Math.round(attackRating(k))}</b> · scaling <b>${gradeTxt(k)}</b>` : it?.wt != null ? ` <span class="dim">(weight ${it.wt})</span>` : ''}`;
+  $('gearInfo').innerHTML = (BELTABLE(k) ? `<button class="useNow" data-use="${k}">${/^arrow/.test(k) ? 'Nock now' : k === 'oil' ? 'Fill lantern now' : 'Drink now'}</button> ` : '') + `<b>${itemName(k)}</b> — ${it?.desc || ''}${it?.weapon ? ` <span class="dim">(${it.weapon.dice[0]}d${it.weapon.dice[1]}, weight ${it.wt})</span><br>Attack rating <b>${Math.round(attackRating(k))}</b> · scaling <b>${gradeTxt(k)}</b>` : it?.wt != null ? ` <span class="dim">(weight ${it.wt})</span>` : ''}`;
   renderPanel();
+});
+$('gearInfo').addEventListener('click', e => {
+  const b = e.target.closest('[data-use]'); if (!b) return;
+  const k = b.dataset.use; useItem(k);
+  if (!count(k)) $('gearInfo').innerHTML = `You have no more ${itemName(k)}.`;
+  renderPanel(); renderHotbar();
 });
 $('equip').addEventListener('click', e => {
   const s = e.target.closest('.slot'); if (!s) return;
   if (s.dataset.sslot != null) { const i = +s.dataset.sslot; if (S.spellSel === i && S.spellSlots[i]) S.spellSlots[i] = null; else S.spellSel = i; renderPanel(); renderHotbar(); return; }
   if (s.dataset.spell) { const id = s.dataset.spell; if (!S.spellSlots.includes(id)) { const e2 = S.spellSlots.indexOf(null); S.spellSlots[e2 >= 0 ? e2 : S.spellSel] = id; } $('gearInfo').innerHTML = `<b>${SPELLS[id].name}</b> (${SPELLS[id].cost} Lumen) — ${SPELLS[id].desc}`; renderPanel(); renderHotbar(); return; }
-  if (s.dataset.belt != null) { const i = +s.dataset.belt; if (S.beltSel === i && S.belt[i]) S.belt[i] = null; else S.beltSel = i; }
+  if (s.dataset.belt != null) {
+    const i = +s.dataset.belt, k = S.belt[i];
+    if (S.beltSel === i && k) S.belt[i] = null; else S.beltSel = i;
+    if (k && count(k) && S.belt[i]) $('gearInfo').innerHTML = `<button class="useNow" data-use="${k}">${/^arrow/.test(k) ? 'Nock now' : k === 'oil' ? 'Fill lantern now' : 'Drink now'}</button> <b>${itemName(k)}</b> ×${count(k)} — on your belt. Click the slot again to take it off.`;
+  }
   else if (s.dataset.slot) unequip(s.dataset.slot, +s.dataset.i || 0);
   renderPanel();
 });
@@ -3344,6 +3359,23 @@ function renderCross() {
     `<div class="rt">${cell(rh, 'V', rh ? itemName(rh) : 'Fists', other && count(other) ? `<span class="alt">${itemIcon(other)}</span>` : '')}</div>` +
     `<div class="dn">${cell(bk && count(bk) ? bk : null, 'Q', bk && count(bk) ? itemName(bk) : 'empty', bk && count(bk) ? `<span class="n">${count(bk)}</span>` : '')}</div>` +
     `<div class="cap"><b>${rh ? itemName(rh) : 'Fists'}</b>${ITEMS[rh]?.weapon?.ranged ? ` · ${count('arrows')} arrows` : ''}${lh ? ' · ' + itemName(lh) : ''}<br>${bk && count(bk) ? `${itemName(bk)} ×${count(bk)}` : 'belt empty'}</div>`;
+}
+if (TOUCH) {
+  const L = $('loadout'); let t0 = null;
+  L.addEventListener('touchstart', e => { e.preventDefault(); const t = e.changedTouches[0]; t0 = { x: t.clientX, y: t.clientY, cell: e.target.closest('.up,.lf,.rt,.dn') }; }, { passive: false });
+  L.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  L.addEventListener('touchend', e => {
+    if (!t0 || state !== 'play' || ui !== 'none') { t0 = null; return; }
+    const t = e.changedTouches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y, c = t0.cell; t0 = null;
+    if (!c) return;
+    const swipe = Math.hypot(dx, dy) > 28, dir = (Math.abs(dx) > Math.abs(dy) ? dx : -dy) > 0 ? 1 : -1;
+    const pop = () => { c.classList.add('tapped'); setTimeout(() => $('loadout').querySelector('.tapped')?.classList.remove('tapped'), 160); };
+    if (c.classList.contains('dn')) { if (swipe) cycleBelt(dir); else useBelt(); }
+    else if (c.classList.contains('rt')) swapWeapon();
+    else if (c.classList.contains('lf')) { if (swipe && offHand() === 'sigil') cycleSpell(); else swapOffhand(); }
+    else if (c.classList.contains('up')) classAbility();
+    pop();
+  });
 }
 function updateHUD(force) {
   hudT -= 1; if (hudT > 0 && !force) return; hudT = 6;
