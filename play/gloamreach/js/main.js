@@ -1512,7 +1512,7 @@ addEventListener('mouseup', e => { if (e.button === 0) mouse.left = false; if (e
 function wantsUse() {
   const k = heldKey();
   if (targetNpc) return true;
-  if (target && (target.b === B.CHEST || target.b === B.CAMPFIRE || target.b === B.NOTE || ((target.b === B.WARDROBE || target.b === B.HOLLOWLOG) && !S.build))) return true;
+  if (target && (target.b === B.CHEST || target.b === B.CAMPFIRE || target.b === B.NOTE || target.b === B.WARDROBE || target.b === B.HOLLOWLOG || (target.b === B.THICKET && target.t < 3.2))) return true;
   if (k === 'elixir' || k === 'healing' || k === 'lumendraught') return true;
   if (k && isBlk(k) && target && !targetMob) return true;
   return false;
@@ -1747,7 +1747,8 @@ function useAction() {
     const b = target.b;
     if (b === B.CHEST) { openChest(target.x, target.y, target.z); return; }
     if (b === B.CAMPFIRE) { restAtFire(target); return; }
-    if ((b === B.WARDROBE || b === B.HOLLOWLOG) && !S.build) { enterHide(target); return; }
+    if (b === B.WARDROBE || b === B.HOLLOWLOG) { enterHide(target); return; }
+    if (b === B.THICKET && target.t < 3.2) { enterThicket(target); return; }
     if (b === B.NOTE) { const id = world.notes?.get(world.idx(target.x, target.y, target.z)); if (id) openNote(id, true); return; }
   }
 
@@ -2390,6 +2391,10 @@ function openTalk(npc) {
   show('talk');
 }
 function closeTalk() { talkNpc = null; ui = 'none'; show(null); requestLock(); }
+// every menu closes when you click or tap outside its box: pause, pack, map, notes and journal, conversations
+for (const [id, close] of [['pause', () => $('resumeBtn').click()], ['panel', () => closePanel()], ['mapScr', () => closeMap()], ['noteScr', () => closeNote()], ['talk', () => closeTalk()]]) {
+  $(id).addEventListener('click', e => { if (e.target === $(id) && state === 'play') close(); });
+}
 function talkOptions(list) {
   $('talkOpts').innerHTML = list.map((o, i) => `<button class="opt" data-i="${i}"${o.disabled ? ' disabled' : ''}><span class="k">${i + 1}</span>${o.label}</button>`).join('');
   talkActs = list;
@@ -2541,7 +2546,17 @@ function enterHide(t) {
   if (isLog) { snd.rustle(0.8); $('logVeil').style.opacity = 1; } else { snd.creak(); $('hideVeil').style.opacity = 1; }
   if (isLog) log(seer ? `You wriggle into the log. The ${seer.T.name} saw you do it.` : 'You crawl into the hollow log, belly to the rot, and lie still.', seer ? 'bad' : 'lore');
   else log(seer ? `You pull the door shut. The ${seer.T.name} saw you go in.` : 'You pull the wardrobe door shut and hold your breath.', seer ? 'bad' : 'lore');
-  hint('hide', 'You are <b>hidden</b>. Keep still: whatever is hunting you will search, and give up.<br>If it <b>saw you go in</b>, it will come and drag you out. <b>Space</b> or <b>right mouse</b> gets you out.', 11);
+  hint('hide', 'You are <b>hidden</b>. Keep still: whatever is hunting you will search, and give up.<br>If it <b>saw you go in</b>, it will come and drag you out. ' + (TOUCH ? '<b>JUMP</b> gets you out.' : '<b>Space</b> or <b>right mouse</b> gets you out.'), 11);
+}
+function enterThicket(t) {
+  if (hideSpot) return;
+  const x = t.x + 0.5, z = t.z + 0.5;
+  let y = t.y; while (y > 0 && world.get(t.x, y - 1, t.z) === B.THICKET) y--;
+  if (collides(world, x, y, z, P.half, P.h)) { log('The brambles are too tangled to push into from here.', 'miss'); return; }
+  P.pos.set(x, y, z); P.vel.set(0, 0, 0); airPeak = y;
+  if (!crouch) setCrouch(true);
+  snd.rustle(0.7);
+  log(TOUCH ? 'You push into the brambles and crouch low. <b>Keep still</b> and you vanish. Tap the left side to stand.' : 'You push into the brambles and crouch low. <b>Keep still</b> and you vanish. [Ctrl] to stand.', 'lore');
 }
 function exitHide() {
   const h = hideSpot; if (!h) return;
@@ -3478,7 +3493,7 @@ function updateHUD(force) {
   else if (targetMob) tg = `Lv ${targetMob.lvl} ${targetMob.T.name} · AC ${targetMob.T.ac} · ${targetMob.hp > targetMob.maxHp * 0.66 ? 'unhurt' : targetMob.hp > targetMob.maxHp * 0.33 ? 'bloodied' : 'near death'}`;
   else if (target && target.b === B.WARDROBE && !hideSpot) tg = 'Old Wardrobe — right-click to hide inside';
   else if (target && target.b === B.HOLLOWLOG && !hideSpot) tg = 'Hollow Log — right-click to crawl inside and hide';
-  else if (target && target.b === B.THICKET && !hideSpot) tg = 'Bramble Thicket — step inside, crouch [Ctrl] and keep still to hide';
+  else if (target && target.b === B.THICKET && !hideSpot) tg = TOUCH ? 'Bramble Thicket — tap to crouch inside and hide' : 'Bramble Thicket — right-click to crouch inside and hide';
   else if (target && (target.b === B.CHEST || target.b === B.CAMPFIRE)) tg = target.b === B.CHEST ? (world.opened.has(world.idx(target.x, target.y, target.z)) ? 'Old Chest (empty)' : 'Old Chest — right-click to open') : (sunNow < 0.35 ? 'Campfire — right-click for a long rest' : 'Campfire — right-click to rest');
   setT('target', TOUCH ? tg.replace('right-click', 'tap') : tg);
 }

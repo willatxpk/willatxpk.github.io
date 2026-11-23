@@ -18,6 +18,7 @@ const CSS = `
 #tJoyHint b { color:#f0c878; font-weight:normal; }
 .tb { position:absolute; pointer-events:auto; touch-action:none; border-radius:50%; border:2px solid rgba(230,210,170,.4); background:rgba(14,11,8,.55); color:#e8dcc4;
   display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:22px; line-height:1; text-shadow:0 1px 2px #000; }
+.tb > * { pointer-events:none; } /* the button itself takes the touch, never an icon that gets redrawn under the finger */
 .tb small { font-size:9px; margin-top:3px; letter-spacing:.04em; opacity:.85; white-space:nowrap; }
 .tb .ic img { width:26px; height:26px; image-rendering:pixelated; }
 .tb .cnt { position:absolute; right:6px; bottom:4px; font-size:11px; color:#f0e0c0; }
@@ -155,7 +156,11 @@ export function initTouch({ canvas, getState, lookBy, joy, tap: screenTap, press
   // ---- buttons
   const button = (el, down, up) => {
     let id = null;
-    el.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); if (id != null) return; const t = e.changedTouches[0]; id = t.identifier; el.classList.add('down'); down?.(t); }, { passive: false });
+    el.addEventListener('touchstart', e => {
+      e.preventDefault(); e.stopPropagation();
+      // a finger the browser has forgotten (its lift went astray) must never lock the button
+      if (id != null && ![...e.touches].some(t => t.identifier === id)) { id = null; el.classList.remove('down'); }
+      if (id != null) return; const t = e.changedTouches[0]; id = t.identifier; el.classList.add('down'); down?.(t); }, { passive: false });
     el.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
     const end = e => { for (const t of e.changedTouches) if (t.identifier === id) { id = null; el.classList.remove('down'); up?.(t, e.type === 'touchend'); } };
     el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
