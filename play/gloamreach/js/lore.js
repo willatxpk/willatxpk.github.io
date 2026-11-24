@@ -261,6 +261,30 @@ The core in my pack is warm. I am taking it home.`
 The core in my pack is warm. I am taking it home.`,
   },
   hj_gloam: {
+    title: 'Hunter’s journal: a light in the far Barrens', mine: true, where: 'your own journal',
+    text: `The Beacon is lit, and the Landing sleeps through the night for the first time since we came ashore. I should sleep too.
+
+But Wen swears that from the top of the watchtower she saw a light far out in the Barrens, past the furnaces. Not fire. Pale, and moving slowly, the way a man walks when he is looking up. Whoever is out there has been looking up for a long time.`,
+  },
+  hj_wood: {
+    title: 'Hunter’s journal: through the Cinder Wall', mine: true, where: 'your own journal',
+    text: `The old roads through the Cinder Wall are real. Past it the land goes on: a wood, and beyond it the sea-smell of salt, and beyond that mountains with snow on them.
+
+The Concord did not stop at Vharrow. Neither did the Gloam. The trees here are black, and when the wind moves them they make a sound like weeping. I have stopped carrying a light under them.`,
+  },
+  hj_salt: {
+    title: 'Hunter’s journal: the First Landing', mine: true, where: 'your own journal',
+    text: `There were ships in the Saltgrave. Company ships, with our lantern on the bows. The Constancy, and two more.
+
+We were told we were the first. Somebody in the Company knew better, and sent us anyway. I will ask Maren whether she knew. I think I already know what her face will do.`,
+  },
+  hj_frost: {
+    title: 'Hunter’s journal: the mountain', mine: true, where: 'your own journal',
+    text: `The Captain's log ends with a line about an abbey on the mountain, where "they still keep a light". So up I go, into the cold.
+
+Every land the Gloam has kept is its own grief. The gardeners still garden, the sailors still wait for a sea, and up there, I am told, the monks are still waiting for the moon.`,
+  },
+  hj_deep: {
     title: 'Hunter\'s journal: the Beacon burns', mine: true, where: 'your own journal',
     text: S => `The Beacon burns. ${n(S, 'saved') ? `${n(S, 'saved')} of the returned live at the Landing now, among the Company. Wyll${S?.flags?.wyllRestored ? ' teaches the children to set snares' : '\'s grave has flowers on it'}.` : 'None of the returned lived to see it. I said what names I knew into the fire.'}
 

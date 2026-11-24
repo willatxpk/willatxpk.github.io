@@ -159,8 +159,12 @@ const ACTS = [
   { id: 'mire', name: 'Act IV — The Fungal Mire', sub: 'The gardeners remember. That is the worst of it.' },
   { id: 'barrens', name: 'Act V — The Ashen Barrens', sub: 'Where the furnaces still burn, and someone drew a Beacon.' },
   { id: 'king', name: 'Act VI — The Lord of Vharrow', sub: 'He chose this for all of them. Now you choose for him.' },
-  { id: 'beacon', name: 'Finale — The Beacon', sub: 'A light to live by — for the Company, and for whoever kneels in it.' },
-  { id: 'gloam', name: 'Epilogue — The Gloam Below', sub: 'Beneath the Lumen there is another current. It has noticed you.' },
+  { id: 'beacon', name: 'Act VII — The Beacon', sub: 'A light to live by — for the Company, and for whoever kneels in it.' },
+  { id: 'gloam', name: 'Act VIII — The Pale Astronomer', sub: 'Out in the far Barrens, someone still watches the sky for a moon that is not there.' },
+  { id: 'wood', name: 'Act IX — The Weeping Wood', sub: 'The ones who stood still too long are in the trees now.' },
+  { id: 'salt', name: 'Act X — The Saltgrave', sub: 'Thirty-one years ashore. The First Landing never left.' },
+  { id: 'frost', name: 'Act XI — The Rimewatch', sub: 'They kept the vigil for the moon. They keep it still.' },
+  { id: 'deep', name: 'Act XII — The Gloam Below', sub: 'Beneath the Lumen there is another current. It has noticed you.' },
 ];
 const QUESTS = [
   // ---- Prologue: Landfall — you are a hired hunter, and they are monsters
@@ -212,12 +216,26 @@ const QUESTS = [
   // ---- Act VI: The Lord of Vharrow — the one who chose
   { act: 'king', text: 'Read the Lord of Vharrow\'s decree in the great hall', at: () => notePos('keep'), done: () => S.notesRead?.includes('keep') },
   { act: 'king', boss: 'king', text: 'Climb to the throne and face the Lord of Vharrow. Slay or return him, with the empty core in your pack', at: () => world.castle.throne && { x: world.castle.throne.x, y: world.castle.throne.y + 3, z: world.castle.throne.z }, done: () => S.flags.king },
-  // ---- Finale
+  // ---- Act VII: the Beacon
   { act: 'beacon', text: 'Carry the Lumen Core home. Raise the Beacon at the Landing', at: () => npcAt('maren'), done: () => !!S.colony?.built?.beacon },
-  // ---- Epilogue: the Gloam Below
+  // ---- Act VIII: the Pale Astronomer
   { act: 'gloam', text: 'Something still watches the sky. Find the last astronomer of Vharrow (the far Barrens)', at: () => notePos('barrens2'), done: () => S.notesRead?.includes('barrens2') },
   { act: 'gloam', boss: 'astronomer', text: 'At night, find the Pale Astronomer on the mesas of the far Barrens', at: () => sunNow < 0.4 ? bossAt('astronomer') : notePos('barrens2'), done: () => S.flags.boss_astronomer },
-  { act: 'gloam', text: 'Deepen the Gloam at the Beacon. Hunt ever deeper. Reach level 400', done: () => S.level >= 400 },
+  // ---- Act IX: the Weeping Wood, first land past the Cinder Wall
+  { act: 'wood', text: 'Take the old road through the Cinder Wall into the Weeping Wood. Find the charcoal-burner’s tally-board', at: () => notePos('wood1'), done: () => S.notesRead?.includes('wood1') },
+  { act: 'wood', text: 'Find the great tree and read what the Woodwarden cut into its bark', at: () => notePos('wood2'), done: () => S.notesRead?.includes('wood2') },
+  { act: 'wood', boss: 'warden', text: 'The Woodwarden keeps the wood still. Slay it, or bring it to its knees and return it', at: () => bossAt('warden'), done: () => S.flags.boss_warden },
+  // ---- Act X: the Saltgrave, where the First Landing lies
+  { act: 'salt', text: 'Cross into the Saltgrave. Search the wrecks for the log of the Constancy', at: () => notePos('salt1'), done: () => S.notesRead?.includes('salt1') },
+  { act: 'salt', text: 'Somewhere in the dunes, a letter was never sent. Find it', at: () => notePos('salt2'), done: () => S.notesRead?.includes('salt2') },
+  { act: 'salt', boss: 'captain', text: 'Captain Oriel Vane still walks the deck of the Constancy. Slay him, or return him', at: () => bossAt('captain'), done: () => S.flags.boss_captain },
+  // ---- Act XI: the Rimewatch, the abbey under snow
+  { act: 'frost', text: 'Climb into the Rimewatch. Find the vigil-book frozen into a cairn', at: () => notePos('frost1'), done: () => S.notesRead?.includes('frost1') },
+  { act: 'frost', text: 'Reach the abbey and read the Abbot’s confession on the lectern', at: () => notePos('frost2'), done: () => S.notesRead?.includes('frost2') },
+  { act: 'frost', boss: 'abbot', text: 'The Abbot Under Snow keeps his vigil. End it, or return him to the morning', at: () => bossAt('abbot'), done: () => S.flags.boss_abbot },
+  // ---- Act XII: the Gloam Below — the endless hunt
+  { act: 'deep', text: 'Go home and tell Maren what waits past the Wall. Then, at her colony projects, turn the Beacon down: Deepen the Gloam', at: () => npcAt('maren'), done: () => (S.tier || 0) >= 1 },
+  { act: 'deep', text: 'Hunt ever deeper. Reach level 400', done: () => S.level >= 400 },
 ];
 const KING_STEP = QUESTS.findIndex(q => q.boss === 'king');
 // ---- the act bosses: each a person of the old kingdom (or of ours) the Gloam made into something else
@@ -950,6 +968,7 @@ function drawMap() {
   const mark = (p, txt, colr, size = 16) => { if (!p) return; g.font = `${size}px serif`; g.fillStyle = colr; g.strokeStyle = '#000'; g.lineWidth = 3; g.strokeText(txt, p.x * sc, p.z * sc + size * 0.35); g.fillText(txt, p.x * sc, p.z * sc + size * 0.35); };
   mark({ x: world.camp.x, z: world.camp.z }, '⌂', '#ffd98a', 22);
   for (const id of S.notesRead) mark(notePos(id), '✉', '#e8dcc4', 14);
+  for (const f of S.fires || []) mark({ x: f.x + 0.5, z: f.z + 0.5 }, '🔥', '#ffb060', 14);
   mark(wpTarget, '◆', '#ffd98a'); mark(wp2Target, '◇', '#b8d8ff');
   // you
   g.save(); g.translate(P.pos.x * sc, P.pos.z * sc); g.rotate(-yaw); g.fillStyle = '#ff6a4a'; g.strokeStyle = '#000'; g.lineWidth = 2;
@@ -1746,7 +1765,7 @@ function useAction() {
   if (target) {
     const b = target.b;
     if (b === B.CHEST) { openChest(target.x, target.y, target.z); return; }
-    if (b === B.CAMPFIRE) { restAtFire(target); return; }
+    if (b === B.CAMPFIRE) { openFire(target); return; }
     if (b === B.WARDROBE || b === B.HOLLOWLOG) { enterHide(target); return; }
     if (b === B.THICKET && target.t < 3.2) { enterThicket(target); return; }
     if (b === B.NOTE) { const id = world.notes?.get(world.idx(target.x, target.y, target.z)); if (id) openNote(id, true); return; }
@@ -1813,6 +1832,80 @@ function openChest(x, y, z) {
   S.flags.chests++;
   const K = world.castle; if (x >= K.x0 && x <= K.x1 && z >= K.z0 && z <= K.z1) S.flags.castleChest = true;
   gainXP(kind === 'ruin' ? 25 : 60, 'discovery');
+}
+// ---- fires: every fire you sit at is marked, and from any marked fire you can travel to another
+const fireKey = f => `${f.x},${f.y},${f.z}`;
+function knownFires() {
+  S.fires ??= [];
+  // a fire that was broken or built over is gone from the list
+  S.fires = S.fires.filter(f => world.get(f.x, f.y, f.z) === B.CAMPFIRE);
+  const c = world.camp;
+  if (c && !S.fires.some(f => Math.hypot(f.x - c.x, f.z - c.z) < 4)) {
+    // the Landing's bonfire is always known
+    for (let y = c.y - 2; y <= c.y + 3; y++) if (world.get(Math.floor(c.x), y, Math.floor(c.z)) === B.CAMPFIRE) { S.fires.unshift({ x: Math.floor(c.x), y, z: Math.floor(c.z), name: 'The Landing — bonfire' }); break; }
+  }
+  return S.fires;
+}
+function markFire(t) {
+  const list = knownFires(), k = fireKey(t);
+  let f = list.find(q => fireKey(q) === k);
+  if (f) return f;
+  const c = world.camp, reg = regionAt(t.x).name;
+  let name = c && Math.hypot(t.x - c.x, t.z - c.z) < 30 ? 'The Landing' : reg;
+  const same = list.filter(q => q.name.startsWith(name)).length;
+  name += same ? ` — fire ${same + 1}` : ' — fire';
+  f = { x: t.x, y: t.y, z: t.z, name };
+  list.push(f);
+  if (list.length >= 2) log(`🔥 You mark this fire: <b>${name}</b>. From any marked fire you can travel to another.`, 'good');
+  return f;
+}
+function openFire(t) {
+  const here = markFire(t), others = knownFires().filter(f => f !== here);
+  if (!others.length) { restAtFire(t); hint('fireTravel', 'Every fire you sit at is <b>marked</b>. Once you have two, using a fire lets you <b>travel</b> between them. Craft a campfire to make your own.', 10); return; }
+  talkNpc = null; ui = 'talk'; mouse.left = false; guarding = false;
+  if (document.pointerLockElement) document.exitPointerLock();
+  $('talkName').textContent = here.name; $('talkTitle').textContent = 'A marked fire';
+  $('talkText').innerHTML = '<span class="dim">The fire burns low. Rest here, or follow the Company’s trail-marks to another fire you have lit or sat at.</span>';
+  $('talkShop').innerHTML = '';
+  const night = sunNow < 0.35;
+  const opts = [{ label: night ? '☾ Long rest until morning' : '☀ Short rest', act: () => { closeTalk(); restAtFire(t); } }];
+  const d = f => Math.round(Math.hypot(f.x - t.x, f.z - t.z));
+  for (const f of others.sort((a, b) => d(a) - d(b))) opts.push({ label: `🔥 Travel to <b>${escapeHTML(f.name)}</b> <span class="dim">(${d(f)} paces)</span>`, act: () => travelTo(f) });
+  opts.push({ label: 'Leave the fire', act: closeTalk });
+  talkOptions(opts);
+  show('talk');
+}
+function travelTo(f) {
+  if (world.get(f.x, f.y, f.z) !== B.CAMPFIRE) { $('talkText').innerHTML = '<span class="dim">That fire is gone. Someone, or something, put it out.</span>'; knownFires(); return; }
+  if (hunter && !hunter.dead && !hunter.leaving) { $('talkText').innerHTML = '<span class="dim">Something is on your trail. It would follow the smoke. Hide, or lose it, first.</span>'; return; }
+  if (mobs.some(m => m.aware && m.dist < 18 && !m.dead)) { $('talkText').innerHTML = '<span class="dim">Not with enemies this close.</span>'; return; }
+  // a clear patch of ground beside the fire
+  let spot = null;
+  for (const r of [1, 2, 3]) {
+    for (let dz = -r; dz <= r && !spot; dz++) for (let dx = -r; dx <= r && !spot; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+      for (let y = f.y - 1; y <= f.y + 2; y++) {
+        const x = f.x + dx, z = f.z + dz;
+        if (SOLID[world.get(x, y - 1, z)] && !SOLID[world.get(x, y, z)] && !SOLID[world.get(x, y + 1, z)]) { spot = { x: x + 0.5, y, z: z + 0.5 }; break; }
+      }
+    }
+    if (spot) break;
+  }
+  spot ??= { x: f.x + 0.5, y: f.y + 1, z: f.z + 0.5 };
+  closeTalk(); ui = 'resting';
+  const fd = $('fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 1;
+  setTimeout(() => {
+    P.pos.set(spot.x, spot.y, spot.z); P.vel.set(0, 0, 0); airPeak = spot.y;
+    yaw = Math.atan2(-(f.x + 0.5 - spot.x), -(f.z + 0.5 - spot.z));
+    S.spawnPt = { ...spot };
+    // the walk takes some of the day
+    S.time = (S.time + 0.04) % 1;
+    for (const m of mobs.slice()) if (!m.boss && m.dist > 40 && !m.hunter) removeMob(m);
+    fd.style.opacity = 0; setTimeout(() => { fd.style.transition = 'opacity .12s'; }, 900);
+    ui = 'none'; requestLock();
+    log(`🔥 You follow the trail-marks to <b>${escapeHTML(f.name)}</b>. You will return here if you fall.`, 'good');
+    saveGame();
+  }, 900);
 }
 function restAtFire(t) {
   const night = sunNow < 0.35;
@@ -2878,7 +2971,7 @@ const REMORSE = ['It looked up at you before the end. Its eyes were brown.', 'It
 function executeMob(m) {
   atkCd = weapon().cd; startSwing(); snd.crit();
   S.executed = (S.executed || 0) + 1;
-  const ai = Math.max(0, ACTS.findIndex(a => a.id === QUESTS[S.quest]?.act));
+  const ai = Math.min(8, Math.max(0, ACTS.findIndex(a => a.id === QUESTS[S.quest]?.act)));
   log(`You bring your weapon down on the kneeling ${m.T.name}.`, 'bad');
   if (Math.random() < 0.35 + ai * 0.08) log(`<i>${REMORSE[Math.floor(Math.random() * REMORSE.length)]}</i>`, 'lore');
   S.dread = Math.min(100, S.dread + 3 + ai * 1.5);
@@ -3494,7 +3587,7 @@ function updateHUD(force) {
   else if (target && target.b === B.WARDROBE && !hideSpot) tg = 'Old Wardrobe — right-click to hide inside';
   else if (target && target.b === B.HOLLOWLOG && !hideSpot) tg = 'Hollow Log — right-click to crawl inside and hide';
   else if (target && target.b === B.THICKET && !hideSpot) tg = TOUCH ? 'Bramble Thicket — tap to crouch inside and hide' : 'Bramble Thicket — right-click to crouch inside and hide';
-  else if (target && (target.b === B.CHEST || target.b === B.CAMPFIRE)) tg = target.b === B.CHEST ? (world.opened.has(world.idx(target.x, target.y, target.z)) ? 'Old Chest (empty)' : 'Old Chest — right-click to open') : (sunNow < 0.35 ? 'Campfire — right-click for a long rest' : 'Campfire — right-click to rest');
+  else if (target && (target.b === B.CHEST || target.b === B.CAMPFIRE)) tg = target.b === B.CHEST ? (world.opened.has(world.idx(target.x, target.y, target.z)) ? 'Old Chest (empty)' : 'Old Chest — right-click to open') : ((S.fires?.length || 0) >= 2 || (S.fires?.length === 1 && !S.fires.some(f => f.x === target.x && f.y === target.y && f.z === target.z)) ? 'Campfire — right-click to rest or travel' : sunNow < 0.35 ? 'Campfire — right-click for a long rest' : 'Campfire — right-click to rest');
   setT('target', TOUCH ? tg.replace('right-click', 'tap') : tg);
 }
 
@@ -3558,4 +3651,4 @@ window.__gr = {
   get target() { return target; }, get npcs() { return npcs; }, get crows() { return crows; }, get targetNpc() { return targetNpc; }, openTalk, get talkActs() { return talkActs; }, questReady, get targetMob() { return targetMob; }, craft: i => craft(RECIPES[i]), RECIPES, playerAttack, get dread() { return S.dread; },
   get wp2() { return wp2Target; }, acceptQuest, get bolts() { return bolts; }, castSpell, buildProject, startRaid, openMap, openNote, get look() { return look; }, get eye() { return eye; }, get S() { return S; }, get world() { return world; }, get mobs() { return mobs; }, P, setLook(y, p) { yaw = y; pitch = p; }, spawnMob, MOB_TYPES, U, keys, mouse, useAction, setTime(t) { S.time = t; prevT = t; },
   guard(on) { guarding = on; if (on) guardAt = gameT; }, dodge, quaff, addItem, equip, openPanel, swapWeapon, useBelt, QUESTS, get wp() { return wpTarget; }, get boss() { return boss; }, get yaw() { return yaw; },
-  perceive, setCrouch, enterHide, exitHide, riteOfReturn, breakBlock, unlockMagic, get hunter() { return hunter; }, set huntT(v) { huntT = v; }, get hideSpot() { return hideSpot; }, get crouch() { return crouch; }, get inCover() { return inCover; }, get returned() { return returned; }, setSun(v) { sunNow = v; }, snd };
+  perceive, setCrouch, enterHide, exitHide, openFire, travelTo, knownFires, riteOfReturn, breakBlock, unlockMagic, get hunter() { return hunter; }, set huntT(v) { huntT = v; }, get hideSpot() { return hideSpot; }, get crouch() { return crouch; }, get inCover() { return inCover; }, get returned() { return returned; }, setSun(v) { sunNow = v; }, snd };
