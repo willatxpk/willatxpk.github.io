@@ -461,7 +461,7 @@ const STANDARD_REQ = "author, title, journal, volume, pages, year";
 const STANDARD_DROP = ["url", "issn", "publisher", "month", "abstract", "keywords", "copyright", "language"];
 const DROPPABLE = ["url", "issn", "publisher", "month", "number", "abstract", "keywords", "copyright", "language", "note"];
 const FAMILIES = {
-  aps: { maxAuthors: 10, keep: 1, journal: "abbrev", rule: "APS / REVTeX style: “A. B. Author, C. D. Author, and E. F. Author, Title, Phys. Rev. Lett. 78, 3221 (1997).” Journal abbreviated, first page or article number. The author cut-off here is a starting point: check the journal’s current author guide." },
+  aps: { maxAuthors: 10, keep: 10, journal: "abbrev", rule: "APS / REVTeX style: more than ten authors → first ten, then et al. “A. B. Author, C. D. Author, and E. F. Author, Title, Phys. Rev. Lett. 78, 3221 (1997).” Journal abbreviated, first page or article number." },
   nature: { maxAuthors: 5, keep: 1, journal: "abbrev", rule: "Nature style: up to five authors, otherwise first author et al. “Author, A. B., Author, C. D. & Author, E. F. Title. Nature 453, 1023–1030 (2008).” Journal abbreviated, page range or article number." },
   science: { maxAuthors: 10, keep: 1, journal: "abbrev", rule: "Science style: up to ten authors, otherwise first author et al. “A. B. Author, C. D. Author, Title. Science 378, 557–560 (2022).” Journal abbreviated." },
 };
@@ -487,6 +487,8 @@ const FMT_KEY = "fetcher.format";
 const fmt = Object.assign(
   { preset: "custom", journal: "asis", maxAuthors: "", keep: 1, artField: "pages", required: STANDARD_REQ, drop: [], preview: false, flaggedOnly: false },
   lsJSON(FMT_KEY));
+// Earlier versions kept only the first author for APS journals; move saved settings to first ten.
+if (presetOf(fmt.preset).family === "aps" && String(fmt.maxAuthors) === "10" && String(fmt.keep) === "1") fmt.keep = 10;
 const saveFmt = () => store.set(FMT_KEY, JSON.stringify(fmt));
 
 // ---- field helpers on parsed entries ----
@@ -542,9 +544,16 @@ function nameParts(n) {
 const initials = first => first.replace(/\.(?=[^\s-])/g, ". ").split(/\s+/).filter(w => /\p{L}/u.test(w))
   .map(w => w.split("-").filter(s => /\p{L}/u.test(s)).map(s => s.match(/\p{L}/u)[0].toUpperCase() + ".").join("-")).join(" ");
 
+// Drop stray tokens with no letters (":", "-", "·") from a name, outside braces.
+function cleanAuthorName(n) {
+  if (/^\{.*\}$/s.test(n.trim())) return n.trim();
+  return n.replace(/(^|[\s,])[^\p{L}\s,{}]+(?=[\s,]|$)/gu, "$1")
+    .replace(/\s+,/g, ",").replace(/,\s*$/, "").replace(/\s+/g, " ").trim();
+}
+
 function authorInfo(p) {
-  // Skip junk "authors" with no letters (Crossref sometimes emits ":" as a name).
-  const list = splitAuthors(fGet(p, "author") || fGet(p, "editor")).filter(n => /\p{L}/u.test(n));
+  // Crossref sometimes emits junk like ":" as a name, or inside one ("Orbach, R. :").
+  const list = splitAuthors(fGet(p, "author") || fGet(p, "editor")).map(cleanAuthorName).filter(n => /\p{L}/u.test(n));
   let others = false;
   if (list.length && /^others$/i.test(list[list.length - 1])) { list.pop(); others = true; }
   return { list, others };
@@ -555,9 +564,11 @@ function transformEntry(bib, o = fmt) {
   const p = parseEntry(bib);
   if (isSpecial(p)) return bib.trim();
   const max = parseInt(o.maxAuthors, 10), keep = Math.max(1, parseInt(o.keep, 10) || 1);
-  if (max > 0 && fHas(p, "author")) {
-    const { list, others } = authorInfo(p);
-    if (list.length > max || (others && list.length > keep)) fSet(p, "author", braced(list.slice(0, keep).join(" and ") + " and others"));
+  if (fHas(p, "author")) {
+    const { list, others } = authorInfo(p);   // already cleaned of junk names/characters
+    let out = list, etal = others;
+    if (max > 0 && (list.length > max || (others && list.length > keep))) { out = list.slice(0, keep); etal = true; }
+    if (out.length) fSet(p, "author", braced(out.join(" and ") + (etal ? " and others" : "")));
   }
   if (o.journal !== "asis" && fHas(p, "journal")) {
     const forms = journalForms(fGet(p, "journal"), doiFromBib(bib));
