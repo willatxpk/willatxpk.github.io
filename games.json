@@ -248,6 +248,33 @@
                       "hash":  "0d5bf0aaef25331e9dd094abc17d38c78e0bd13444551a210538c34f568f0f16",
                       "size":  376445,
                       "type":  "app"
+                  },
+                  {
+                      "id":  "fetcher",
+                      "title":  "Fetcher",
+                      "tagline":  "DOI, link or arXiv ID in. Clean BibTeX out.",
+                      "description":  "Paste DOIs, article links or arXiv IDs (several at once if you like) and get tidy BibTeX on your clipboard. It keeps a searchable bibliography with no duplicate papers or clashing citation keys, saved in your browser or, in Chrome and Edge, straight into your own .bib file.",
+                      "tags":  [
+                                   "App",
+                                   "Research",
+                                   "LaTeX"
+                               ],
+                      "icon":  "📚",
+                      "accent":  "#2f6fdb",
+                      "source":  "../fetcher",
+                      "play":  true,
+                      "download":  false,
+                      "excludeDirs":  [
+
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "version":  1,
+                      "updated":  "2026-11-24",
+                      "hash":  "1160b9a404e4dd685e7426888b9fcfe7e42379220747d9c0a1c3662960b443e8",
+                      "size":  null,
+                      "type":  "app"
                   }
               ]
 }

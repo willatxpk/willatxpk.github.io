@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fetcher</title>
+<meta name="description" content="Paste a DOI, article link or arXiv ID and get clean BibTeX, with a duplicate-free bibliography kept in your browser or in your own .bib file.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e3e1da;
+  --accent: #2f6fdb; --accent-ink: #ffffff; --ok: #1a7f37; --warn: #9a6700; --err: #cf222e;
+  --code-bg: #fbfaf7; --hit: #ffe58a; --flash: #d5f2d5;
+  --radius: 12px; --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+  --mono: ui-monospace, "Cascadia Code", Consolas, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141416; --panel: #1d1d20; --ink: #ececee; --muted: #9a9aa2; --line: #2e2e33;
+    --accent: #5b93f0; --accent-ink: #0d0d0f; --ok: #4ac26b; --warn: #d4a72c; --err: #ff6b6b;
+    --code-bg: #18181b; --hit: #6b5a12; --flash: #1f4a2a; --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 28px 16px 60px; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+h1 { margin: 0; font-size: 30px; letter-spacing: -.02em; }
+h1 span { color: var(--accent); }
+.sub { margin: 2px 0 0; color: var(--muted); }
+.back { color: var(--muted); text-decoration: none; font-size: 14px; }
+.back:hover { color: var(--ink); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; margin-bottom: 18px; }
+.panel h2 { margin: 0 0 10px; font-size: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.panel h2 .count { color: var(--muted); font-weight: 400; font-size: 14px; }
+label.lbl { display: block; font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+textarea, input[type=text], input[type=search] {
+  width: 100%; font: inherit; color: var(--ink); background: var(--code-bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; outline: none;
+}
+textarea:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+#ids { resize: vertical; min-height: 48px; font-size: 16px; }
+.row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+.row .grow { flex: 1 1 240px; }
+button, .btn {
+  font: inherit; font-size: 14px; cursor: pointer; border-radius: 8px; padding: 8px 14px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+}
+button:hover:not(:disabled) { border-color: var(--muted); }
+button:disabled { opacity: .55; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button.primary:hover:not(:disabled) { filter: brightness(1.08); border-color: var(--accent); }
+button.small { padding: 4px 9px; font-size: 13px; }
+button.danger:hover:not(:disabled) { border-color: var(--err); color: var(--err); }
+kbd { font: 12px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--muted); }
+.hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+#status { min-height: 22px; margin-top: 10px; font-size: 14px; }
+#status.ok { color: var(--ok); } #status.warn { color: var(--warn); } #status.error { color: var(--err); }
+pre.bib, textarea.bib {
+  font: 13px/1.5 var(--mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; margin: 0; white-space: pre-wrap; word-break: break-word; overflow: auto;
+}
+#current { min-height: 70px; max-height: 360px; }
+#current:empty::before { content: "Fetched BibTeX appears here."; color: var(--muted); font-family: system-ui, sans-serif; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.toolbar .spacer { flex: 1; }
+.source { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.source b { color: var(--ink); font-weight: 600; }
+.source .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.source.live .dot { background: var(--ok); }
+.source.stale .dot { background: var(--warn); }
+.filter { margin-bottom: 10px; }
+ul.entries { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+ul.entries li { border-bottom: 1px solid var(--line); padding: 10px 2px; }
+ul.entries li.flash { animation: flash 2.5s ease-out; }
+@keyframes flash { from { background: var(--flash); } to { background: transparent; } }
+.e-head { display: flex; gap: 10px; align-items: baseline; }
+.e-title { font-weight: 600; flex: 1; min-width: 0; }
+.e-meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.e-key { font: 12.5px var(--mono); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); padding: 1px 6px; border-radius: 5px; cursor: pointer; border: 0; }
+.e-actions { display: flex; gap: 6px; flex: none; }
+.e-raw { margin-top: 8px; }
+mark { background: var(--hit); color: inherit; border-radius: 2px; }
+.empty { color: var(--muted); padding: 20px 0 6px; text-align: center; }
+#raw { width: 100%; min-height: 380px; }
+.hidden { display: none !important; }
+details.help { color: var(--muted); font-size: 14px; }
+details.help summary { cursor: pointer; }
+details.help ul { margin: 6px 0 0; padding-left: 20px; }
+footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 24px; }
+@media (max-width: 600px) {
+  h1 { font-size: 26px; }
+  .e-head { flex-wrap: wrap; }
+  .e-actions { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>📚 Fetch<span>er</span></h1>
+      <p class="sub">DOI, link or arXiv ID in. Clean BibTeX out.</p>
+    </div>
+    <a class="back" href="../../">← More apps</a>
+  </header>
+
+  <section class="panel">
+    <label class="lbl" for="ids">DOIs, article links or arXiv IDs (paste several at once if you like)</label>
+    <textarea id="ids" rows="2" placeholder="10.1038/nature07127   ·   https://arxiv.org/abs/2406.01704   ·   doi.org/10.1103/PhysRevLett.78.3221" autofocus></textarea>
+    <div class="row">
+      <div class="grow">
+        <label class="lbl" for="key">Citation key (optional, single DOI only)</label>
+        <input id="key" type="text" placeholder="e.g. kimble2008" autocomplete="off" spellcheck="false">
+      </div>
+      <button id="pasteBtn" title="Paste from clipboard and fetch">📋 Paste</button>
+      <button id="fetchBtn" class="primary">Fetch <kbd style="color:inherit;border-color:currentColor">Enter</kbd></button>
+    </div>
+    <div id="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Current BibTeX
+      <span class="spacer" style="flex:1"></span>
+      <button id="copyBtn" class="small">Copy</button>
+      <button id="addBtn" class="small">Add to library</button>
+    </h2>
+    <pre id="current" class="bib" contenteditable="plaintext-only" spellcheck="false"></pre>
+    <p class="hint">Fetched entries are copied to your clipboard and added to your library automatically. You can edit the text above before adding it by hand.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Library <span id="count" class="count"></span></h2>
+    <div id="source" class="source"><span class="dot"></span><span id="sourceText"></span></div>
+    <div class="toolbar">
+      <button id="openBtn">📂 Open .bib…</button>
+      <button id="newBtn" class="fsa-only">✚ New .bib…</button>
+      <button id="reconnectBtn" class="hidden">🔗 Reconnect</button>
+      <button id="disconnectBtn" class="hidden">Disconnect</button>
+      <button id="downloadBtn">⬇ Download .bib</button>
+      <span class="spacer"></span>
+      <button id="copyAllBtn">Copy all</button>
+      <button id="tidyBtn" title="Reformat every entry to one field per line">Tidy</button>
+      <button id="rawBtn">Edit raw</button>
+      <button id="clearBtn" class="danger">Clear</button>
+    </div>
+    <input id="filter" class="filter" type="search" placeholder="Filter by title, author, key, year, DOI…  ( / )" autocomplete="off">
+    <ul id="entries" class="entries"></ul>
+    <div id="rawWrap" class="hidden">
+      <textarea id="raw" class="bib" spellcheck="false"></textarea>
+      <div class="row"><button id="rawSave" class="primary">Save changes</button><button id="rawCancel">Cancel</button></div>
+    </div>
+    <input id="fileInput" type="file" accept=".bib,.txt,text/plain" class="hidden">
+  </section>
+
+  <details class="help panel">
+    <summary>How it works</summary>
+    <ul>
+      <li>BibTeX comes from <code>doi.org</code> (falling back to Crossref). arXiv IDs are looked up through their arXiv DOI. Nothing else leaves your browser.</li>
+      <li>Your library is saved in this browser. In Chrome or Edge you can also <b>Open</b> a <code>.bib</code> file on your computer and Fetcher will save straight into it.</li>
+      <li>Papers already in the library (same DOI or arXiv ID) are not added twice. If a citation key is already taken, the new one gets a letter: <code>Smith_2020b</code>.</li>
+      <li>Shortcuts: <kbd>Enter</kbd> fetch, <kbd>Shift</kbd>+<kbd>Enter</kbd> new line, <kbd>/</kbd> filter, <kbd>Esc</kbd> clear.</li>
+    </ul>
+  </details>
+  <footer>Your bibliography stays on your device.</footer>
+</div>
+
+<script>
+"use strict";
+// ======================================================================
+// Identifier parsing
+// ======================================================================
+const DOI_RE = /(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)/gi;
+const ARXIV_RE = /(?:arxiv\.org\/(?:abs|pdf|html)\/|arxiv:\s*)(\d{4}\.\d{4,5})(?:v\d+)?/gi;
+const BARE_ARXIV_RE = /^(\d{4}\.\d{4,5})(?:v\d+)?$/;
+
+function cleanDoi(doi) {
+  doi = doi.replace(/[.,;:]+$/, "");
+  const count = (s, c) => s.split(c).length - 1;
+  while (doi.endsWith(")") && count(doi, "(") < count(doi, ")")) doi = doi.slice(0, -1);
+  for (const suf of [".pdf", "/full", "/abstract", "/epdf", "/pdf"]) {
+    if (doi.toLowerCase().endsWith(suf)) doi = doi.slice(0, -suf.length);
+  }
+  return doi;
+}
+
+function extractIdentifiers(text) {
+  if (!text) return [];
+  try { text = decodeURIComponent(text); } catch { /* keep as is */ }
+  const found = [];
+  for (const m of text.matchAll(ARXIV_RE)) found.push(`10.48550/arXiv.${m[1]}`);
+  for (const tok of text.split(/\s+/)) {
+    const m = tok.trim().match(BARE_ARXIV_RE);
+    if (m) found.push(`10.48550/arXiv.${m[1]}`);
+  }
+  for (const m of text.matchAll(DOI_RE)) found.push(cleanDoi(m[1]));
+  const seen = new Set();
+  return found.filter(d => !seen.has(d.toLowerCase()) && seen.add(d.toLowerCase()));
+}
+
+// ======================================================================
+// BibTeX helpers
+// ======================================================================
+const sanitizeKey = k => k.trim().replace(/ /g, "").replace(/[^a-zA-Z0-9:_\-+.]/g, "");
+const getKey = bib => (bib.match(/^\s*@\w+\s*\{\s*([^,\s]+)\s*,/) || [])[1] || "";
+
+function replaceKey(bib, custom) {
+  const key = sanitizeKey(custom);
+  if (!key) return bib;
+  return bib.replace(/^(\s*@\w+\s*\{)\s*([^,]+)(,)/, (_, a, __, c) => a + key + c);
+}
+
+function doiFromBib(bib) {
+  const m = bib.match(/\bdoi\s*=\s*[{"]([^}",]+)[}"]/i);
+  if (m) return m[1].trim().toLowerCase();
+  const d = bib.match(new RegExp(DOI_RE.source, "i"));
+  return d ? cleanDoi(d[1]).toLowerCase() : "";
+}
+
+function entryIds(bib) {
+  const ids = new Set();
+  const doi = doiFromBib(bib);
+  if (doi) ids.add(doi);
+  const arx = bib.match(/10\.48550\/arxiv\.(\d{4}\.\d{4,5})/i)
+    || bib.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/i)
+    || bib.match(/\beprint\s*=\s*[{"]?\s*(\d{4}\.\d{4,5})/i);
+  if (arx) ids.add("arxiv:" + arx[1]);
+  return ids;
+}
+
+function splitEntries(text) {
+  const out = [];
+  let start = -1, depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "@" && depth === 0) start = i;
+    if (start !== -1) {
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) { out.push(text.slice(start, i + 1).trim()); start = -1; }
+        if (depth < 0) depth = 0;
+      }
+    }
+  }
+  return out.filter(Boolean);
+}
+
+function parseFields(body) {
+  const parts = []; let buf = "", depth = 0, inQ = false;
+  for (const ch of body) {
+    if (ch === '"' && depth === 0) inQ = !inQ;
+    else if (ch === "{" && !inQ) depth++;
+    else if (ch === "}" && !inQ) depth--;
+    if (ch === "," && depth === 0 && !inQ) { parts.push(buf); buf = ""; } else buf += ch;
+  }
+  parts.push(buf);
+  const out = [];
+  for (let f of parts) {
+    f = f.trim();
+    if (!f) continue;
+    const eq = f.indexOf("=");
+    if (eq < 0) return null;
+    out.push([f.slice(0, eq).trim(), f.slice(eq + 1).trim().replace(/\s+/g, " ")]);
+  }
+  return out;
+}
+
+function parseEntry(bib) {
+  const m = bib.trim().match(/^@(\w+)\s*\{\s*([^,\s]+)\s*,([\s\S]*)\}\s*$/);
+  if (!m) return null;
+  const fields = parseFields(m[3]);
+  return fields ? { type: m[1], key: m[2], fields } : null;
+}
+
+function formatBib(bib) {
+  const p = parseEntry(bib);
+  if (!p || ["comment", "string", "preamble"].includes(p.type.toLowerCase()) || !p.fields.length) return bib.trim();
+  const w = Math.max(...p.fields.map(([n]) => n.length));
+  const lines = p.fields.map(([n, v], i) => `  ${n.padEnd(w)} = ${v}${i < p.fields.length - 1 ? "," : ""}`);
+  return `@${p.type}{${p.key},\n${lines.join("\n")}\n}`;
+}
+
+function field(bib, name) {
+  const p = parseEntry(bib);
+  if (!p) return "";
+  const f = p.fields.find(([n]) => n.toLowerCase() === name);
+  return f ? f[1] : "";
+}
+
+function cleanTex(v) {
+  if (!v) return "";
+  v = v.trim();
+  if ((v.startsWith("{") && v.endsWith("}")) || (v.startsWith('"') && v.endsWith('"'))) v = v.slice(1, -1);
+  return v.replace(/\\([&%$#_])/g, "$1").replace(/\\textendash\b|--/g, "–").replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function makeKey(bib) {
+  const first = cleanTex(field(bib, "author")).split(/\s+and\s+/)[0] || "";
+  let surname = first.includes(",") ? first.split(",")[0] : (first.split(/\s+/).pop() || "");
+  surname = surname.normalize("NFD").replace(/[^A-Za-z]/g, "") || "ref";
+  const year = (cleanTex(field(bib, "year")).match(/\d{4}/) || [""])[0];
+  return year ? `${surname}_${year}` : surname;
+}
+
+function fixBadKey(bib) {
+  const k = getKey(bib);
+  if (!k || k.includes("/") || /^http/i.test(k) || sanitizeKey(k) !== k) return replaceKey(bib, makeKey(bib));
+  return bib;
+}
+
+function uniqueKey(key, taken) {
+  if (!taken.has(key)) return key;
+  for (const s of "bcdefghijklmnopqrstuvwxyz") if (!taken.has(key + s)) return key + s;
+  let n = 2; while (taken.has(`${key}_${n}`)) n++;
+  return `${key}_${n}`;
+}
+
+function summarize(bib) {
+  const authors = cleanTex(field(bib, "author")).split(/\s+and\s+/).filter(Boolean);
+  const nameOf = a => a.includes(",") ? a.split(",")[0].trim() : a.split(/\s+/).pop();
+  let who = authors.length ? nameOf(authors[0]) : "";
+  if (authors.length === 2) who += " & " + nameOf(authors[1]);
+  else if (authors.length > 2) who += " et al.";
+  return {
+    key: getKey(bib),
+    title: cleanTex(field(bib, "title")) || "(untitled)",
+    who,
+    year: cleanTex(field(bib, "year")),
+    venue: cleanTex(field(bib, "journal") || field(bib, "booktitle") || field(bib, "publisher") || field(bib, "archiveprefix")),
+    doi: doiFromBib(bib),
+  };
+}
+
+// ======================================================================
+// Network
+// ======================================================================
+async function fetchBib(doi) {
+  const errors = [];
+  const sources = [
+    [`https://doi.org/${encodeURI(doi)}`, "application/x-bibtex; charset=utf-8"],
+    [`https://api.crossref.org/works/${encodeURIComponent(doi)}/transform/application/x-bibtex`, "application/x-bibtex"],
+  ];
+  for (const [url, accept] of sources) {
+    try {
+      const r = await fetch(url, { headers: { Accept: accept } });
+      if (!r.ok) { errors.push(`HTTP ${r.status}`); continue; }
+      const text = (await r.text()).trim();
+      if (text.startsWith("@")) return text;
+      errors.push("unexpected response");
+    } catch (e) {
+      errors.push(navigator.onLine === false ? "offline" : "network error");
+    }
+  }
+  throw new Error(`No BibTeX found for ${doi} (${errors.join(", ")})`);
+}
+
+// ======================================================================
+// Library storage: localStorage always, plus an optional live .bib file
+// (File System Access API, Chrome/Edge) whose handle is kept in IndexedDB.
+// ======================================================================
+const LS_KEY = "fetcher.library";
+const LS_PREFS = "fetcher.prefs";
+const FSA = "showOpenFilePicker" in window;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } },
+};
+
+const idb = {
+  db: null,
+  async open() {
+    if (this.db || !("indexedDB" in window)) return this.db;
+    this.db = await new Promise((res) => {
+      const rq = indexedDB.open("fetcher", 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore("kv");
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => res(null);
+    });
+    return this.db;
+  },
+  async get(k) {
+    const db = await this.open(); if (!db) return null;
+    return new Promise(res => { const rq = db.transaction("kv").objectStore("kv").get(k); rq.onsuccess = () => res(rq.result ?? null); rq.onerror = () => res(null); });
+  },
+  async set(k, v) {
+    const db = await this.open(); if (!db) return;
+    return new Promise(res => { const tx = db.transaction("kv", "readwrite"); v == null ? tx.objectStore("kv").delete(k) : tx.objectStore("kv").put(v, k); tx.oncomplete = tx.onerror = () => res(); });
+  },
+};
+
+const state = {
+  text: store.get(LS_KEY, ""),
+  handle: null,         // FileSystemFileHandle when a .bib file is connected
+  live: false,          // permission granted for the handle
+  lastModified: null,   // file's lastModified when we last read/wrote it
+  busy: false,
+  flashKeys: new Set(),
+};
+
+async function readHandle() {
+  const f = await state.handle.getFile();
+  return { text: await f.text(), lastModified: f.lastModified };
+}
+
+async function writeHandle(text) {
+  const w = await state.handle.createWritable();
+  await w.write(text);
+  await w.close();
+  state.lastModified = (await state.handle.getFile()).lastModified;
+}
+
+// Before changing the library, pick up edits made to the file elsewhere.
+async function syncFromFile() {
+  if (!state.live) return;
+  try {
+    const { text, lastModified } = await readHandle();
+    if (lastModified !== state.lastModified) {
+      state.text = text;
+      state.lastModified = lastModified;
+      store.set(LS_KEY, text);
+    }
+  } catch (e) {
+    state.live = false;
+    renderSource();
+  }
+}
+
+async function saveLibrary(text) {
+  text = text.trim() ? text.trim() + "\n" : "";
+  state.text = text;
+  store.set(LS_KEY, text);
+  if (state.live) {
+    try { await writeHandle(text); }
+    catch (e) { state.live = false; setStatus(`Saved in the browser, but could not write ${state.handle.name}: ${e.message}`, "error"); }
+  }
+  render();
+}
+
+// ======================================================================
+// Adding entries
+// ======================================================================
+// Returns {result: 'added'|'duplicate', bib, info}
+function addToText(text, bib) {
+  const entries = splitEntries(text);
+  const ids = entryIds(bib);
+  if (ids.size) {
+    for (const e of entries) {
+      for (const id of entryIds(e)) if (ids.has(id)) return { text, result: "duplicate", bib, info: getKey(e) || "?" };
+    }
+  }
+  let info = null;
+  const taken = new Set(entries.map(getKey));
+  const key = getKey(bib);
+  if (key && taken.has(key)) {
+    const nk = uniqueKey(key, taken);
+    bib = replaceKey(bib, nk);
+    info = `${key} → ${nk}`;
+  }
+  const trimmed = text.trim();
+  return { text: (trimmed ? trimmed + "\n\n" : "") + bib + "\n", result: "added", bib, info };
+}
+
+async function addMany(bibs) {
+  await syncFromFile();
+  let text = state.text;
+  const report = { added: [], dupes: [], renamed: [], bibs: [] };
+  for (const b of bibs) {
+    const r = addToText(text, b);
+    text = r.text;
+    report.bibs.push(r.bib);
+    if (r.result === "added") { report.added.push(getKey(r.bib)); if (r.info) report.renamed.push(r.info); }
+    else report.dupes.push(r.info);
+  }
+  if (report.added.length) {
+    state.flashKeys = new Set(report.added);
+    await saveLibrary(text);
+  }
+  return report;
+}
+
+// ======================================================================
+// UI
+// ======================================================================
+const $ = id => document.getElementById(id);
+const els = {
+  ids: $("ids"), key: $("key"), fetchBtn: $("fetchBtn"), pasteBtn: $("pasteBtn"), status: $("status"),
+  current: $("current"), copyBtn: $("copyBtn"), addBtn: $("addBtn"),
+  count: $("count"), source: $("source"), sourceText: $("sourceText"),
+  openBtn: $("openBtn"), newBtn: $("newBtn"), reconnectBtn: $("reconnectBtn"), disconnectBtn: $("disconnectBtn"),
+  downloadBtn: $("downloadBtn"), copyAllBtn: $("copyAllBtn"), tidyBtn: $("tidyBtn"), rawBtn: $("rawBtn"), clearBtn: $("clearBtn"),
+  filter: $("filter"), entries: $("entries"), rawWrap: $("rawWrap"), raw: $("raw"), rawSave: $("rawSave"), rawCancel: $("rawCancel"),
+  fileInput: $("fileInput"),
+};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function setStatus(msg, kind = "") { els.status.textContent = msg; els.status.className = kind; }
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch { /* ignore */ }
+    ta.remove(); return ok;
+  }
+}
+
+function renderSource() {
+  const s = els.source;
+  s.classList.remove("live", "stale");
+  if (state.handle && state.live) {
+    s.classList.add("live");
+    els.sourceText.innerHTML = `Saving to <b>${esc(state.handle.name)}</b> on your computer (and in this browser).`;
+  } else if (state.handle) {
+    s.classList.add("stale");
+    els.sourceText.innerHTML = `<b>${esc(state.handle.name)}</b> is disconnected. Click Reconnect to keep saving into it. Until then, changes are saved in this browser.`;
+  } else {
+    els.sourceText.innerHTML = FSA
+      ? `Saved in <b>this browser</b>. Open a .bib file to save straight into it, or download a copy any time.`
+      : `Saved in <b>this browser</b>. Use Download .bib to save a copy (Open imports a file).`;
+  }
+  els.reconnectBtn.classList.toggle("hidden", !(state.handle && !state.live));
+  els.disconnectBtn.classList.toggle("hidden", !state.handle);
+}
+
+function highlight(text, q) {
+  const t = esc(text);
+  if (!q) return t;
+  const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  return t.replace(re, m => `<mark>${m}</mark>`);
+}
+
+function render() {
+  const entries = splitEntries(state.text);
+  const q = els.filter.value.trim();
+  els.count.textContent = `${entries.length} entr${entries.length === 1 ? "y" : "ies"}`;
+  renderSource();
+  if (!els.rawWrap.classList.contains("hidden")) return;
+
+  const ql = q.toLowerCase();
+  const shown = entries.map((bib, i) => ({ bib, i, s: summarize(bib) }))
+    .filter(({ bib }) => !ql || bib.toLowerCase().includes(ql) || cleanTex(bib).toLowerCase().includes(ql))
+    .reverse(); // newest first
+
+  if (!entries.length) {
+    els.entries.innerHTML = `<li class="empty">Your library is empty. Fetch something above, or open an existing .bib file.</li>`;
+    return;
+  }
+  if (!shown.length) { els.entries.innerHTML = `<li class="empty">No entries match “${esc(q)}”.</li>`; return; }
+
+  els.entries.innerHTML = shown.map(({ i, s }) => `
+    <li data-i="${i}" class="${state.flashKeys.has(s.key) ? "flash" : ""}">
+      <div class="e-head">
+        <div class="e-title">${highlight(s.title, q)}</div>
+        <div class="e-actions">
+          <button class="small" data-act="copy">Copy</button>
+          <button class="small" data-act="view">BibTeX</button>
+          <button class="small danger" data-act="del" title="Remove from library">✕</button>
+        </div>
+      </div>
+      <div class="e-meta">
+        <button class="e-key" data-act="cite" title="Copy \\cite{${esc(s.key)}}">${highlight(s.key, q)}</button>
+        ${highlight([s.who, s.year, s.venue].filter(Boolean).join(" · "), q)}
+        ${s.doi ? ` · <a href="https://doi.org/${esc(s.doi)}" target="_blank" rel="noopener">${highlight(s.doi, q)}</a>` : ""}
+      </div>
+    </li>`).join("");
+  if (state.flashKeys.size) {
+    const first = els.entries.querySelector("li.flash");
+    if (first) first.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    state.flashKeys = new Set();
+  }
+}
+
+// ---- Fetch ------------------------------------------------------------
+async function doFetch() {
+  if (state.busy) return;
+  const dois = extractIdentifiers(els.ids.value);
+  if (!dois.length) { setStatus("Couldn't find a DOI or arXiv ID in that text.", "error"); els.ids.focus(); return; }
+  const customKey = dois.length === 1 ? els.key.value.trim() : "";
+  state.busy = true; els.fetchBtn.disabled = true; els.pasteBtn.disabled = true;
+
+  const results = [];
+  for (let i = 0; i < dois.length; i++) {
+    setStatus(dois.length > 1 ? `Fetching ${i + 1} of ${dois.length}: ${dois[i]}…` : `Fetching ${dois[i]}…`);
+    try { results.push({ doi: dois[i], bib: await fetchBib(dois[i]) }); }
+    catch (e) { results.push({ doi: dois[i], err: e.message }); }
+  }
+  state.busy = false; els.fetchBtn.disabled = false; els.pasteBtn.disabled = false;
+
+  const failures = results.filter(r => r.err).map(r => r.err);
+  const bibs = results.filter(r => r.bib).map(r => formatBib(customKey ? replaceKey(r.bib, customKey) : fixBadKey(r.bib)));
+  if (!bibs.length) { setStatus(failures.join("  ·  "), "error"); return; }
+
+  const rep = await addMany(bibs);
+  const combined = rep.bibs.join("\n\n");
+  els.current.textContent = combined;
+  const copied = await copyText(combined);
+
+  const parts = [];
+  parts.push(copied ? `Copied ${rep.bibs.length === 1 ? "BibTeX" : rep.bibs.length + " entries"} to clipboard` : "Fetched (copy it with the Copy button)");
+  if (rep.added.length) parts.push(`added ${rep.added.length} to library`);
+  if (rep.dupes.length) parts.push(`already in library as ${rep.dupes.join(", ")}`);
+  if (rep.renamed.length) parts.push(`key taken, renamed ${rep.renamed.join(", ")}`);
+  if (dois.length > 1 && els.key.value.trim()) parts.push("custom key ignored for multiple DOIs");
+  if (failures.length) parts.push(failures.join("; "));
+  setStatus(parts.map(p => p[0].toUpperCase() + p.slice(1)).join(". ") + ".", failures.length ? "error" : (rep.dupes.length || rep.renamed.length ? "warn" : "ok"));
+
+  els.ids.value = ""; els.key.value = "";
+  if (rep.dupes.length === 1 && !rep.added.length) { els.filter.value = rep.dupes[0]; render(); }
+}
+
+// ---- Event wiring ------------------------------------------------------
+els.fetchBtn.onclick = doFetch;
+els.ids.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doFetch(); } });
+els.key.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doFetch(); } });
+
+els.pasteBtn.onclick = async () => {
+  try {
+    const t = await navigator.clipboard.readText();
+    els.ids.value = t.trim();
+    doFetch();
+  } catch {
+    setStatus("Your browser blocked clipboard access. Paste with Ctrl+V instead.", "warn");
+    els.ids.focus();
+  }
+};
+
+els.copyBtn.onclick = async () => {
+  const t = els.current.textContent.trim();
+  if (!t) return setStatus("Nothing to copy.");
+  setStatus((await copyText(t)) ? "Copied." : "Copy failed.", "ok");
+};
+
+els.addBtn.onclick = async () => {
+  const bibs = splitEntries(els.current.textContent);
+  if (!bibs.length) return setStatus("Nothing to add.");
+  const rep = await addMany(bibs.map(b => fixBadKey(b)));
+  const msg = [`Added ${rep.added.length} of ${bibs.length}`];
+  if (rep.dupes.length) msg.push(`Already present as ${rep.dupes.join(", ")}`);
+  if (rep.renamed.length) msg.push(`Key taken, renamed ${rep.renamed.join(", ")}`);
+  setStatus(msg.join(". ") + ".", rep.added.length === bibs.length && !rep.renamed.length ? "ok" : "warn");
+};
+
+els.entries.addEventListener("click", async e => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const li = btn.closest("li");
+  const i = +li.dataset.i;
+  const entries = splitEntries(state.text);
+  const bib = entries[i];
+  if (bib == null) return;
+  const act = btn.dataset.act;
+  if (act === "copy") setStatus((await copyText(bib)) ? `Copied ${getKey(bib)}.` : "Copy failed.", "ok");
+  else if (act === "cite") setStatus((await copyText(`\\cite{${getKey(bib)}}`)) ? `Copied \\cite{${getKey(bib)}}.` : "Copy failed.", "ok");
+  else if (act === "view") {
+    const open = li.querySelector(".e-raw");
+    if (open) { open.remove(); return; }
+    li.insertAdjacentHTML("beforeend", `<pre class="bib e-raw">${esc(bib)}</pre>`);
+  } else if (act === "del") {
+    if (!confirm(`Remove “${summarize(bib).title}” (${getKey(bib)}) from your library?`)) return;
+    await syncFromFile();
+    const fresh = splitEntries(state.text);
+    const idx = fresh.indexOf(bib);
+    if (idx < 0) return setStatus("That entry changed on disk; nothing removed. Try again.", "warn");
+    fresh.splice(idx, 1);
+    await saveLibrary(fresh.join("\n\n"));
+    setStatus(`Removed ${getKey(bib)}.`, "ok");
+  }
+});
+
+els.filter.addEventListener("input", render);
+
+els.copyAllBtn.onclick = async () => {
+  if (!state.text.trim()) return setStatus("Library is empty.");
+  setStatus((await copyText(state.text)) ? "Copied the whole library." : "Copy failed.", "ok");
+};
+
+els.downloadBtn.onclick = () => {
+  if (!state.text.trim()) return setStatus("Library is empty.");
+  const name = state.handle ? state.handle.name : "references.bib";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([state.text], { type: "text/plain" }));
+  a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+
+els.tidyBtn.onclick = async () => {
+  await syncFromFile();
+  const entries = splitEntries(state.text);
+  if (!entries.length) return setStatus("Nothing to tidy.");
+  if (!confirm(`Reformat all ${entries.length} entries to one field per line? Only the layout changes.`)) return;
+  await saveLibrary(entries.map(formatBib).join("\n\n"));
+  setStatus(`Reformatted ${entries.length} entries.`, "ok");
+};
+
+els.clearBtn.onclick = async () => {
+  if (!state.text.trim()) return;
+  const where = state.live ? ` This also empties ${state.handle.name}.` : "";
+  if (!confirm(`Remove all ${splitEntries(state.text).length} entries from your library?${where} Download a copy first if you might want them.`)) return;
+  await saveLibrary("");
+  setStatus("Library cleared.", "ok");
+};
+
+// Raw editor
+els.rawBtn.onclick = async () => {
+  await syncFromFile();
+  els.raw.value = state.text;
+  els.rawWrap.classList.remove("hidden");
+  els.entries.classList.add("hidden"); els.filter.classList.add("hidden");
+  els.raw.focus();
+};
+function closeRaw() {
+  els.rawWrap.classList.add("hidden");
+  els.entries.classList.remove("hidden"); els.filter.classList.remove("hidden");
+  render();
+}
+els.rawCancel.onclick = closeRaw;
+els.rawSave.onclick = async () => { const t = els.raw.value; closeRaw(); await saveLibrary(t); setStatus("Library saved.", "ok"); };
+
+// Files
+async function connect(handle, { create = false } = {}) {
+  state.handle = handle;
+  await idb.set("handle", handle);
+  state.live = true;
+  if (create) {
+    await writeHandle(state.text);
+    setStatus(`Created ${handle.name} with your ${splitEntries(state.text).length} entries.`, "ok");
+  } else {
+    const { text, lastModified } = await readHandle();
+    state.text = text; state.lastModified = lastModified;
+    store.set(LS_KEY, text);
+    setStatus(`Opened ${handle.name}: ${splitEntries(text).length} entries.`, "ok");
+  }
+  render();
+}
+
+const pickerTypes = [{ description: "BibTeX", accept: { "text/plain": [".bib"] } }];
+els.openBtn.onclick = async () => {
+  if (!FSA) { els.fileInput.click(); return; }
+  if (state.text.trim() && !state.handle && !confirm("Opening a file replaces the library saved in this browser with the file's contents. Continue? (Download a copy first if you want to keep it.)")) return;
+  try {
+    const [h] = await window.showOpenFilePicker({ types: pickerTypes, excludeAcceptAllOption: false });
+    if ((await h.requestPermission({ mode: "readwrite" })) !== "granted") {
+      return setStatus("Fetcher needs permission to save into that file.", "warn");
+    }
+    await connect(h);
+  } catch (e) { if (e.name !== "AbortError") setStatus(`Couldn't open file: ${e.message}`, "error"); }
+};
+els.newBtn.onclick = async () => {
+  try {
+    const h = await window.showSaveFilePicker({ suggestedName: "references.bib", types: pickerTypes });
+    await connect(h, { create: true });
+  } catch (e) { if (e.name !== "AbortError") setStatus(`Couldn't create file: ${e.message}`, "error"); }
+};
+els.reconnectBtn.onclick = async () => {
+  try {
+    if ((await state.handle.requestPermission({ mode: "readwrite" })) === "granted") await connect(state.handle);
+  } catch (e) { setStatus(`Couldn't reconnect: ${e.message}. Use Open .bib instead.`, "error"); }
+};
+els.disconnectBtn.onclick = async () => {
+  const name = state.handle.name;
+  state.handle = null; state.live = false;
+  await idb.set("handle", null);
+  setStatus(`Disconnected from ${name}. Your library is still saved in this browser.`);
+  render();
+};
+els.fileInput.onchange = async () => {
+  const f = els.fileInput.files[0];
+  els.fileInput.value = "";
+  if (!f) return;
+  const incoming = splitEntries(await f.text());
+  if (!incoming.length) return setStatus(`No BibTeX entries found in ${f.name}.`, "warn");
+  if (!state.text.trim() || confirm(`Replace your library with the ${incoming.length} entries in ${f.name}?\n\nOK = replace, Cancel = merge them in (skipping duplicates).`)) {
+    await saveLibrary(await f.text());
+    setStatus(`Imported ${incoming.length} entries from ${f.name}.`, "ok");
+  } else {
+    const rep = await addMany(incoming);
+    setStatus(`Merged ${rep.added.length} new entries from ${f.name}; ${rep.dupes.length} were already there.`, "ok");
+  }
+};
+if (!FSA) document.querySelectorAll(".fsa-only").forEach(el => el.classList.add("hidden"));
+
+// Global shortcuts
+document.addEventListener("keydown", e => {
+  const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName) || document.activeElement.isContentEditable;
+  if (e.key === "/" && !typing) { e.preventDefault(); els.filter.focus(); }
+  else if (e.key === "Escape") {
+    if (document.activeElement === els.filter && els.filter.value) { els.filter.value = ""; render(); }
+    else if (!els.rawWrap.classList.contains("hidden")) closeRaw();
+    else { els.ids.value = ""; els.key.value = ""; els.current.textContent = ""; setStatus(""); els.ids.focus(); }
+  }
+});
+
+// Keep multiple tabs in sync
+window.addEventListener("storage", e => { if (e.key === LS_KEY) { state.text = e.newValue || ""; render(); } });
+
+// Start-up: restore a previously connected file handle (needs a click to re-grant permission).
+(async function init() {
+  render();
+  if (!FSA) return;
+  const h = await idb.get("handle");
+  if (!h) return;
+  state.handle = h;
+  try {
+    if ((await h.queryPermission({ mode: "readwrite" })) === "granted") { await connect(h); setStatus(""); }
+  } catch { /* stays disconnected */ }
+  render();
+})();
+</script>
+</body>
+</html>
