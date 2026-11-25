@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+<defs>
+<style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=block');</style>
+<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+<radialGradient id="fbg" cx=".5" cy=".3" r=".9"><stop offset="0" stop-color="#16244a"/><stop offset="1" stop-color="#0b1222"/></radialGradient>
+</defs>
+
+<rect width="1600" height="1000" fill="url(#fbg)"/>
+<text x="400" y="430" font-family="IBM Plex Mono" font-size="380" font-weight="400" fill="#3b82f6" text-anchor="middle">{</text>
+<text x="1200" y="430" font-family="IBM Plex Mono" font-size="380" font-weight="400" fill="#3b82f6" text-anchor="middle">}</text>
+<g font-family="IBM Plex Mono" font-size="34" text-anchor="middle">
+ <text x="800" y="200" fill="#7d8db0">10.1038/s41586-026-0421-x</text>
+ <text x="800" y="265" fill="#3b82f6" font-size="40">↓</text>
+ <text x="800" y="330" fill="#e2e8f0"><tspan fill="#60a5fa">@article</tspan>{pajak2026,</text>
+ <text x="800" y="378" fill="#9aa8c4">title = {Single rare-earth ions…},</text>
+</g>
+<text x="800" y="640" text-anchor="middle" font-family="Space Grotesk" font-size="160" font-weight="700" font-style="normal" letter-spacing="2" fill="#f8fafc" >Fetcher</text>
+<text x="800" y="720" text-anchor="middle" font-family="IBM Plex Mono" font-size="36" font-weight="500" font-style="normal" letter-spacing="0" fill="#93a4c3" >DOI, link or arXiv ID in. Clean BibTeX out.</text>
+</svg>

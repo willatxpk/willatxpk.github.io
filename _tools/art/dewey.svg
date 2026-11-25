@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+<defs>
+<style>@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&amp;family=Inter:wght@500&amp;family=IBM+Plex+Mono:wght@500&amp;display=block');</style>
+<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+
+</defs>
+
+<rect width="1600" height="1000" fill="#f3efe4"/>
+<rect x="30" y="30" width="1540" height="940" fill="none" stroke="#3d8b6e" stroke-width="3"/>
+<rect x="44" y="44" width="1512" height="912" fill="none" stroke="#3d8b6e" stroke-width="1" opacity=".5"/>
+<g transform="translate(800,330)">
+ <rect x="-150" y="-175" width="300" height="70" rx="4" fill="#fffdf6" stroke="#d8d1bd" stroke-width="3" transform="rotate(-4)"/>
+ <line x1="-115" y1="-140" x2="60" y2="-152" stroke="#3d8b6e" stroke-width="5" opacity=".55"/>
+ <line x1="-115" y1="-120" x2="20" y2="-130" stroke="#3d8b6e" stroke-width="5" opacity=".35"/>
+ <rect x="-190" y="-130" width="380" height="250" rx="12" fill="#2f6e57" stroke="#24543f" stroke-width="6"/>
+ <rect x="-120" y="-92" width="240" height="84" rx="4" fill="#f3efe4" stroke="#b08d3c" stroke-width="6"/>
+ <text y="-36" text-anchor="middle" font-family="IBM Plex Mono" font-size="40" font-weight="500" fill="#1f2a24">530.12</text>
+ <circle cx="0" cy="56" r="26" fill="#c9a24d" stroke="#8e6f27" stroke-width="6"/>
+</g>
+<text x="800" y="650" text-anchor="middle" font-family="Libre Baskerville" font-size="150" font-weight="700" font-style="normal" letter-spacing="2" fill="#1f2a24" >Dewey</text>
+<text x="800" y="725" text-anchor="middle" font-family="Inter" font-size="40" font-weight="500" font-style="normal" letter-spacing="0" fill="#56665d" >Your daily research-paper digest</text>
+<text x="800" y="790" text-anchor="middle" font-family="IBM Plex Mono" font-size="28" font-weight="500" font-style="normal" letter-spacing="5" fill="#3d8b6e" >ARXIV · JOURNALS · RANKED FOR YOU</text>
+</svg>

@@ -55,7 +55,7 @@ loadData().then(d => {
   if (f) {
     const href = f.play ? `play/${encodeURIComponent(f.id)}/` : `${pageForType(f.type)}#${encodeURIComponent(f.id)}`;
     document.getElementById("featured").innerHTML = `
-      <a class="shot" href="${href}"><img src="${esc(f.image)}" alt="${esc(f.title)} screenshot"></a>
+      <a class="shot" href="${href}"><img src="${esc(f.image)}" alt="${esc(f.title)}"></a>
       <figcaption>
         <span class="eyebrow">Latest update · v${f.version} · ${esc(fmtDate(f.updated))}</span>
         <a class="fc-title" href="${pageForType(f.type)}#${encodeURIComponent(f.id)}">${esc(f.title)}</a>

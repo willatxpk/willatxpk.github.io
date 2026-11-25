@@ -52,7 +52,7 @@ function project(g) {
       <h3>${esc(g.title)}</h3>
       <p class="p-tagline">${esc(g.tagline)}</p>
       <p class="p-tags"><span class="p-swatch" style="--swatch:${esc(g.accent || "")}"></span>${(g.tags || []).map(esc).join(" · ")}</p>
-      ${g.image ? `<img class="p-thumb" src="${esc(g.image)}" alt="${esc(g.title)} screenshot" loading="lazy">` : ""}
+      ${g.image ? `<img class="p-thumb" src="${esc(g.image)}" alt="${esc(g.title)}" loading="lazy">` : ""}
     </div>
     <div>
       <p class="p-desc">${esc(g.description)}</p>

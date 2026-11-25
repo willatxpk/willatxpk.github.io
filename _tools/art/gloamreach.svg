@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+<defs>
+<style>@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&amp;family=Cormorant+Garamond:ital,wght@1,500&amp;display=block');</style>
+<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+<radialGradient id="gbg" cx=".5" cy=".32" r=".75"><stop offset="0" stop-color="#3b2a12"/><stop offset=".55" stop-color="#140f09"/><stop offset="1" stop-color="#070605"/></radialGradient>
+<linearGradient id="fog" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9aa3a8" stop-opacity="0"/><stop offset="1" stop-color="#9aa3a8" stop-opacity=".16"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3a0"/><stop offset="1" stop-color="#c08a2e"/></linearGradient>
+</defs>
+
+<rect width="1600" height="1000" fill="url(#gbg)"/>
+<circle cx="800" cy="310" r="230" fill="#ffc75e" opacity=".22" filter="url(#glow)"/>
+<g transform="translate(0,1000) scale(1,0.5) translate(0,-1000)"><path d="M0,1000 V820 H120 V760 H150 V800 H260 V700 H230 V660 H300 V700 H280 V800 H420 V840 H560 V730 H540 V690 H600 V600 H585 V560 L620,500 L655,560 H640 V690 H700 V730 H680 V820 H900 V780 H930 V740 H970 V780 H1040 V660 H1020 V620 H1090 V660 H1070 V800 H1200 V760 H1260 V830 H1400 V790 H1440 V840 H1600 V1000 Z" fill="#060504"/><rect x="612" y="610" width="8" height="16" fill="#f3b54a" opacity="0.9"/><rect x="1050" y="680" width="8" height="16" fill="#f3b54a" opacity="0.5"/><rect x="255" y="720" width="8" height="16" fill="#f3b54a" opacity="0.35"/></g>
+<rect y="700" width="1600" height="300" fill="url(#fog)"/>
+<g transform="translate(800,300)" stroke="#d9a441" stroke-width="7" fill="none" stroke-linejoin="round">
+ <path d="M-26,-120 Q0,-150 26,-120"/>
+ <path d="M-60,-95 H60 L48,-70 H-48 Z" fill="#1b140b"/>
+ <path d="M-48,-70 L-58,70 H58 L48,-70" fill="#2a1c0a"/>
+ <path d="M-58,70 H58 L68,95 H-68 Z" fill="#1b140b"/>
+ <line x1="0" y1="-70" x2="0" y2="70"/><line x1="-53" y1="0" x2="53" y2="0"/>
+</g>
+<ellipse cx="800" cy="300" rx="34" ry="46" fill="#ffd27a" filter="url(#soft)"/>
+<path d="M800,330 C780,312 786,290 800,268 C806,288 822,294 812,316 C818,308 822,300 820,292 C830,306 824,324 800,330 Z" fill="#fff1c4"/>
+<text x="800" y="640" text-anchor="middle" font-family="Cinzel" font-size="132" font-weight="700" font-style="normal" letter-spacing="12" fill="#f1b84d" filter="url(#soft)" opacity=".55">GLOAMREACH</text>
+<text x="800" y="640" text-anchor="middle" font-family="Cinzel" font-size="132" font-weight="700" font-style="normal" letter-spacing="12" fill="url(#gold)" >GLOAMREACH</text>
+<text x="800" y="712" text-anchor="middle" font-family="Cormorant Garamond" font-size="44" font-weight="500" font-style="italic" letter-spacing="0" fill="#bba57c" >The things in the dark were people once.</text>
+</svg>
