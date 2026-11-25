@@ -227,6 +227,9 @@
   #obj .task { font-size:14px; color:#cdbf9f; margin-top:2px; }
   #obj .task span { color:var(--dim); }
   #obj .task.ready { color:#9fe0a0; }
+  #mobBars .mbar { position:fixed; width:64px; height:6px; background:rgba(10,6,4,.75); border:1px solid rgba(0,0,0,.9); box-shadow:0 0 3px #000; pointer-events:none; z-index:3; }
+  #mobBars .mbar i { display:block; height:100%; background:linear-gradient(#c8402a, #7a1a10); }
+  #mobBars .mbar.kneel i { background:linear-gradient(#f2d48a, #a8843a); }
   #floaters div.speech { font-family:'Crimson Pro', Georgia, serif; font-weight:400; font-style:italic; font-size:16px; background:rgba(10,8,6,.55); padding:2px 8px; border-radius:3px; }
   #deathScr { background:radial-gradient(ellipse at center, rgba(60,0,0,.75), #000 80%); }
   #deathScr h1 { color:var(--blood); font-size:48px; margin:0 0 10px; }
@@ -265,7 +268,7 @@
 <div id="hideVeil" class="ov"></div>
 <div id="bushVeil" class="ov"></div>
 <div id="logVeil" class="ov"></div>
-<div id="floaters"></div>
+<div id="mobBars"></div><div id="floaters"></div>
 <div id="fade" class="ov"></div>
 
 <div id="title" class="screen">
@@ -330,6 +333,7 @@
     <select id="quality2"><option value="high">High — shadows, bloom, far view</option><option value="medium">Medium — shadows, no bloom</option><option value="low">Low — fastest</option></select>
     <label class="chk"><input type="checkbox" id="autoRes"> Lower resolution automatically when the game slows down</label>
     <label class="chk"><input type="checkbox" id="showFps"> Show frame rate (F3)</label>
+    <label class="chk"><input type="checkbox" id="showNums"> Show dice rolls and damage numbers</label>
     <div class="center" style="margin-top:18px;display:flex;gap:8px;justify-content:center"><button id="saveBtn">Save</button><button id="quitBtn">Save &amp; quit to title</button></div><div class="center" id="slotNote" style="color:var(--dim);font-size:13px;margin-top:6px"></div>
     <div id="saveNote" class="center" style="color:var(--dim);margin-top:8px;font-size:14px"></div>
   </div>

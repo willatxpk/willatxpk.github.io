@@ -31,7 +31,81 @@ export function buildWeapon(key, metal, wood) {
   const M = [], W = []; // [geometry, colour] for metal and for wood/leather
   let kind = 'slash';
   const steel = 0x80848c, dark = 0x5a5650, brass = 0x9a7a3a, leather = 0x3a2416, oak = 0x5a3c22;
-  if (key === 'sword' || key === 'kingblade' || key === 'dagger' || key === 'greatsword') {
+  // an axe head: a crescent with a bearded lower edge, at any size
+  const crescent = k => {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0.0); s.lineTo(0.06 * k, 0.02 * k); s.quadraticCurveTo(0.12 * k, 0.0, 0.2 * k, -0.1 * k);
+    s.quadraticCurveTo(0.27 * k, 0.06 * k, 0.24 * k, 0.24 * k); s.quadraticCurveTo(0.14 * k, 0.18 * k, 0.06 * k, 0.18 * k); s.lineTo(0, 0.17 * k); s.lineTo(0, 0);
+    return new THREE.ExtrudeGeometry(s, { depth: 0.008, bevelEnabled: true, bevelThickness: 0.009, bevelSize: 0.006, bevelSegments: 1, curveSegments: 8 });
+  };
+  const shaft = (len, r, col, y) => W.push([at(new THREE.CylinderGeometry(r, r * 1.15, len, 10), 0, y, 0), col]);
+  const BLADES = {
+    estoc: { L: 0.95, w: 0.024, col: 0x9aa0a8, gw: 0.16, gc: brass, pom: brass, kind: 'stab' },
+    vanesabre: { L: 0.8, w: 0.042, col: 0x8a8e94, gw: 0.14, gc: brass, pom: brass, kind: 'slash' },
+    gloamfang: { L: 0.74, w: 0.06, col: 0x1a171e, ful: 0x3a0c10, gw: 0.18, gc: 0x1a1416, pom: 0x8a1010, kind: 'slash' },
+    moonblade: { L: 0.95, w: 0.055, col: 0xdfe6f2, ful: 0xb8c8e0, gw: 0.22, gc: 0xc8d0dc, pom: 0xe8eef8, kind: 'slash' },
+  };
+  if (BLADES[key]) {
+    const b = BLADES[key];
+    M.push([at(bladeGeo(b.L, b.w, 0.008, b.w * 2.2), 0, 0.1, 0), b.col]);
+    if (b.ful) M.push([at(new THREE.BoxGeometry(b.w * 0.22, b.L * 0.7, 0.0125), 0, 0.1 + b.L * 0.38, 0), b.ful]);
+    M.push([at(new THREE.CylinderGeometry(0.011, 0.014, b.gw, 8), 0, 0.09, 0, 0, 0, Math.PI / 2), b.gc]);
+    if (key === 'estoc') M.push([at(new THREE.SphereGeometry(0.045, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0, 0.07, 0), b.gc]); // cup hilt
+    grip(0.16, 0.015, leather, W);
+    M.push([at(new THREE.SphereGeometry(0.026, 10, 8), 0, -0.1, 0), b.pom]);
+    kind = b.kind;
+  } else if (key === 'cleaver') {
+    M.push([at(new THREE.BoxGeometry(0.1, 0.5, 0.01), 0.02, 0.36, 0), steel]);
+    for (let i = 0; i < 7; i++) M.push([at(new THREE.ConeGeometry(0.01, 0.025, 4), -0.035, 0.16 + i * 0.06, 0, 0, 0, Math.PI / 2), dark]); // the saw
+    M.push([at(new THREE.BoxGeometry(0.12, 0.02, 0.02), 0.02, 0.1, 0), dark]);
+    grip(0.16, 0.017, leather, W);
+    kind = 'slash';
+  } else if (key === 'hatchet' || key === 'wardenaxe') {
+    const big = key === 'wardenaxe';
+    shaft(big ? 0.95 : 0.5, big ? 0.019 : 0.015, big ? 0x2a2420 : oak, big ? 0.3 : 0.15);
+    grip(0.12, big ? 0.022 : 0.018, leather, W);
+    M.push([at(crescent(big ? 1.05 : 0.55), 0.01, big ? 0.6 : 0.33, -0.004), big ? 0x4e6a5a : 0x6e7076]);
+    kind = 'chop';
+  } else if (key === 'halberd') {
+    shaft(1.5, 0.016, oak, 0.45);
+    M.push([at(crescent(0.85), 0.012, 0.92, -0.004), 0x6e7076]);
+    M.push([at(bladeGeo(0.22, 0.035, 0.008, 0.08), 0, 1.16, 0), steel]);
+    M.push([at(new THREE.ConeGeometry(0.018, 0.12, 6), -0.07, 1.02, 0, 0, 0, Math.PI / 2 - 0.4), dark]);
+    kind = 'chop';
+  } else if (key === 'spear') {
+    shaft(1.45, 0.015, oak, 0.42);
+    M.push([at(bladeGeo(0.24, 0.055, 0.008, 0.1), 0, 1.13, 0), steel]);
+    M.push([at(new THREE.CylinderGeometry(0.008, 0.008, 0.14, 6), 0, 1.1, 0, 0, 0, Math.PI / 2), dark]);
+    kind = 'stab';
+  } else if (key === 'rimeglaive') {
+    shaft(1.3, 0.016, 0x6a7078, 0.38);
+    M.push([at(bladeGeo(0.5, 0.075, 0.009, 0.16), 0, 1.02, 0), 0xbfd4e4]);
+    M.push([at(new THREE.CylinderGeometry(0.024, 0.024, 0.05, 8), 0, 1.02, 0), 0x9aa8b8]);
+    kind = 'slash';
+  } else if (key === 'scythe') {
+    shaft(1.3, 0.015, oak, 0.4);
+    const s = new THREE.Shape();
+    s.moveTo(0, 0); s.quadraticCurveTo(0.25, 0.09, 0.52, -0.06); s.lineTo(0.5, -0.09); s.quadraticCurveTo(0.25, 0.03, 0, -0.05); s.lineTo(0, 0);
+    M.push([at(new THREE.ExtrudeGeometry(s, { depth: 0.006, bevelEnabled: false, curveSegments: 10 }), 0, 1.04, -0.003), 0x6a7a62]);
+    W.push([at(new THREE.CylinderGeometry(0.01, 0.01, 0.1, 6), 0.05, 0.62, 0, 0, 0, Math.PI / 2), oak]); // the hand-grip on the snath
+    kind = 'slash';
+  } else if (key === 'warhammer' || key === 'maul') {
+    const big = key === 'maul';
+    shaft(big ? 0.85 : 0.75, big ? 0.021 : 0.017, oak, big ? 0.25 : 0.22);
+    grip(0.14, big ? 0.024 : 0.02, leather, W);
+    const y = big ? 0.66 : 0.58;
+    M.push([at(new THREE.BoxGeometry(big ? 0.24 : 0.15, big ? 0.14 : 0.075, big ? 0.14 : 0.075), big ? 0 : 0.02, y, 0), big ? 0x3a3634 : dark]);
+    if (big) for (const x of [-0.08, 0.08]) M.push([at(new THREE.BoxGeometry(0.02, 0.15, 0.15), x, y, 0), 0x2a2624]);
+    else M.push([at(new THREE.ConeGeometry(0.022, 0.11, 6), -0.1, y, 0, 0, 0, Math.PI / 2), dark]);
+    kind = 'chop';
+  } else if (key === 'flail') {
+    shaft(0.32, 0.018, oak, 0.05);
+    grip(0.12, 0.021, leather, W);
+    for (let i = 0; i < 4; i++) M.push([at(new THREE.TorusGeometry(0.014, 0.004, 4, 8), 0, 0.24 + i * 0.045, 0, 0, i % 2 ? Math.PI / 2 : 0, 0), dark]);
+    M.push([at(new THREE.SphereGeometry(0.05, 10, 8), 0, 0.46, 0), 0x4a4640]);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; M.push([at(new THREE.ConeGeometry(0.012, 0.05, 4), Math.cos(a) * 0.055, 0.46 + (i % 2 ? 0.02 : -0.02), Math.sin(a) * 0.055, 0, -a, -Math.PI / 2), dark]); }
+    kind = 'chop';
+  } else if (key === 'sword' || key === 'kingblade' || key === 'dagger' || key === 'greatsword') {
     const L = key === 'kingblade' ? 1.0 : key === 'greatsword' ? 1.15 : key === 'dagger' ? 0.27 : 0.78, w = key === 'kingblade' ? 0.068 : key === 'greatsword' ? 0.078 : key === 'dagger' ? 0.036 : 0.05;
     const bc = key === 'kingblade' ? 0x4e4a52 : steel;
     M.push([at(bladeGeo(L, w, 0.008, w * 2.2), 0, 0.1, 0), bc]);

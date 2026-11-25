@@ -113,6 +113,22 @@ const ITEMS = {
   mattock: { name: 'Concord Mattock', icon: '⛏️', desc: 'Right hand. A Vharrow quarry tool of black steel: digs five times faster and breaks out a full 3×3 face. Weapon: 1d8 piercing.', weapon: { dice: [1, 8], cd: 0.95 }, tool: { speed: 5, chunk: 2 }, slot: 'rh', wt: 5 },
   wardenaxe: { name: 'Woodwarden\'s Axe', icon: '🪓', desc: 'Blackbark haft, a head of old Concord steel gone green. Weapon: 1d12 slashing. Scales hard on strength.', weapon: { dice: [1, 12], cd: 1.15 }, slot: 'rh', wt: 7 },
   vanesabre: { name: 'Captain Vane\'s Sabre', icon: '🗡️', desc: 'A Lantern Company officer\'s sabre, salt-pitted and still keen. Weapon: 1d10 slashing, finesse, quick.', weapon: { dice: [1, 10], cd: 0.75, finesse: true }, slot: 'rh', wt: 3 },
+  hatchet: { name: 'Woodsman’s Hatchet', icon: '🪓', desc: 'A Company woodsman’s hatchet. Weapon: 1d6 slashing, quick and light.', weapon: { dice: [1, 6], cd: 0.6 }, slot: 'rh', wt: 2 },
+  spear: { name: 'Company Boar Spear', icon: '🔱', desc: 'Ash shaft, a leaf blade and a crossbar to stop the charge. Weapon: 1d8 piercing.', weapon: { dice: [1, 8], cd: 0.85, trait: 'reach' }, slot: 'rh', wt: 4 },
+  warhammer: { name: 'Vharrow Warhammer', icon: '🔨', desc: 'A knight’s hammer: a flat face for armour, a spike for what is under it. Weapon: 1d10 bludgeoning.', weapon: { dice: [1, 10], cd: 1.1, trait: 'stagger' }, slot: 'rh', wt: 7 },
+  estoc: { name: 'Duellist’s Estoc', icon: '🗡️', desc: 'A long, stiff thrusting blade from some courtier’s case. Weapon: 1d8 piercing, finesse, very quick.', weapon: { dice: [1, 8], cd: 0.6, finesse: true, trait: 'pierce' }, slot: 'rh', wt: 2 },
+  cleaver: { name: 'Hunter’s Saw-Cleaver', icon: '🔪', desc: 'Lantern Company issue for the worst of the work. One edge cuts, the other saws. Weapon: 1d8 slashing.', weapon: { dice: [1, 8], cd: 0.75, trait: 'bleed' }, slot: 'rh', wt: 4 },
+  halberd: { name: 'Gate-Guard Halberd', icon: '🪓', desc: 'Vharrow’s gate wardens held the bridge with these. Weapon: 1d10, axe, spike and hook.', weapon: { dice: [1, 10], cd: 1.2, trait: 'sweep', reach: true }, slot: 'rh', wt: 8 },
+  flail: { name: 'Penitent’s Flail', icon: '⛓️', desc: 'The star-monks scourged themselves with these on moonless nights. Weapon: 1d10 bludgeoning.', weapon: { dice: [1, 10], cd: 1.0, trait: 'bleed' }, slot: 'rh', wt: 5 },
+  scythe: { name: 'Gardener’s Scythe', icon: '🌙', desc: 'A mire-gardener’s scythe, the blade still green with sap. Weapon: 1d10 slashing, finesse.', weapon: { dice: [1, 10], cd: 1.05, finesse: true, trait: 'sweep', reach: true }, slot: 'rh', wt: 5 },
+  maul: { name: 'Cinderworks Maul', icon: '🔨', desc: 'A furnace-man’s maul for breaking slag. Weapon: 2d8 bludgeoning. Ruinously heavy.', weapon: { dice: [2, 8], cd: 1.45, trait: 'stagger' }, slot: 'rh', wt: 12 },
+  gloamfang: { name: 'Gloamfang', icon: '🗡️', desc: 'Cut from the chain of a Lantern-Taker. It is warm, and it is thirsty. Weapon: 2d6 slashing, finesse.', weapon: { dice: [2, 6], cd: 0.8, finesse: true, trait: 'drain' }, slot: 'rh', wt: 4 },
+  moonblade: { name: 'Moonsilver', icon: '🌕', desc: 'What was left in the cage when the moon went home: a blade of pale, cold light. Weapon: 2d8, scaling with skill and with the mind.', weapon: { dice: [2, 8], cd: 0.85, finesse: true, trait: 'sweep' }, slot: 'rh', wt: 3 },
+  tome_lance: { name: 'Tome: Lumen Lance', icon: '📘', desc: 'Teaches Lumen Lance.' },
+  tome_frost: { name: 'Tome: Rime Shards', icon: '📓', desc: 'Teaches Rime Shards.' },
+  tome_siphon: { name: 'Tome: Gloam Siphon', icon: '📔', desc: 'Teaches Gloam Siphon.' },
+  tome_blink: { name: 'Tome: Lantern Step', icon: '📒', desc: 'Teaches Lantern Step.' },
+  tome_veil: { name: 'Tome: Mist Veil', icon: '📃', desc: 'Teaches Mist Veil.' },
   rimeglaive: { name: 'Rimeglaive', icon: '🔱', desc: 'The star-monks\' vigil-blade. Frost gathers on it out of nothing. Weapon: 2d6, scaling with strength and with the mind.', weapon: { dice: [2, 6], cd: 1.0 }, slot: 'rh', wt: 6 },
   veillamp: { name: 'Veiled Lamp', icon: '🏮', desc: 'A lantern hood Brother Aldric stitched from the Concord cloth of those you returned. At night your lantern draws the Gloam-kept from only half as far.' },
 };
@@ -259,15 +275,15 @@ const BOSSES = {
     at: () => { const p = notePos('beacon'); return p && { x: p.x + 6, y: world.topSolid(Math.floor(p.x + 6), Math.floor(p.z)) + 1, z: p.z }; } },
   king: { type: 'king', name: 'The Hollow King', sub: 'The Lord of Vharrow. He has waited a long time for someone to kneel.', scale: 1, lvl: 95, hp: 2.2, r: 13, flag: 'king',
     at: () => world.castle.throne && { x: world.castle.throne.x, y: world.castle.throne.y + 1, z: world.castle.throne.z } },
-  warden: { type: 'barkkin', name: 'The Woodwarden', sub: 'It kept the Weeping Wood so long it became part of it.', scale: 1.6, lvl: 100, hp: 5, r: 16, wild: true, drops: [['wardenaxe', 1]],
+  warden: { type: 'barkkin', name: 'The Woodwarden', sub: 'It kept the Weeping Wood so long it became part of it.', scale: 1.6, lvl: 100, hp: 5, r: 16, wild: true, drops: [['wardenaxe', 1], ['tome_veil', 1]],
     at: () => world.greatTree && { x: world.greatTree.x + 5.5, y: world.topSolid(world.greatTree.x + 5, world.greatTree.z) + 1, z: world.greatTree.z + 0.5 } },
-  captain: { type: 'drowned', name: 'Captain Oriel Vane', sub: 'Master of the Constancy, the First Landing. Thirty-one years ashore.', scale: 1.35, lvl: 120, hp: 5, r: 14, wild: true, drops: [['vanesabre', 1]],
+  captain: { type: 'drowned', name: 'Captain Oriel Vane', sub: 'Master of the Constancy, the First Landing. Thirty-one years ashore.', scale: 1.35, lvl: 120, hp: 5, r: 14, wild: true, drops: [['vanesabre', 1], ['tome_siphon', 1]],
     at: () => world.wrecks?.[0] && { x: world.wrecks[0].x + 0.5, y: world.topSolid(world.wrecks[0].x, world.wrecks[0].z + 6) + 1, z: world.wrecks[0].z + 6.5 } },
-  abbot: { type: 'rimed', name: 'The Abbot Under Snow', sub: 'He kept the vigil for the moon. He keeps it still.', scale: 1.5, lvl: 142, hp: 6, r: 16, wild: true, drops: [['rimeglaive', 1]],
+  abbot: { type: 'rimed', name: 'The Abbot Under Snow', sub: 'He kept the vigil for the moon. He keeps it still.', scale: 1.5, lvl: 142, hp: 6, r: 16, wild: true, drops: [['rimeglaive', 1], ['tome_frost', 1]],
     at: () => world.monastery && { x: world.monastery.x + 0.5, y: world.monastery.y, z: world.monastery.z + 0.5 } },
-  gloam: { type: 'gloam', name: 'The Gloam Below', sub: 'It swallowed the moon. It has been hungry for two hundred years.', scale: 2.1, lvl: 160, hp: 7, r: 15,
+  gloam: { type: 'gloam', name: 'The Gloam Below', sub: 'It swallowed the moon. It has been hungry for two hundred years.', scale: 2.1, lvl: 160, hp: 7, r: 15, drops: [['moonblade', 1]],
     at: () => world.deep && { x: world.deep.x + 0.5, y: world.deep.y, z: world.deep.z - 7.5 } },
-  astronomer: { type: 'watcher', name: 'The Pale Astronomer', sub: 'He is only looking for the moon. He is only looking at you.', scale: 1.25, lvl: 110, hp: 6, r: 22, night: true,
+  astronomer: { type: 'watcher', name: 'The Pale Astronomer', sub: 'He is only looking for the moon. He is only looking at you.', scale: 1.25, lvl: 110, hp: 6, r: 22, night: true, drops: [['tome_blink', 1]],
     at: () => { const p = notePos('barrens2'); return p && { x: p.x, y: world.topSolid(Math.floor(p.x), Math.floor(p.z - 10)) + 1, z: p.z - 10 }; } },
 };
 const SIDE_POS = { signet: () => (world.questChest?.signet != null ? idxPos(world.questChest.signet) : null) };
@@ -314,7 +330,7 @@ if (!QUALITY[SET.quality]) {
   SET.quality = TOUCH ? 'low' : /intel|uhd|iris|microsoft basic|swiftshader|llvmpipe|mali|adreno|apple m1/i.test(gpu) ? 'medium' : 'high';
   SET.autoRes ??= true;
 }
-SET.autoRes ??= true; SET.showFps ??= false;
+SET.autoRes ??= true; SET.showFps ??= false; SET.nums ??= false;
 
 // ---- materials: 64px albedo + normal-map texture arrays
 const TEX = buildTextures();
@@ -559,11 +575,19 @@ function spendPoint(k) {
 }
 // ---- scaling, the old way: every weapon draws on your attributes by a letter grade
 const GRADE = { S: 1.25, A: 1.0, B: 0.8, C: 0.6, D: 0.4, E: 0.2 };
+// what makes a weapon more than its dice
+const TRAITS = { reach: 'Long reach', sweep: 'Sweeps: also cuts every foe in front of you', bleed: 'Bleeds: every third hit tears a wound open', stagger: 'Staggers: foes reel from every blow', pierce: 'Pierces: +3 to hit, crits on 19–20', drain: 'Drinks: heals you for a share of each hit' };
+for (const [k, t] of [['greatsword', 'sweep'], ['mace', 'stagger'], ['wardenaxe', 'stagger'], ['vanesabre', 'pierce'], ['rimeglaive', 'reach'], ['greataxe', 'stagger']]) ITEMS[k].weapon.trait = t;
+ITEMS.rimeglaive.weapon.reach = true;
+for (const it of Object.values(ITEMS)) { const w = it.weapon; if (w?.trait === 'reach') w.reach = true; if (w?.trait) it.desc += ` ${TRAITS[w.trait]}.`; if (w?.reach && w.trait !== 'reach') it.desc += ' Long reach.'; }
 const SCALING = {
   fists: { STR: 'D', DEX: 'D' }, club: { STR: 'B' }, dagger: { DEX: 'A', STR: 'E' }, mace: { STR: 'B', DEX: 'E' }, greatsword: { STR: 'A', DEX: 'E' },
   sword: { STR: 'C', DEX: 'C' }, bow: { DEX: 'B' }, warbow: { DEX: 'B', STR: 'D' }, greataxe: { STR: 'S' }, kingblade: { STR: 'B', DEX: 'B', INT: 'D' },
   pick: { STR: 'D' }, mattock: { STR: 'C' }, sigil: { INT: 'A', WIS: 'D' },
   wardenaxe: { STR: 'A', DEX: 'D' }, vanesabre: { DEX: 'A', STR: 'E' }, rimeglaive: { STR: 'C', INT: 'B' },
+  hatchet: { STR: 'C', DEX: 'D' }, spear: { STR: 'C', DEX: 'C' }, warhammer: { STR: 'A' }, estoc: { DEX: 'A' }, cleaver: { STR: 'C', DEX: 'C' },
+  halberd: { STR: 'B', DEX: 'D' }, flail: { STR: 'B', WIS: 'D' }, scythe: { DEX: 'B', STR: 'D' }, maul: { STR: 'S' }, gloamfang: { DEX: 'B', STR: 'C' },
+  moonblade: { DEX: 'B', INT: 'B', WIS: 'B' },
 };
 // how much of a stat's worth is unlocked: steep to 20, good to 40, slow to 60, little past 80
 const CURVE = [[1, -0.2], [10, 0], [20, 0.35], [40, 0.7], [60, 0.9], [80, 1.0], [99, 1.08]];
@@ -735,6 +759,11 @@ const SPELLS = {
   blast: { name: 'Force Blast', icon: '💥', cost: 9, cd: 1.6, desc: 'A wave of raw Lumen: 2d6 to everything in front of you, hurled back and left reeling.' },
   hex: { name: 'Gloam Hex', icon: '🜏', cost: 6, cd: 1.0, desc: 'Curse the thing you look at: for 15s it takes half again as much damage and moves at half speed.' },
   ward: { name: 'Ember Ward', icon: '☀', cost: 14, cd: 3, desc: 'A ring of old light around you for 20s: night-things inside it burn, and dread drains away.' },
+  lance: { name: 'Lumen Lance', icon: '⟋', cost: 12, cd: 1.2, desc: 'A spear of light that runs straight through everything in a line: 2d8 to each.' },
+  frost: { name: 'Rime Shards', icon: '❄', cost: 11, cd: 1.4, desc: 'The monks’ cold: a spray of ice in front of you, 3d4 to each, and they move at half speed for 6s.' },
+  siphon: { name: 'Gloam Siphon', icon: '🜄', cost: 14, cd: 1.6, desc: 'Borrow the Gloam’s own hunger: 2d8 to the thing you look at, and you heal half of it.' },
+  blink: { name: 'Lantern Step', icon: '➶', cost: 8, cd: 2.5, desc: 'Step through the dark: you are suddenly up to 8 paces ahead, past whatever was in reach.' },
+  veil: { name: 'Mist Veil', icon: '🌫', cost: 16, cd: 20, desc: 'Grey mist clings to you for 12s. Nothing can see or hear you, and the hunting lose your trail.' },
 };
 const maxAether = () => 30 + S.level * 2 + Math.max(0, Math.max(statMod('INT'), statMod('WIS'))) * 6;
 const spellMod = () => Math.max(statMod('INT'), statMod('WIS'));
@@ -747,12 +776,18 @@ function unlockMagic(quiet) {
 }
 function learnSpell(id) {
   S.spells ??= []; if (S.spells.includes(id)) return;
-  S.spells.push(id); const e = S.spellSlots?.indexOf(null); if (S.spellSlots && e >= 0) S.spellSlots[e] = id;
+  S.spells.push(id); if (S.spellSlots) spellSlotsN(); const e = S.spellSlots?.indexOf(null); if (S.spellSlots && e >= 0) S.spellSlots[e] = id;
   msg(`A working remembered: ${SPELLS[id].name}`, SPELLS[id].desc, 6); snd.levelup();
+}
+function spellSlotsN() {
+  const n = Math.min(6, 3 + (S.level >= 30 ? 1 : 0) + (S.level >= 80 ? 1 : 0) + (built('scriptorium') ? 1 : 0));
+  if (S.spellSlots) while (S.spellSlots.length < n) S.spellSlots.push(null);
+  return n;
 }
 function cycleSpell() {
   if (!S.spellSlots) return;
-  for (let i = 1; i <= 3; i++) { const j = (S.spellSel + i) % 3; if (S.spellSlots[j]) { S.spellSel = j; snd.place(); renderHotbar(); return; } }
+  const n = spellSlotsN();
+  for (let i = 1; i <= n; i++) { const j = (S.spellSel + i) % n; if (S.spellSlots[j]) { S.spellSel = j; snd.place(); renderHotbar(); return; } }
 }
 let spellCd = 0;
 function castSpell() {
@@ -778,6 +813,47 @@ function castSpell() {
     if (!best) { log('The hex finds nothing to hold.', 'miss'); S.aether += sp.cost * 0.5; return; }
     best.hexT = 15; best.slowT = 15; best.aware = true; floater('HEXED', best.pos.clone().add(new THREE.Vector3(0, best.h + 0.4, 0)), '#b48aff'); log(`🜏 The ${best.T.name} is hexed.`, 'good');
   } else if (id === 'ward') { S.wardT = 20; log('☀ Old light rings you round.', 'good'); }
+  else if (id === 'lance') {
+    let n = 0; const end = eye.clone().addScaledVector(look, 24);
+    for (const m of mobs) { if (m.dead) continue; const t = rayAABB(eye, look, m, 24); if (t < 0) continue; hurtMob(m, rollDice(2, 8) + spellPower(), '#cfe6ff'); m.dormant = false; n++; }
+    beamFx(eye.clone().addScaledVector(look, 0.6).add(new THREE.Vector3(0, -0.15, 0)), end, 0xcfe6ff);
+    log(`⟋ The lance runs through ${n} creature${n === 1 ? '' : 's'}.`, n ? 'hit' : 'miss');
+  } else if (id === 'frost') {
+    let n = 0;
+    for (const m of mobs) {
+      if (m.dead || m.dist > 7) continue;
+      const to = new THREE.Vector3(m.pos.x - P.pos.x, 0, m.pos.z - P.pos.z); const l = to.length() || 1; to.divideScalar(l);
+      if (to.dot(new THREE.Vector3(look.x, 0, look.z).normalize()) < 0.5) continue;
+      hurtMob(m, rollDice(3, 4) + spellPower(), '#bfe4ff'); m.slowT = Math.max(m.slowT || 0, 6); m.dormant = false; n++;
+    }
+    blastFx(eye.clone().addScaledVector(look, 1.4), 0xbfe4ff); log(`❄ Rime Shards strike ${n} creature${n === 1 ? '' : 's'}.`, 'hit');
+  } else if (id === 'siphon') {
+    let best = null, bt = 20;
+    for (const m of mobs) { if (m.dead) continue; const t = rayAABB(eye, look, m, 20); if (t >= 0 && t < bt) { bt = t; best = m; } }
+    if (!best) { log('The siphon finds nothing to drink from.', 'miss'); S.aether += sp.cost * 0.5; return; }
+    const d = rollDice(2, 8) + spellPower(); hurtMob(best, d, '#b48aff'); best.dormant = false;
+    const h = Math.max(1, Math.round(d / 2)); S.hp = Math.min(S.maxHp, S.hp + h);
+    beamFx(best.pos.clone().add(new THREE.Vector3(0, best.h * 0.6, 0)), eye.clone().addScaledVector(look, 0.6).add(new THREE.Vector3(0, -0.2, 0)), 0x9a6aff);
+    log(`🜄 You drink ${h} from the ${best.T.name}.`, 'good');
+  } else if (id === 'blink') {
+    const dx = look.x, dz = look.z, dl = Math.hypot(dx, dz) || 1; let ok = 0;
+    for (let s = 0.25; s <= 8; s += 0.25) { if (collides(world, P.pos.x + dx / dl * s, P.pos.y + 0.05, P.pos.z + dz / dl * s, 0.3, 1.75)) break; ok = s; }
+    if (ok < 1) { log('There is no room to step into.', 'miss'); S.aether += sp.cost; spellCd = 0; return; }
+    P.pos.x += dx / dl * ok; P.pos.z += dz / dl * ok; P.vel.set(0, 0, 0); fadeFlash(90);
+    log('➶ You step through the dark.', 'good');
+  } else if (id === 'veil') {
+    S.shadowT = 12; for (const m of mobs) if (m.type !== 'watcher' && !m.bossId) { m.aware = false; m.search = null; }
+    log('🌫 Grey mist folds around you. For a little while, you are not here.', 'good');
+  }
+}
+// a brief line of light between two points
+function beamFx(a, b, col) {
+  const d = b.clone().sub(a), len = d.length();
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, len, 6, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, depthWrite: false }));
+  mesh.position.copy(a).addScaledVector(d, 0.5); mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+  scene.add(mesh); let t = 0;
+  const fade = () => { t += 1; mesh.material.opacity = 0.85 * (1 - t / 12); if (t < 12) requestAnimationFrame(fade); else { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); } };
+  requestAnimationFrame(fade);
 }
 function updateMagic(dt) {
   spellCd -= dt;
@@ -798,12 +874,13 @@ function infuse(m, inf) {
   return { dmg: 0, txt: '' };
 }
 const INFUSIONS = { fire: { name: 'Ember-tempered', need: { emberresin: 2 }, gold: 15 }, poison: { name: 'Venom-coated', need: { venomsac: 2 }, gold: 10 }, silver: { name: 'Silver-washed', need: { silverdust: 2 }, gold: 20 } };
+const ironCost = nl => Math.ceil((nl * 2 + 1) * (built('armoury') ? 0.67 : 1));
 function renderForge() {
   const cap = S.colony?.built?.beacon ? 10 : S.colony?.built?.forge ? 5 : 3;
   const ws = Object.keys(S.inv).filter(k => ITEMS[k]?.slot === 'rh');
   $('talkText').innerHTML = `“Every blade can be better. Bring iron for strength; bring what you cut out of the beasts for the rest.” <span class="dim">You carry ${count('gold')} gold, ${count('iron')} iron, ${count('shard')} shards.${cap < 5 ? ' (Build the colony Forge for +4 and +5.)' : ''}</span>`;
   const rows = ws.map(k => {
-    const u = S.wup[k] || { lvl: 0 }, nl = u.lvl + 1, iron = nl * 2 + 1, gold = 20 * nl, shard = nl >= 3 ? nl - 2 : 0;
+    const u = S.wup[k] || { lvl: 0 }, nl = u.lvl + 1, iron = ironCost(nl), gold = 20 * nl, shard = nl >= 3 ? nl - 2 : 0;
     const can = nl <= cap && count('iron') >= iron && count('gold') >= gold && count('shard') >= shard;
     const inf = Object.entries(INFUSIONS).map(([id, f]) => `<button data-inf="${k}|${id}" ${u.inf === id || !Object.entries(f.need).every(([a, n]) => count(a) >= n) || count('gold') < f.gold ? 'disabled' : ''} title="${Object.entries(f.need).map(([a, n]) => n + ' ' + itemName(a)).join(', ')}, ${f.gold} gold">${f.name}</button>`).join(' ');
     return `<div class="recipe"><div class="slot" style="width:38px;height:38px;font-size:20px">${itemIcon(k)}</div><div class="nm">${itemName(k)} <b>+${u.lvl}</b>${u.inf ? ` · ${INFUSIONS[u.inf].name}` : ''}
@@ -814,7 +891,7 @@ function renderForge() {
 }
 $('talkShop').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || !talkNpc || b.disabled) return;
-  if (b.dataset.up) { const k = b.dataset.up, u = S.wup[k] ||= { lvl: 0 }, nl = u.lvl + 1; removeItem('iron', nl * 2 + 1); removeItem('gold', 20 * nl); if (nl >= 3) removeItem('shard', nl - 2); u.lvl = nl; snd.hit(); log(`⚒ ${itemName(k)} reinforced to +${nl}.`, 'good'); renderForge(); }
+  if (b.dataset.up) { const k = b.dataset.up, u = S.wup[k] ||= { lvl: 0 }, nl = u.lvl + 1; removeItem('iron', ironCost(nl)); removeItem('gold', 20 * nl); if (nl >= 3) removeItem('shard', nl - 2); u.lvl = nl; snd.hit(); log(`⚒ ${itemName(k)} reinforced to +${nl}.`, 'good'); renderForge(); }
   if (b.dataset.inf) { const [k, id] = b.dataset.inf.split('|'), f = INFUSIONS[id], u = S.wup[k] ||= { lvl: 0 }; for (const [a, n] of Object.entries(f.need)) removeItem(a, n); removeItem('gold', f.gold); u.inf = id; snd.craft(); log(`⚒ ${itemName(k)} is now ${f.name.toLowerCase()}.`, 'good'); renderForge(); }
 });
 // ---- status: burning, poison, hexes — on them and on you
@@ -1025,13 +1102,21 @@ addEventListener('keydown', e => {
 // ---- the colony: projects that turn a landing into a home, and the nights they come for it
 const camp = () => world.camp;
 function colonySafe(x, z) { const c = camp(), d = Math.hypot(x - c.x, z - c.z); return d < 20 || (S.colony?.built?.lamps && d < 45) || (S.colony?.built?.beacon && d < 70); }
-function colonyRank() { const n = Object.keys(S.colony?.built || {}).length; return S.colony?.built?.beacon ? 'Permanent Colony' : n >= 5 ? 'Stronghold' : n >= 3 ? 'Settlement' : n >= 1 ? 'Outpost' : 'Temporary Landing'; }
+function colonyRank() { const n = Object.keys(S.colony?.built || {}).length; return S.colony?.built?.beacon ? (n >= 11 ? 'Free City of Emberfall' : 'Permanent Colony') : n >= 8 ? 'Town' : n >= 5 ? 'Stronghold' : n >= 3 ? 'Settlement' : n >= 1 ? 'Outpost' : 'Temporary Landing'; }
+const built = id => !!S.colony?.built?.[id];
 const PROJECTS = {
   palisade: { name: 'Stone Palisade', need: { b10: 40, b7: 12 }, desc: 'A ring wall of rubblestone with two gates. Raids are smaller, and they have to come through the gates.' },
   watchtower: { name: 'Watchtower', need: { b10: 20, b7: 10, iron: 2 }, desc: 'A lookout over the north road. You are warned of raids at dusk, and fewer come.' },
   lamps: { name: 'Lumen Lamps', need: { b12: 8, b13: 6, iron: 3 }, desc: 'Lamp posts out along the roads. Nothing spawns in the dark within 45 blocks of the Landing.' },
   forge: { name: 'Colony Forge', need: { iron: 8, b10: 12, coal: 10 }, desc: 'A proper forge for Tamsin. Weapons can be reinforced to +4 and +5.' },
   infirmary: { name: 'Infirmary', need: { b7: 16, herb: 6 }, desc: 'Beds and clean linen. Brother Aldric tends you for free, and every rest cures poison and dread.' },
+  fields: { name: 'Company Fields', need: { b2: 16, b5: 8, herb: 8 }, desc: 'Tilled rows outside the wall. Every morning the fields send you 3 herbs and a Healing Draught.' },
+  homesteads: { name: 'Homesteads', need: { b7: 30, b5: 16, b10: 12 }, needs: ['palisade'], desc: 'Proper houses for the colonists, and for the returned who come in from the dark. Each morning their tithe brings you 25 gold.' },
+  market: { name: 'Market Square', need: { b7: 20, b5: 10, gold: 80 }, needs: ['palisade'], desc: 'Stalls for traders. Everyone buys from you for a quarter more and sells to you for a fifth less.' },
+  armoury: { name: 'Armoury', need: { iron: 12, b10: 20, b7: 8 }, needs: ['forge'], desc: 'Racks of Company steel. Tamsin stocks cleavers, halberds and mauls, and reinforcing costs a third less iron.' },
+  chapel: { name: 'Chapel of the Returned', need: { b11: 16, b7: 10, shard: 4 }, needs: ['infirmary'], desc: 'A quiet place for the ones who come back. The Rite costs a quarter less Lumen, and more of the returned survive it.' },
+  scriptorium: { name: 'Scriptorium', need: { b7: 18, b11: 8, shard: 3, gold: 60 }, needs: ['chapel'], desc: 'Where Aldric copies what you bring back. He can teach every working he has pieced together, and you may prepare one more spell.' },
+  signalfires: { name: 'Signal Fires', need: { b10: 24, b5: 12, coal: 12 }, needs: ['watchtower'], desc: 'Beacon-fires on the roads to the castle, the moors, the mire and the barrens. Each one is a marked fire you can travel to.' },
   beacon: { name: 'The Lumen Beacon', need: { lumencore: 1, shard: 8, gold: 100 }, needs: ['palisade'], desc: 'Set the Lumen Core burning at the heart of the Landing. No raid will ever come again, and nothing accursed walks within 70 blocks. Emberfall becomes a colony.' },
 };
 function renderColony() {
@@ -1040,7 +1125,7 @@ function renderColony() {
   $('talkText').innerHTML = `“Every stone we raise is a night we sleep. Bring what's needed and the colonists will build it.” <span class="dim">Emberfall: <b>${colonyRank()}</b></span>`;
   $('talkShop').innerHTML = `<div class="col">${Object.entries(PROJECTS).map(([id, p]) => {
     const built = S.colony.built[id], ok = !built && Object.entries(p.need).every(([k, n]) => count(k) >= n) && (p.needs || []).every(r => S.colony.built[r]);
-    return `<div class="recipe"><div class="nm">${built ? '✔ ' : ''}<b>${p.name}</b><div class="need">${p.desc}</div><div class="need">${built ? 'Built.' : Object.entries(p.need).map(([k, n]) => `<span class="${count(k) >= n ? '' : 'lack'}">${n} ${itemName(k)} (${count(k)})</span>`).join(', ')}${p.needs && !built ? ' · needs the Palisade' : ''}</div></div><button data-proj="${id}" ${ok ? '' : 'disabled'}>Build</button></div>`;
+    return `<div class="recipe"><div class="nm">${built ? '✔ ' : ''}<b>${p.name}</b><div class="need">${p.desc}</div><div class="need">${built ? 'Built.' : Object.entries(p.need).map(([k, n]) => `<span class="${count(k) >= n ? '' : 'lack'}">${n} ${itemName(k)} (${count(k)})</span>`).join(', ')}${p.needs && !built ? ` · needs ${p.needs.map(r => `<span class="${S.colony.built[r] ? '' : 'lack'}">the ${PROJECTS[r].name}</span>`).join(' and ')}` : ''}</div></div><button data-proj="${id}" ${ok ? '' : 'disabled'}>Build</button></div>`;
   }).join('')}${tierBtn}</div>`;
   talkOptions([{ label: 'Back', act: () => renderTalk('The fire is the point. Keep it lit.') }]);
 }
@@ -1049,6 +1134,7 @@ $('talkShop').addEventListener('click', e => {
   const id = b.dataset.proj, p = PROJECTS[id];
   for (const [k, n] of Object.entries(p.need)) removeItem(k, n);
   S.colony.built[id] = true; buildProject(id); snd.levelup(); fadeFlash(400); gainXP(80, p.name);
+  if (id === 'signalfires') for (const f of S.colony.signal || []) markFire(f, f.name);
   msg(p.name + ' raised', id === 'beacon' ? 'Emberfall is no longer a landing. It is a colony.' : `Emberfall is now: ${colonyRank()}`, 6);
   if (id === 'beacon') { endRaid(true); setTimeout(() => openNote('home', true), 2500); }
   renderColony(); saveGame();
@@ -1058,6 +1144,17 @@ function buildProject(id) {
   const c = camp(), cx = c.x, cz = c.z, y0 = c.y, list = [];
   const put = (x, y, z, b) => list.push([x, y, z, b]);
   const ground = (x, z) => { let y = world.topSolid(x, z); while (y > y0 + 3) y--; return y; };
+  // a small house: a stone footing down to the ground, walls, a door to the south, a roof and a light inside
+  const hut = (hx, hz, w, d, h, wall, roof) => {
+    const fy = y0;
+    for (let dz = -d; dz <= d; dz++) for (let dx = -w; dx <= w; dx++) {
+      const x = hx + dx, z = hz + dz, edge = Math.abs(dx) === w || Math.abs(dz) === d;
+      for (let y = Math.min(ground(x, z), fy) + 1; y <= fy; y++) put(x, y, z, B.COBBLE);
+      for (let y = fy + 1; y <= fy + h; y++) put(x, y, z, edge ? ((dx === 0 && dz === d && y <= fy + 2) || (y === fy + 2 && dz === 0 && Math.abs(dx) === w) ? B.AIR : wall) : B.AIR);
+      put(x, fy + h + 1, z, roof);
+    }
+    put(hx, fy + h, hz, B.TORCH);
+  };
   if (id === 'palisade') {
     for (let a = 0; a < 360; a += 1.2) {
       const x = Math.round(cx + Math.cos(a * Math.PI / 180) * 17), z = Math.round(cz + Math.sin(a * Math.PI / 180) * 17);
@@ -1077,6 +1174,42 @@ function buildProject(id) {
       const g = world.topSolid(x, z); put(x, g + 1, z, B.COBBLE); put(x, g + 2, z, B.COBBLE); put(x, g + 3, z, B.GLOWCAP);
     }
     for (let z = cz - 60; z < cz - 18; z += 8) { const g = world.topSolid(cx + 3, z); put(cx + 3, g + 1, z, B.COBBLE); put(cx + 3, g + 2, z, B.TORCH); }
+  } else if (id === 'fields') {
+    for (let dz = -4; dz <= 10; dz++) for (let dx = 21; dx <= 31; dx++) {
+      const x = cx + dx, z = cz + dz, g = ground(x, z), edge = dx === 21 || dx === 31 || dz === -4 || dz === 10;
+      put(x, g, z, edge ? B.GRASS : (dx % 2 ? B.DIRT : B.MUD)); for (let y = g + 1; y <= g + 3; y++) put(x, y, z, B.AIR);
+      if (edge && (dx + dz) % 3 === 0) put(x, g + 1, z, B.LOG); else if (!edge && dx % 2 === 0) put(x, g + 1, z, B.TALLGRASS);
+    }
+    put(cx + 26, ground(cx + 26, cz + 3) + 1, cz + 3, B.LOG); put(cx + 26, ground(cx + 26, cz + 3) + 2, cz + 3, B.BANNER); // a scarecrow
+  } else if (id === 'homesteads') {
+    hut(cx - 24, cz - 7, 3, 3, 4, B.PLANKS, B.SLATE); hut(cx - 24, cz + 7, 3, 3, 4, B.PLANKS, B.SLATE);
+    hut(cx - 8, cz + 25, 3, 3, 4, B.LOG, B.SLATE); hut(cx + 8, cz + 25, 3, 3, 4, B.PLANKS, B.SLATE);
+  } else if (id === 'market') {
+    for (const sx of [-16, -10, -4]) {
+      const x = cx + sx, z = cz - 26, g = ground(x, z);
+      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) for (let y = g + 1; y <= g + 3; y++) put(x + dx, y, z + dz, B.LOG);
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) put(x + dx, g + 4, z + dz, sx === -10 ? B.SLATE : B.PLANKS);
+      put(x, g + 1, z, B.PLANKS); put(x, g + 3, z - 1, B.BANNER);
+    }
+  } else if (id === 'armoury') {
+    hut(cx + 24, cz - 19, 4, 3, 5, B.COBBLE, B.SLATE);
+    for (const dz of [-1, 1]) put(cx + 28, ground(cx + 28, cz - 19) + 3, cz - 19 + dz, B.BARS);
+    put(cx + 24, ground(cx + 24, cz - 22) + 4, cz - 22, B.BANNER);
+  } else if (id === 'chapel') {
+    hut(cx + 25, cz + 24, 3, 5, 6, B.BRICK, B.SLATE);
+    const g = ground(cx + 25, cz + 19); for (let y = g + 7; y <= g + 11; y++) for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) put(cx + 25 + dx - 1, y, cz + 19 + dz, y === g + 11 ? B.SLATE : B.BRICK);
+    for (const dz of [2, 3]) put(cx + 25, ground(cx + 25, cz + 24 + dz) + 1, cz + 24 + dz, B.CANDLES);
+  } else if (id === 'scriptorium') {
+    hut(cx - 24, cz - 24, 4, 3, 5, B.BRICK, B.PLANKS);
+    for (const dx of [-2, 2]) put(cx - 24 + dx, ground(cx - 24 + dx, cz - 24) + 1, cz - 24, B.CANDLES);
+  } else if (id === 'signalfires') {
+    S.colony.signal = [];
+    for (const [x, z, name] of [[cx + 3, cz - 48, 'North Road — signal fire'], [66, 168, 'Moor Road — signal fire'], [244, 196, 'Mire Edge — signal fire'], [348, 150, 'Barrens Gate — signal fire']]) {
+      const g = world.topSolid(x, z);
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { put(x + dx, g, z + dz, B.COBBLE); for (let y = g + 1; y <= g + 3; y++) put(x + dx, y, z + dz, B.AIR); }
+      put(x, g + 1, z, B.CAMPFIRE); put(x + 2, g + 1, z, B.COBBLE); put(x + 2, g + 2, z, B.TORCH);
+      S.colony.signal.push({ x, y: g + 1, z, name });
+    }
   } else if (id === 'forge') {
     const fx = cx + 9, fz = cz - 6;
     for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 2; dx++) put(fx + dx, y0, fz + dz, B.COBBLE);
@@ -1260,7 +1393,15 @@ const heldKey = () => (S.build ? S.hotbar[S.sel] : null);
 function weapon() { const k = rightHand(); return (k && ITEMS[k]?.weapon) ? { name: ITEMS[k].name, ...ITEMS[k].weapon } : { name: 'Fists', ...FISTS.weapon }; }
 
 // ================================================================ messages
+// dice rolls and damage sums stay out of sight unless asked for (pause menu)
+const DICE_LINE = /d20\(|🎲|vs AC|vs DC|\d+d\d+/;
 function log(html, cls = '') {
+  if (!SET.nums && DICE_LINE.test(html)) {
+    if (/panic/.test(html)) html = '<b>Panic!</b> The dark gets into your head.';
+    else if (/CRITICAL hit/.test(html)) html = '‼ A <b>critical</b> blow.';
+    else if (/you <b>block<\/b>/.test(html)) html = '🛡 You take the blow on your guard.';
+    else return;
+  }
   const el = document.createElement('div'); el.className = cls; el.innerHTML = html;
   const L = $('log'); L.appendChild(el);
   while (L.children.length > 7) L.removeChild(L.firstChild);
@@ -1272,8 +1413,9 @@ function msg(big, small = '', dur = 3.5) {
   const m = $('msg'); m.innerHTML = big + (small ? `<small>${small}</small>` : '');
   m.style.opacity = 1; clearTimeout(msgTimer); msgTimer = setTimeout(() => { m.style.opacity = 0; }, dur * 1000);
 }
-const floaters = [];
+const floaters = [], _barV = new THREE.Vector3();
 function floater(text, pos, color = '#fff', dur = 1.3, speech = false) {
+  if (!SET.nums && !speech && /\d|^miss$/.test(String(text))) return;
   const el = document.createElement('div'); el.textContent = text; el.style.color = color;
   if (speech) el.className = 'speech';
   $('floaters').appendChild(el);
@@ -1470,7 +1612,8 @@ $('raceList').addEventListener('click', e => { const k = e.target.dataset.race; 
 $('classList').addEventListener('click', e => { const k = e.target.dataset.cls; if (k) { T.cls = k; renderTitle(); } });
 $('rerollBtn').onclick = () => { if (T.rerolls > 0) { T.rerolls--; T.rolls = rollStatsArr(); snd.init(); snd.dice(); renderTitle(); } };
 $('beginBtn').onclick = startNew;
-$('autoRes').checked = SET.autoRes; $('showFps').checked = SET.showFps;
+$('autoRes').checked = SET.autoRes; $('showFps').checked = SET.showFps; $('showNums').checked = SET.nums;
+$('showNums').onchange = e => { SET.nums = e.target.checked; saveSettings(); };
 $('autoRes').onchange = e => { SET.autoRes = e.target.checked; if (!SET.autoRes) { resScale = 1; applyPixelRatio(); } saveSettings(); };
 $('showFps').onchange = e => { SET.showFps = e.target.checked; saveSettings(); };
 addEventListener('keydown', e => { if (e.code === 'F3') { e.preventDefault(); SET.showFps = !SET.showFps; $('showFps').checked = SET.showFps; saveSettings(); } });
@@ -1662,7 +1805,7 @@ function renderPanel() {
       <div><div class="eqh">Left hand</div>${eslot('lh', offHand(), 'shield')}</div></div>
     <div class="eqrow"><div><div class="eqh">Armour</div>${eslot('head', eqItem('head'), 'head')}${eslot('chest', eqItem('chest'), 'chest')}${eslot('hands', eqItem('hands'), 'hands')}${eslot('legs', eqItem('legs'), 'legs')}</div>
       <div><div class="eqh">Charm</div>${eslot('charm', eqItem('charm'), 'charm')}</div></div>
-    ${S.spells?.length ? `<div class="eqrow"><div><div class="eqh">Prepared spells — [Z] next · click a working below to prepare it</div>${[0, 1, 2].map(i => { const sp = SPELLS[S.spellSlots[i]]; return `<div class="slot eqs${sp ? '' : ' empty'}${i === S.spellSel ? ' sel' : ''}" data-sslot="${i}" title="${sp ? sp.name + ' — ' + sp.desc : 'empty'}">${sp ? `<span>${sp.icon}</span>` : '<span class="ph">—</span>'}</div>`; }).join('')}</div>
+    ${S.spells?.length ? `<div class="eqrow"><div><div class="eqh">Prepared spells — [Z] next · click a working below to prepare it</div>${[...Array(spellSlotsN()).keys()].map(i => { const sp = SPELLS[S.spellSlots[i]]; return `<div class="slot eqs${sp ? '' : ' empty'}${i === S.spellSel ? ' sel' : ''}" data-sslot="${i}" title="${sp ? sp.name + ' — ' + sp.desc : 'empty'}">${sp ? `<span>${sp.icon}</span>` : '<span class="ph">—</span>'}</div>`; }).join('')}</div>
       <div><div class="eqh">Known workings</div>${S.spells.map(id => `<div class="slot eqs" data-spell="${id}" title="${SPELLS[id].name} (${SPELLS[id].cost} Lumen) — ${SPELLS[id].desc}"><span>${SPELLS[id].icon}</span></div>`).join('')}</div></div>` : ''}
     <div class="eqrow"><div><div class="eqh">Belt — [Q] use · [X] next</div>${S.belt.map((k, i) => `<div class="slot eqs${k && count(k) ? '' : ' empty'}${i === S.beltSel ? ' sel' : ''}" data-belt="${i}">${k && count(k) ? itemIcon(k) + `<span class="n">${count(k)}</span>` : '<span class="ph">—</span>'}</div>`).join('')}</div></div>
     <div class="load">AC <b>${playerAC()}</b> · Equip load <b>${L.w}</b> / ${Math.round(L.cap)} <span class="lc ${lc}">${lc} roll</span></div>`;
@@ -1827,7 +1970,8 @@ function rollLoot(kind) {
   if (dung && R() < 0.2) L.push(['sword', 1]);
   if (dung && R() < 0.15) L.push(['armor', 1]);
   // old gear of the dead
-  const GEAR = dung ? ['helm', 'gauntlets', 'greaves', 'gloves', 'boots', 'hood', 'greataxe', 'wolfcharm', 'warbow', 'bow'] : ['gloves', 'boots', 'hood', 'leather', 'bow'];
+  const GEAR = dung ? ['helm', 'gauntlets', 'greaves', 'gloves', 'boots', 'hood', 'greataxe', 'wolfcharm', 'warbow', 'bow', 'estoc', 'cleaver', 'warhammer', 'spear', 'halberd'] : ['gloves', 'boots', 'hood', 'leather', 'bow', 'hatchet', 'spear'];
+  if (dung && S.flags.magic && R() < 0.12) { const t = ['tome_lance', 'tome_frost', 'tome_siphon', 'tome_blink', 'tome_veil', 'tome_hex', 'tome_blast'].filter(k => !S.spells?.includes(k.slice(5))); if (t.length) L.push([t[Math.floor(R() * t.length)], 1]); }
   if (R() < 0.4) L.push(['arrows', 4 + roll(8)]);
   if (R() < (dung ? 0.45 : 0.25)) { const g = GEAR[Math.floor(R() * GEAR.length)]; if (!count(g)) L.push([g, 1]); }
   return L;
@@ -1862,14 +2006,14 @@ function knownFires() {
   }
   return S.fires;
 }
-function markFire(t) {
+function markFire(t, given) {
   const list = knownFires(), k = fireKey(t);
   let f = list.find(q => fireKey(q) === k);
   if (f) return f;
   const c = world.camp, reg = regionAt(t.x).name;
-  let name = c && Math.hypot(t.x - c.x, t.z - c.z) < 30 ? 'The Landing' : reg;
-  const same = list.filter(q => q.name.startsWith(name)).length;
-  name += same ? ` — fire ${same + 1}` : ' — fire';
+  let name = given || (c && Math.hypot(t.x - c.x, t.z - c.z) < 30 ? 'The Landing' : reg);
+  const same = given ? 0 : list.filter(q => q.name.startsWith(name)).length;
+  if (!given) name += same ? ` — fire ${same + 1}` : ' — fire';
   f = { x: t.x, y: t.y, z: t.z, name };
   list.push(f);
   if (list.length >= 2) log(`🔥 You mark this fire: <b>${name}</b>. From any marked fire you can travel to another.`, 'good');
@@ -2064,16 +2208,17 @@ function playerAttack(m) {
   const r1 = roll(20), r2 = roll(20);
   const d20 = adv > 0 ? Math.max(r1, r2) : adv < 0 ? Math.min(r1, r2) : r1;
   const up = upLvl(rightHand());
-  const bonus = am + prof() + up + (eqItem('charm') === 'wolfcharm' ? 1 : 0), total = d20 + bonus;
+  const critAt = w.trait === 'pierce' ? 19 : 20;
+  const bonus = am + prof() + up + (eqItem('charm') === 'wolfcharm' ? 1 : 0) + (w.trait === 'pierce' ? 3 : 0), total = d20 + bonus;
   const advTxt = adv > 0 ? ` <i>adv (${why.join(', ')}) ${r1}/${r2}</i>` : adv < 0 ? ` <i>disadv (${why.join(', ')}) ${r1}/${r2}</i>` : '';
   atkCd = w.cd * (S.cls === 'fighter' && S.level >= 5 ? 0.6 : 1) * (eqItem('hands') === 'gloves' ? 0.88 : 1) * (loadClass() === 'heavy' ? 1.15 : 1); startSwing();
   snd.dice();
   m.aware = true;
-  if (d20 === 1 || (d20 !== 20 && total < m.T.ac)) {
+  if (d20 === 1 || (d20 < critAt && total < m.T.ac)) {
     log(`⚔ d20(${d20})${fm(bonus)} = ${total} vs AC ${m.T.ac} — <b>miss</b>${advTxt}`, 'miss');
     floater('miss', m.pos.clone().add(new THREE.Vector3(0, m.h + 0.3, 0)), '#aaa'); snd.miss(); return;
   }
-  const crit = d20 === 20;
+  const crit = d20 >= critAt;
   const nd = w.dice[0] * (crit ? 2 : 1);
   const sc = Math.round(scalingBonus(rightHand()));
   let dmg = rollDice(nd, w.dice[1]) + sc + up;
@@ -2082,17 +2227,38 @@ function playerAttack(m) {
   { const ul = S.wup?.[rightHand()]?.lvl || 0; if (ul) { dmg = Math.round(dmg * (1 + 0.08 * ul)); } }
   if (m.hexT > 0) { dmg = Math.round(dmg * 1.5); txt += ' ×1.5 hexed'; }
   if (S.cls === 'rogue' && adv > 0) { const sd = sneakDice() * (crit ? 2 : 1); const sa = rollDice(sd, 6); dmg += sa; txt += ` + sneak ${sd}d6`; }
+  if (w.trait === 'bleed') {
+    m.bleed = (m.bleed || 0) + 1;
+    if (m.bleed >= 3) { m.bleed = 0; const bd = Math.round(m.maxHp * (m.bossId || m.T.boss || m.T.giant ? 0.04 : 0.15)) + roll(6); dmg += bd; txt += ` + ${bd} <b>bleed</b>`; floater('BLEED', m.pos.clone().add(new THREE.Vector3(0, m.h + 0.8, 0)), '#ff3a3a', 1.1); }
+  }
   dmg = Math.max(1, giantArmour(m, dmg));
+  if (w.trait === 'drain') { const hp = Math.max(1, Math.round(dmg * 0.15)); S.hp = Math.min(S.maxHp, S.hp + hp); txt += ` · drinks ${hp}`; }
   log(`⚔ d20(${d20})${fm(bonus)} = ${total} vs AC ${m.T.ac} — <b>${crit ? 'CRITICAL ' : ''}hit</b>: ${txt} = <b>${dmg}</b>${advTxt}`, 'hit');
   floater((crit ? '‼ ' : '') + dmg, m.pos.clone().add(new THREE.Vector3(0, m.h + 0.3, 0)), crit ? '#ffd24a' : '#ffb27a');
   crit ? snd.crit() : snd.hit();
   m.hp -= dmg; m.hurtT = 1;
   const kx = m.pos.x - P.pos.x, kz = m.pos.z - P.pos.z, kl = Math.hypot(kx, kz) || 1;
-  m.vel.x += kx / kl * 5; m.vel.z += kz / kl * 5; m.vel.y = 4;
+  const kb = w.trait === 'stagger' ? (m.bossId || m.T.giant ? 1.2 : 2) : 1;
+  if (w.trait === 'stagger') m.stagT = Math.max(m.stagT || 0, m.bossId || m.T.giant ? 0.5 : 1.3);
+  m.vel.x += kx / kl * 5 * kb; m.vel.z += kz / kl * 5 * kb; m.vel.y = 4;
+  if (w.trait === 'sweep') {
+    // the rest of the arc: everything else in front of you takes most of the blow
+    const fx = look.x, fz = look.z, fl = Math.hypot(fx, fz) || 1, reach = w.reach ? 4.6 : 3.4;
+    for (const o of mobs) {
+      if (o === m || o.dead || o.brokenT > 0 || o.dist > reach) continue;
+      const ox = o.pos.x - P.pos.x, oz = o.pos.z - P.pos.z, ol = Math.hypot(ox, oz) || 1;
+      if ((ox * fx + oz * fz) / (ol * fl) < 0.35) continue;
+      const sd = Math.max(1, giantArmour(o, Math.round(dmg * 0.6))); o.hp -= sd; o.hurtT = 1; o.aware = true; o.dormant = false;
+      floater(String(sd), o.pos.clone().add(new THREE.Vector3(0, o.h + 0.3, 0)), '#ffb27a');
+      if (!checkBroken(o) && o.hp <= 0) killMob(o);
+    }
+  }
   m.pos.x += kx / kl * 0.25; m.pos.z += kz / kl * 0.25;
   if (collides(world, m.pos.x, m.pos.y, m.pos.z, m.half, m.h)) { m.pos.x -= kx / kl * 0.25; m.pos.z -= kz / kl * 0.25; }
   if (!checkBroken(m) && m.hp <= 0) killMob(m);
 }
+// weapons the dead were carrying: [item, chance] (only ever one of each)
+const WDROPS = { knight: ['halberd', 0.12], rimed: ['flail', 0.1], mirekin: ['scythe', 0.07], cinder: ['maul', 0.07], bandit: ['hatchet', 0.15], drowned: ['cleaver', 0.1], barkkin: ['spear', 0.1], wendigo: ['spear', 0.06], ghoul: ['hatchet', 0.03] };
 function killMob(m, restored = false) {
   const T = m.T; S.kills++;
   S.killsBy[m.type] = (S.killsBy[m.type] || 0) + 1;
@@ -2105,6 +2271,8 @@ function killMob(m, restored = false) {
   else if (ACCURSED.has(m.type) && S.flags.magic) { const ae = m.type === 'king' ? 40 : m.T.xp >= 120 ? 8 : 4; S.aether = Math.min(maxAether(), (S.aether || 0) + ae); floater(`+${ae} Lumen`, m.pos.clone().add(new THREE.Vector3(0, m.h + 0.7, 0)), '#9fd8ff', 1.1); }
   if (restored) { if (m.type === 'king') { if (count('emptycore')) { removeItem('emptycore'); drops.push(['lumencore', 1]); } else drops.push(['kingash', 1]); S.flags.king = true; boss = null; msg('The Lord of Vharrow is returned', 'He gives back what he swallowed, and asks to be forgiven. Not by you: by all of them.', 7); snd.levelup(); fadeFlash(300); for (const o of mobs.slice()) if (o !== m && !o.dead && o.dist < 30 && o.type !== 'watcher') G.mobVanish(o, 'kneels, and is still'); } }
   else if (m.type === 'mirekin') { if (R() < 0.65) drops.push(['venomsac', 1]); if (R() < 0.2) drops.push(['shard', 1]); }
+  if (!restored) { const wd = WDROPS[m.type]; if (wd && !count(wd[0]) && R() < wd[1]) drops.push([wd[0], 1]); }
+  if (m.type === 'taker' && !restored && !count('gloamfang')) drops.push(['gloamfang', 1]);
   if (m.type === 'taker' && !restored) { drops.push(['gold', 60 + rollDice(6, 10)], ['shard', 3], ['oil', 4]); msg('The Lantern-Taker falls', 'One by one, the lanterns it carried go out. Somewhere out there, there are others.', 7); fadeFlash(250); }
   if (m.type === 'cinder') { if (R() < 0.65) drops.push(['emberresin', 1]); if (R() < 0.3) drops.push(['shard', 1]); }
   if (m.type === 'wendigo') { drops.push(['gold', rollDice(2, 8)]); if (R() < 0.4) drops.push(['shard', 1]); if (!count('hood') && R() < 0.2) drops.push(['hood', 1]); }
@@ -2144,7 +2312,7 @@ function killMob(m, restored = false) {
   }
   gainXP(Math.round(mobXP(m) * (restored ? 1.25 : 1)), T.name, true);
 }
-function removeMob(m) { m.dead = true; m.dispose(scene); const i = mobs.indexOf(m); if (i >= 0) mobs.splice(i, 1); }
+function removeMob(m) { m.barEl?.remove(); m.dead = true; m.dispose(scene); const i = mobs.indexOf(m); if (i >= 0) mobs.splice(i, 1); }
 function hurtPlayer(n, src) {
   if (state !== 'play') return;
   S.hp -= n; flashHurt(); snd.hurt(); calmT = 0;
@@ -2555,12 +2723,17 @@ function renderOffer(id) {
     { label: 'Not now.', act: () => renderTalk('Suit yourself.') },
   ]);
 }
+const shopStock = sh => (sh === SHOPS.tamsin && built('armoury') ? [...sh.sell, ['cleaver', 70], ['halberd', 130], ['maul', 150]]
+  : sh === SHOPS.aldric && built('scriptorium') ? [...sh.sell, ['tome_hex', 70], ['tome_blast', 70], ['tome_frost', 90], ['tome_siphon', 90], ['tome_blink', 90], ['tome_veil', 110]] : sh.sell)
+  .filter(([k]) => !(k.startsWith('tome_') && S.spells?.includes(k.slice(5))))
+  .map(([k, p, q = 1]) => [k, built('market') ? Math.ceil(p * 0.8) : p, q]);
+const sellPrice = v => built('market') ? Math.ceil(v * 1.25) : v;
 function renderShop() {
   const sh = SHOPS[talkNpc.def.shop];
   $('talkText').innerHTML = `“Have a look.” <span class="dim">You carry ${count('gold')} gold.</span>`;
-  const buy = sh.sell.map(([k, p, q = 1], i) => `<div class="recipe"><div class="slot" style="width:38px;height:38px;font-size:20px">${itemIcon(k)}</div><div class="nm">${q > 1 ? q + '× ' : ''}${itemName(k)}<div class="need">${p} gold${wearing(k) ? ' · <span style="color:#9fc98a">wearing</span>' : count(k) ? ` · you have ${count(k)}` : ''}</div></div><button data-buy="${i}" ${count('gold') >= p ? '' : 'disabled'}>Buy</button></div>`).join('');
+  const buy = shopStock(sh).map(([k, p, q = 1], i) => `<div class="recipe"><div class="slot" style="width:38px;height:38px;font-size:20px">${itemIcon(k)}</div><div class="nm">${q > 1 ? q + '× ' : ''}${itemName(k)}<div class="need">${p} gold${wearing(k) ? ' · <span style="color:#9fc98a">wearing</span>' : count(k) ? ` · you have ${count(k)}` : ''}</div></div><button data-buy="${i}" ${count('gold') >= p ? '' : 'disabled'}>Buy</button></div>`).join('');
   const sellKeys = Object.keys(sh.buys).filter(k => count(k) > 0);
-  const sell = sellKeys.map(k => `<div class="recipe"><div class="slot" style="width:38px;height:38px;font-size:20px">${itemIcon(k)}</div><div class="nm">${itemName(k)} <span class="dim">×${count(k)}</span><div class="need">${sh.buys[k]} gold each</div></div><button data-sell="${k}">Sell 1</button></div>`).join('') || '<div class="dim">Nothing they want.</div>';
+  const sell = sellKeys.map(k => `<div class="recipe"><div class="slot" style="width:38px;height:38px;font-size:20px">${itemIcon(k)}</div><div class="nm">${itemName(k)} <span class="dim">×${count(k)}</span><div class="need">${sellPrice(sh.buys[k])} gold each</div></div><button data-sell="${k}">Sell 1</button></div>`).join('') || '<div class="dim">Nothing they want.</div>';
   $('talkShop').innerHTML = `<div class="row"><div class="col"><h3>Buy</h3>${buy}</div><div class="col"><h3>Sell</h3>${sell}</div></div>`;
   talkOptions([{ label: 'Back', act: () => renderTalk('Anything else?') }]);
 }
@@ -2568,11 +2741,11 @@ $('talkShop').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || !talkNpc) return;
   if (b.dataset.buy == null && !b.dataset.sell) return;
   const sh = SHOPS[talkNpc.def.shop];
-  if (b.dataset.buy != null) { const [k, p, q = 1] = sh.sell[+b.dataset.buy]; if (count('gold') >= p) { removeItem('gold', p); const had = count(k), wasOn = wearing(k); buying = true; addItem(k, q); buying = false;
+  if (b.dataset.buy != null) { const [k, p, q = 1] = shopStock(sh)[+b.dataset.buy]; if (count('gold') >= p) { removeItem('gold', p); const had = count(k), wasOn = wearing(k); buying = true; addItem(k, q); buying = false;
       if (ITEMS[k]?.slot) { if (!had && wearing(k)) log(`You put on the <b>${itemName(k)}</b>. AC is now ${playerAC()}.`, 'good'); else if (wasOn || !wearing(k)) wearBought(k); }
       else log(`Bought ${q > 1 ? q + '× ' : ''}<b>${itemName(k)}</b>. It is in your pack (${count(k)}).`, 'good');
       snd.pickup(); } }
-  if (b.dataset.sell) { const k = b.dataset.sell; if (count(k)) { removeItem(k, 1); if (sh.buys[k]) addItem('gold', sh.buys[k]); snd.pickup(); } }
+  if (b.dataset.sell) { const k = b.dataset.sell; if (count(k)) { removeItem(k, 1); if (sh.buys[k]) addItem('gold', sellPrice(sh.buys[k])); snd.pickup(); } }
   renderShop();
 });
 $('talkOpts').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) talkActs[+b.dataset.i]?.act(); });
@@ -2905,7 +3078,7 @@ function hideArrow(h) {
 }
 
 // ---- the Rite of Return: what you can do instead of the killing blow, once the Sigil is yours
-const riteCost = m => (m.bossId || m.T.boss ? 40 : m.T.xp >= 120 ? 18 : 10);
+const riteCost = m => Math.round((m.bossId || m.T.boss ? 40 : m.T.xp >= 120 ? 18 : 10) * (built('chapel') ? 0.75 : 1));
 const RETURNED = {
   ghoul: { w: ['a weaver of the lower town', 'a lamplighter of Vharrow', 'a baker from the vale', 'a clerk of the Concord', 'a stablehand', 'a courtier of the Long Day', 'a midwife', 'a ferryman'], look: { skin: 0xc49a80, tunic: 0x6a5a48, pants: 0x4a4038, hair: 0x3a2a1c, belt: 0x3a2a1c } },
   crawler: { w: ['a chimney-sweep', 'a kitchen maid', 'a cellarman', 'a page of the court', 'a well-digger'], look: { skin: 0xb88a70, tunic: 0x58503e, pants: 0x403830, hair: 0x2a1e14, belt: 0x2e2218 } },
@@ -2954,7 +3127,7 @@ function restoreMob(m) {
   const name = m.bossId === 'wyll' ? 'Wyll' : m.bossId === 'aldous' ? 'Aldous' : m.type === 'king' ? 'Aurel' : NAMES[Math.floor(Math.random() * NAMES.length)];
   const words = BOSS_WORDS[m.bossId] || (m.type === 'king' ? BOSS_WORDS.king : LAST_WORDS[Math.floor(Math.random() * LAST_WORDS.length)]);
   // two hundred years arrive all at once; a few are young enough in the Gloam to survive it
-  let lives = Math.random() < (S.colony?.built?.infirmary ? 0.45 : 0.25) * (m.type === 'ghoul' || m.type === 'crawler' ? 1 : 0.8);
+  let lives = Math.random() < (S.colony?.built?.infirmary ? 0.45 : 0.25) + (built('chapel') ? 0.15 : 0) * (m.type === 'ghoul' || m.type === 'crawler' ? 1 : 0.8);
   if (m.bossId && m.bossId !== 'wyll') lives = false;
   if (m.bossId === 'wyll') { lives = true; S.flags.wyllRestored = true; }
   if (m.type === 'king') S.flags.kingRestored = true;
@@ -3101,10 +3274,11 @@ function update(dt) {
   // ---- targeting, mining, attacking
   atkCd -= dt; swingT = Math.max(0, swingT - dt);
   target = world.raycast(eye, look, 5);
-  targetMob = null; let best = target ? target.t : 4;
+  targetMob = null; let best = target ? target.t : 5;
+  const wReach = weapon().reach ? 4.8 : 3.6;
   for (const m of mobs) {
-    if (m.dist > 6) continue;
-    const tt = rayAABB(eye, look, m, 3.6);
+    if (m.dist > 7) continue;
+    const tt = rayAABB(eye, look, m, wReach);
     if (tt >= 0 && tt < best) { best = tt; targetMob = m; }
   }
   targetNpc = null;
@@ -3222,6 +3396,8 @@ function update(dt) {
 
 function newDay() {
   endRaid(true);
+  if (built('fields')) { addItem('herb', 3); addItem('healing', 1); log('🌾 The Company fields send up 3 herbs and a Healing Draught.', 'good'); }
+  if (built('homesteads')) { addItem('gold', 25); log('🏠 The homesteads’ tithe: 25 gold.', 'good'); }
   S.time -= 1; S.day++; prevT = S.time;
   rechargeAll(); S.postsDead = [];
   if (S.sawNight) gainXP(100, 'surviving the night');
@@ -3504,6 +3680,19 @@ function updateVisuals(dt) {
   if (changed('dreadPulse', S.dread > 60)) $('dread').classList.toggle('pulse', S.dread > 60);
   // floaters
   const w = innerWidth, h = innerHeight;
+  // health bars over anything you have hurt (bosses have their own bar)
+  for (const m of mobs) {
+    const show = !m.dead && !m.bossId && m.hp < m.maxHp && m.dist < 30 && ui === 'none';
+    let p = null;
+    if (show) { p = _barV.set(m.pos.x, m.pos.y + m.h + 0.35, m.pos.z).project(camera); }
+    if (!show || p.z > 1 || Math.abs(p.x) > 1.1 || Math.abs(p.y) > 1.1) { if (m.barEl) m.barEl.style.display = 'none'; continue; }
+    if (!m.barEl) { m.barEl = document.createElement('div'); m.barEl.className = 'mbar'; m.barEl.innerHTML = '<i></i>'; $('mobBars').appendChild(m.barEl); }
+    const e = m.barEl, k = clamp(m.hp / m.maxHp, 0, 1), sc = clamp(14 / Math.max(4, m.dist), 0.45, 1.3);
+    e.style.display = ''; e.style.left = ((p.x + 1) / 2 * w) + 'px'; e.style.top = ((1 - p.y) / 2 * h) + 'px';
+    e.style.transform = `translate(-50%,-50%) scale(${sc.toFixed(2)})`;
+    e.firstChild.style.width = (k * 100).toFixed(1) + '%';
+    e.classList.toggle('kneel', m.brokenT > 0);
+  }
   for (const f of floaters.slice()) {
     f.t += dt; f.pos.y += dt * f.rise;
     const p = f.pos.clone().project(camera);

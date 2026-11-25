@@ -110,8 +110,8 @@ export const SIDE_QUESTS = {
 
 export const SHOPS = {
   oswin: { sell: [['bow', 30], ['arrows', 6, 10], ['oil', 6], ['b12', 2], ['healing', 15], ['elixir', 25], ['lumendraught', 30], ['b13', 4], ['herb', 3], ['b18', 12], ['coal', 2]], buys: { shard: 12, iron: 4, coal: 1, herb: 2, b13: 3, pelt: 8, b5: 1 } },
-  tamsin: { sell: [['pick', 20], ['club', 8], ['sword', 60], ['greataxe', 85], ['shield', 30], ['leather', 20], ['armor', 90], ['helm', 35], ['gauntlets', 30], ['greaves', 35]], buys: { iron: 5, coal: 1, pelt: 6, plate: 60, knighthelm: 25, towershield: 35 } },
-  aldric: { sell: [['healing', 14], ['elixir', 24], ['lumendraught', 28]], buys: { shard: 14, herb: 3 } },
+  tamsin: { sell: [['pick', 20], ['club', 8], ['hatchet', 15], ['spear', 45], ['sword', 60], ['estoc', 80], ['greataxe', 85], ['warhammer', 95], ['shield', 30], ['leather', 20], ['armor', 90], ['helm', 35], ['gauntlets', 30], ['greaves', 35]], buys: { iron: 5, coal: 1, pelt: 6, plate: 60, knighthelm: 25, towershield: 35 } },
+  aldric: { sell: [['healing', 14], ['elixir', 24], ['lumendraught', 28], ['tome_lance', 60]], buys: { shard: 14, herb: 3 } },
 };
 
 export class NPC {
