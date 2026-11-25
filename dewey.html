@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dewey Setup Guide</title>
+<title>Dewey setup guide · Will Pajak</title>
 <meta name="description" content="How to install Dewey, the daily research-paper digest: setup wizard, Zotero import, buttons, learning topics and free local AI summaries.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
-<body style="--accent:#3d8b6e">
-<nav class="wrap topnav" id="topnav" data-page="apps" style="max-width:760px"></nav>
+<body>
+<nav class="wrap topnav" id="topnav" data-page="apps"></nav>
 <main class="wrap guide">
   <a class="back" href="apps.html">← All apps</a>
-  <h1>📬 Dewey setup guide</h1>
+  <h1>Dewey setup guide</h1>
   <p class="lede">Dewey emails you a daily digest of the new research papers that matter to you, from arXiv and your field's journals, ranked by how well they match your interests and the papers you already like. It runs on your own computer and is free.</p>
-  <p><a class="btn" href="downloads/dewey.zip" download>⬇ Download Dewey</a></p>
+  <p><a class="btn" href="downloads/dewey.zip" download>Download Dewey</a></p>
 
   <div class="toc"><b>Steps</b>
     <ol>
@@ -89,6 +89,7 @@
   <p><b>Update:</b> download the new <code>dewey.zip</code> and extract it over your Dewey folder. Your settings, liked papers and reading list are kept, since they're not in the zip. Then sign out and back in, or restart the <b>Dewey digest</b> task in Task Scheduler.</p>
   <p><b>Uninstall (Windows):</b> in PowerShell run <code>Unregister-ScheduledTask -TaskName "Dewey digest"</code>, then delete the folder. On macOS/Linux the installer printed the matching command.</p>
 </main>
+<footer id="sitefoot"></footer>
 <script src="shelf.js"></script>
 </body>
 </html>

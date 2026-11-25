@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Game Feedback</title>
+<title>Feedback · Will Pajak</title>
 <meta name="description" content="Tell me what you liked, what didn't work, and what you'd add.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav class="wrap topnav" id="topnav" data-page="" style="max-width:760px"></nav>
+<nav class="wrap topnav" id="topnav" data-page=""></nav>
 <main class="wrap guide feedback" id="page">
   <p class="empty">Loading…</p>
 </main>
 
+<footer id="sitefoot"></footer>
 <script src="shelf.js"></script>
 <script>
 const page = document.getElementById("page");
@@ -25,29 +26,27 @@ fetch("games.json", { cache: "no-cache" })
     const g = (data.games || []).find(x => x.id === id && x.version > 0);
     if (!g) {
       page.innerHTML = `<h1>Feedback</h1><p>Pick a game to leave feedback on:</p>
-        <ul>${(data.games || []).filter(x => x.version > 0).map(x => `<li><a href="feedback.html?game=${encodeURIComponent(x.id)}">${esc(x.icon)} ${esc(x.title)}</a></li>`).join("")}</ul>`;
+        <ul>${(data.games || []).filter(x => x.version > 0).map(x => `<li><a href="feedback.html?game=${encodeURIComponent(x.id)}">${esc(x.title)}</a></li>`).join("")}</ul>`;
       return;
     }
-    document.title = `${g.title} Feedback`;
-    document.body.style.setProperty("--accent", g.accent || "#888");
+    document.title = `${g.title} feedback · ${SITE_NAME}`;
     const navPage = (NAV.find(n => n.type === (g.type || "game")) || {}).page;
     document.getElementById("topnav").dataset.page = navPage || ""; drawNav();
-    const play = g.play ? `<a class="btn" href="play/${encodeURIComponent(g.id)}/">▶ Play</a>` : g.guide ? `<a class="btn" href="${esc(g.guide)}">Setup guide</a>` : "";
+    const play = g.play ? `<a class="btn" href="play/${encodeURIComponent(g.id)}/">${g.type === "app" ? "Open" : "Play"} in browser</a>` : g.guide ? `<a class="btn" href="${esc(g.guide)}">Setup guide</a>` : "";
     page.innerHTML = `
       <section class="fb-head">
-        <div class="fb-icon">${esc(g.icon || "🎮")}</div>
         <div>
           <h1>${esc(g.title)} feedback</h1>
           <p class="lede">${esc(g.tagline)}</p>
-          <div class="actions">${play}<a class="btn ghost" href="${pageForType(g.type)}#${encodeURIComponent(g.id)}">← Back</a></div>
+          <div class="actions">${play}<a class="btn ghost" href="${pageForType(g.type)}#${encodeURIComponent(g.id)}">Back to ${esc(sectionName(g.type))}</a></div>
         </div>
       </section>
       <div class="callout">
         <b>I'd love to hear from you.</b> Anything helps:
         <ul style="margin:6px 0 0">
-          <li>👍 What you liked</li>
-          <li>👎 What felt confusing, too hard, too slow, or broken</li>
-          <li>💡 Ideas for new features, levels or modes</li>
+          <li>What you liked</li>
+          <li>What felt confusing, too hard, too slow, or broken</li>
+          <li>Ideas for new features, levels or modes</li>
         </ul>
         <p class="note" style="margin-top:8px">Comments are public. Sign in with a free GitHub account to post, or just leave an emoji reaction.</p>
       </div>
