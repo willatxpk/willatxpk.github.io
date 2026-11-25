@@ -136,6 +136,34 @@
                       "image":  "img/art/iron-banners.jpg"
                   },
                   {
+                      "id":  "gravehex",
+                      "title":  "Gravehex",
+                      "tagline":  "Under construction: a cursed-land deck-builder of hexes, heroes and hands.",
+                      "description":  "🚧 Still under construction — expect changes, rough edges and balance shifts. An 8-bit dark fantasy roguelike deck-builder: claim a hex map of cursed resources, roll the harvest dice each turn, recruit a party of heroes whose powers hang on a 2d6 roll, and stumble into choose-your-own-adventure encounters. Fights are won by playing poker-style Rites, where relics and heroes multiply your score. Three Acts, Lairs that demand the right party, and a Throne at the heart of every map.",
+                      "tags":  [
+                                   "Deck-builder",
+                                   "Roguelike",
+                                   "In development"
+                               ],
+                      "icon":  "🃏",
+                      "accent":  "#a65cf0",
+                      "source":  "../gravehex",
+                      "play":  true,
+                      "download":  true,
+                      "excludeDirs":  [
+                                          "playtest"
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "version":  1,
+                      "hash":  "3e4d124de3d67c7c9c7abfdebaba35b5e03901873a0d3009b457234cc7236b4b",
+                      "type":  "game",
+                      "updated":  "2026-11-25",
+                      "size":  59353,
+                      "image":  "img/art/gravehex.jpg"
+                  },
+                  {
                       "id":  "ticker-tycoon",
                       "title":  "Ticker Tycoon",
                       "tagline":  "Trade your way from a small stake to a fortune.",

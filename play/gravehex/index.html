@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gravehex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div id="scr-title" class="screen"></div>
+<div id="scr-pick" class="screen hide"></div>
+<div id="scr-oss" class="screen hide"></div>
+<div id="scr-over" class="screen hide"></div>
+
+<div id="scr-map" class="screen hide">
+  <header id="topbar"></header>
+  <aside id="left"></aside>
+  <main id="mapwrap"><canvas id="mapc"></canvas><div id="harvest"></div></main>
+  <aside id="rightcol"><div id="right"></div><div class="panel logp"><div class="ptitle">Chronicle</div><div id="log"></div></div></aside>
+</div>
+
+<div id="scr-fight" class="screen hide">
+  <div id="f-top">
+    <div id="f-party" class="panel"></div>
+    <div id="f-center">
+      <div id="f-mon"></div>
+      <div id="f-score">
+        <div id="f-rite"></div>
+        <div class="scorebox"><div id="f-chips" class="chipsbox">0</div><div class="xsign">×</div><div id="f-mult" class="multbox">0</div></div>
+        <div id="f-est"></div>
+        <div id="f-dmg"></div>
+      </div>
+      <div id="f-played"></div>
+    </div>
+    <div id="f-side" class="panel"></div>
+  </div>
+  <div id="f-hand"></div>
+  <div id="f-bar">
+    <div id="f-hpw"></div>
+    <div id="f-sort"><span class="dim">Sort</span><button class="btn sm" data-sort="rank">Rank</button><button class="btn sm" data-sort="suit">Suit</button><button class="btn sm ghost" id="f-hint" title="Select the strongest Rite in your hand">Hint</button></div>
+    <div class="f-actions"><button class="btn big red" id="f-disc">Discard</button><button class="btn big" id="f-play">Perform Rite</button></div>
+  </div>
+</div>
+
+<div id="modal" class="hide"></div>
+<div id="diceov" class="hide"></div>
+<div id="toast"></div>
+<div id="tip"></div>
+<div id="flash"></div>
+<div id="crt"></div>
+
+<script src="js/art.js"></script>
+<script src="js/data.js"></script>
+<script src="js/game.js"></script>
+<script src="js/fight.js"></script>
+</body>
+</html>
