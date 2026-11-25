@@ -36,7 +36,8 @@ function drawFooter() {
   f.className = "site";
   f.innerHTML = `<div class="wrap"><span>© ${new Date().getFullYear()} William Pajak. All rights reserved.</span>` +
     LINKS.map(l => `<a href="${l.href}">${l.label}</a>`).join("") + `<a href="about.html">About</a>` +
-    `<a href="https://github.com/willatxpk/willatxpk.github.io/blob/main/LICENSE">License</a></div>`;
+    `<a href="https://github.com/willatxpk/willatxpk.github.io/blob/main/LICENSE">License</a>` +
+    `<p class="foot-note">Personal projects made on my own time. Not affiliated with, sponsored by, or endorsed by Caltech; views are my own.</p></div>`;
 }
 
 // One project as a row: name and tags | description and actions | version and date
