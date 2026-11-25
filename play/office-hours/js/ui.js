@@ -9,6 +9,7 @@ import { MAIL_ACTIONS, EXT } from './events.js';
 import { QUALITY, setQuality } from './gfx.js';
 import { sayTo, judgeRemark, AI, aiStatus, aiDownMsg } from './say.js';
 import { interestText, fitScore } from './career.js';
+import { renderCalendar, bindCalendar, calendarBadge } from './calendar.js';
 const fitTag = (p, pr) => { const f = fitScore(p, pr); return f >= 1.5 ? '💚 dream fit' : f >= 1 ? '✓ in their area' : '✗ not their interest'; };
 const interestBlock = p => { const t = interestText(p); return `<div style="font-size:12px;margin-top:8px">🧭 <b>Wants to work on</b> ${esc(t.plats)}${t.goal ? `, toward <b>${esc(t.goal)}</b>` : ''} · prefers ${esc(t.style)}. Dream: ${esc(t.dream)}.</div>`; };
 import { fin, netWorth, salaryWeekly, livingWeekly, equityValue, healthWord, STAGES, foundWithStudent } from './money.js';
@@ -222,7 +223,7 @@ function showBrainstorm(node) {
 }
 
 // ---------------- computer ----------------
-const APPS = [['mail', '✉️', 'Mail'], ['team', '👥', 'Team'], ['projects', '🧪', 'Projects'], ['grants', '💰', 'Grants'], ['hiring', '🤝', 'Hiring'], ['store', '🛒', 'Lab Store'], ['dept', '🏛️', 'Department'], ['faculty', '🎓', 'Faculty'], ['ventures', '💼', 'Ventures'], ['life', '🏠', 'Life'], ['cv', '📜', 'CV'], ['arxiv', '📰', 'arXiv'], ['settings', '⚙️', 'Settings']];
+const APPS = [['mail', '✉️', 'Mail'], ['calendar', '📅', 'Calendar'], ['team', '👥', 'Team'], ['projects', '🧪', 'Projects'], ['grants', '💰', 'Grants'], ['hiring', '🤝', 'Hiring'], ['store', '🛒', 'Lab Store'], ['dept', '🏛️', 'Department'], ['faculty', '🎓', 'Faculty'], ['ventures', '💼', 'Ventures'], ['life', '🏠', 'Life'], ['cv', '📜', 'CV'], ['arxiv', '📰', 'arXiv'], ['settings', '⚙️', 'Settings']];
 export function openComputer(app) {
   UI.computer = true; if (app) UI.app = app;
   $('#computer').classList.add('show');
@@ -232,7 +233,8 @@ export function closeComputer() { UI.computer = false; $('#computer').classList.
 export function renderComputer() {
   if (!UI.computer) return;
   const unread = G.inbox.filter(m => !m.read).length;
-  $('#osSide').innerHTML = APPS.map(([k, i, n]) => `<button class="osapp ${UI.app === k ? 'on' : ''}" data-app="${k}"><span>${i}</span>${n}${k === 'mail' && unread ? `<em>${unread}</em>` : ''}${k === 'hiring' && G.applicants.length ? `<em>${G.applicants.length}</em>` : ''}</button>`).join('') + `<div class="osfoot">${esc(dateStr())}<br>${fmtK(G.money)} · ⚡${Math.round(G.energy)}</div>`;
+  const calBadge = calendarBadge();
+  $('#osSide').innerHTML = APPS.map(([k, i, n]) => `<button class="osapp ${UI.app === k ? 'on' : ''}" data-app="${k}"><span>${i}</span>${n}${k === 'mail' && unread ? `<em>${unread}</em>` : ''}${k === 'hiring' && G.applicants.length ? `<em>${G.applicants.length}</em>` : ''}${k === 'calendar' && calBadge ? `<em class="star">★${calBadge}</em>` : ''}</button>`).join('') + `<div class="osfoot">${esc(dateStr())}<br>${fmtK(G.money)} · ⚡${Math.round(G.energy)}</div>`;
   $('#osSide').querySelectorAll('.osapp').forEach(b => b.onclick = () => { UI.app = b.dataset.app; renderComputer(); });
   { const on = $('#osSide .osapp.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } // phones: the app bar scrolls sideways
   const body = $('#osBody');
@@ -250,6 +252,7 @@ const bar = (v, col, max = 100) => `<div class="mbar"><div style="width:${clamp(
 const chip = (t, cls = '') => `<span class="chip ${cls}">${esc(t)}</span>`;
 
 const APP_RENDER = {
+  calendar: () => renderCalendar(),
   mail() {
     const sel = G.inbox.find(m => m.id === UI.mailSel) || G.inbox[0];
     if (sel && !sel.read) { sel.read = true; setTimeout(hud, 0); }
@@ -462,6 +465,7 @@ const APP_RENDER = {
 };
 
 const APP_BIND = {
+  calendar: b => bindCalendar(b, renderComputer, app => { hud(); if (app) { UI.app = app; renderComputer(); } }),
   ventures(b) {
     const F = fin(); const co = id => F.companies.find(c => c.id === id);
     b.querySelectorAll('[data-board]').forEach(x => x.onclick = () => { const c = co(x.dataset.board); c.board = !c.board; renderComputer(); });

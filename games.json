@@ -100,11 +100,11 @@
 
                                        ],
                       "downloadNote":  "Open index.html through a local web server (for example: py -m http.server). Typed remarks can be judged by a local Ollama model if you have one; otherwise a word list is used.",
-                      "version":  3,
-                      "hash":  "2d05c67212b36f6ea4db43f52bbefbb6c6406584e7d52a7a0ed99213712ac1dd",
+                      "version":  4,
+                      "hash":  "f48b00e54bda69302a26a4a88609bee8722ac912da902e550ef3f7074fef01e3",
                       "type":  "game",
                       "updated":  "2026-11-25",
-                      "size":  217978,
+                      "size":  232341,
                       "image":  "img/art/office-hours.jpg"
                   },
                   {
