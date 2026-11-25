@@ -4,67 +4,141 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Arcade Shelf</title>
-<meta name="description" content="Games and apps I've made in my spare time. Play them in your browser or download them.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+<meta name="description" content="Games, playable physics and handy little apps by Will Pajak. Play them in your browser or download them.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<nav class="wrap topnav"><a href="./" aria-current="page">Home</a><a href="about.html">About</a></nav>
-<div class="wrap">
-  <header class="site">
-    <h1 id="site-title">Arcade Shelf</h1>
-    <p>Games and apps I've made. Most run right in your browser. Every one can also be downloaded.</p>
-  </header>
-  <main id="shelf"><p class="empty">Loading…</p></main>
-</div>
-<footer class="site"><div class="wrap">Saves are kept in your browser, so your progress stays on your device.</div></footer>
+<body class="home">
+<nav class="wrap topnav" id="topnav" data-page="home"></nav>
 
-<script>
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmtSize = b => b == null ? "" : b > 1e6 ? (b / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1e3)) + " KB";
-const fmtDate = d => d ? new Date(d + "T12:00:00").toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
-
-function card(g) {
-  const buttons = [];
-  if (g.play) buttons.push(`<a class="btn" href="play/${esc(g.id)}/">▶ Play</a>`);
-  if (g.playMobile) buttons.push(`<a class="btn" href="play/${esc(g.id)}/?touch">📱 Play on phone</a>`);
-  if (g.guide) buttons.push(`<a class="btn" href="${esc(g.guide)}">Setup guide</a>`);
-  if (g.download) buttons.push(`<a class="btn ghost" href="downloads/${esc(g.id)}.zip" download>⬇ Download${g.size ? " · " + fmtSize(g.size) : ""}</a>`);
-  buttons.push(`<a class="btn ghost" href="feedback.html?game=${encodeURIComponent(g.id)}">💬 Feedback</a>`);
-  const meta = g.version ? `Version ${g.version} · updated ${fmtDate(g.updated)}` : "";
-  return `<article class="card" style="--accent:${esc(g.accent || "#888")}">
-    <div class="cover">${esc(g.icon || "🎮")}${g.image ? `<img src="${esc(g.image)}" alt="">` : ""}</div>
-    <div class="body">
-      <h3>${esc(g.title)}</h3>
-      <div class="tags">${(g.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>
-      <p class="tagline">${esc(g.tagline)}</p>
-      <p class="desc">${esc(g.description)}</p>
-      ${g.downloadNote ? `<p class="note">${esc(g.downloadNote)}</p>` : ""}
-      <div class="meta">${meta}</div>
-      <div class="actions">${buttons.join("")}</div>
+<section class="hero-home">
+  <div class="floaters" id="floaters" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <span class="coin">🪙 Insert coin to continue</span>
+    <h1 class="marquee" id="site-title">Arcade Shelf</h1>
+    <p class="hero-sub">Games, playable physics and handy little apps, all made by Will Pajak in the gaps between experiments.</p>
+    <div class="actions hero-actions">
+      <button class="btn big" id="spin" type="button">🎲 Surprise me</button>
+      <a class="btn big ghost" href="games.html">Browse games →</a>
     </div>
-  </article>`;
-}
 
-fetch("games.json", { cache: "no-cache" })
-  .then(r => r.json())
-  .then(data => {
-    if (data.siteTitle) { document.title = data.siteTitle; document.getElementById("site-title").textContent = data.siteTitle; }
-    const games = (data.games || []).filter(g => g.version > 0);
-    const sections = data.sections && data.sections.length ? data.sections : [{ type: "game", title: "Games" }];
-    const known = new Set(sections.map(s => s.type));
-    const html = sections.map((s, i) => {
-      // Anything with an unrecognised type lands in the first section rather than disappearing.
-      const items = games.filter(g => (g.type || "game") === s.type || (i === 0 && !known.has(g.type || "game")));
-      if (!items.length) return "";
-      return `<section class="shelf-section" id="${esc(s.type)}s">
-        <div class="section-head"><h2>${esc(s.title)}</h2>${s.blurb ? `<p>${esc(s.blurb)}</p>` : ""}</div>
-        <div class="grid">${items.map(card).join("")}</div>
-      </section>`;
-    }).join("");
-    document.getElementById("shelf").innerHTML = html || `<p class="empty">Nothing published yet.</p>`;
-  })
-  .catch(() => { document.getElementById("shelf").innerHTML = `<p class="empty">Couldn't load the list.</p>`; });
+    <div class="slot" id="slot" hidden aria-live="polite">
+      <div class="reel" id="reel">❔</div>
+      <div class="slot-body">
+        <div class="slot-title" id="slot-title">Spinning…</div>
+        <div class="slot-tag" id="slot-tag"></div>
+        <div class="actions" id="slot-actions"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+  <h2 class="home-h">Pick a door</h2>
+  <div class="doors" id="doors"></div>
+
+  <h2 class="home-h">Fresh off the workbench</h2>
+  <ol class="fresh" id="fresh"></ol>
+
+  <div class="stats" id="stats"></div>
+</main>
+
+<footer class="site"><div class="wrap">Made with curiosity and too much coffee. <a href="about.html">About me →</a></div></footer>
+
+<script src="shelf.js"></script>
+<script>
+const DOORS = [
+  { type: "game", href: "games.html", title: "Games", emoji: "🎮", line: "Strategy, survival and a little bit of chaos." },
+  { type: "learning", href: "learning.html", title: "Learning", emoji: "🧪", line: "Physics you can poke at until it makes sense." },
+  { type: "app", href: "apps.html", title: "Apps", emoji: "🧰", line: "Useful tools that run on your own computer." },
+];
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+loadData().then(d => {
+  if (d.siteTitle) { document.title = d.siteTitle; document.getElementById("site-title").textContent = d.siteTitle; }
+  const live = d.live;
+
+  // Drifting icons behind the title
+  const fl = document.getElementById("floaters");
+  const icons = live.map(g => g.icon || "🎮");
+  for (let i = 0; i < Math.min(18, icons.length * 2); i++) {
+    const s = document.createElement("span");
+    s.textContent = icons[i % icons.length];
+    s.style.left = (5 + Math.random() * 90) + "%";
+    s.style.top = (8 + Math.random() * 80) + "%";
+    s.style.fontSize = (22 + Math.random() * 34) + "px";
+    s.style.animationDelay = (-Math.random() * 20) + "s";
+    s.style.animationDuration = (14 + Math.random() * 14) + "s";
+    fl.appendChild(s);
+  }
+
+  // Doors
+  document.getElementById("doors").innerHTML = DOORS.map(door => {
+    const items = live.filter(g => (g.type || "game") === door.type);
+    return `<a class="door door-${door.type}" href="${door.href}">
+      <span class="door-emoji">${door.emoji}</span>
+      <span class="door-title">${door.title}</span>
+      <span class="door-line">${door.line}</span>
+      <span class="door-icons">${items.map(g => `<i title="${esc(g.title)}">${esc(g.icon)}</i>`).join("")}</span>
+      <span class="door-count">${items.length} ${items.length === 1 ? "thing" : "things"} inside →</span>
+    </a>`;
+  }).join("");
+
+  // Most recently updated
+  const fresh = [...live].sort((a, b) => (b.updated || "").localeCompare(a.updated || "") || b.version - a.version).slice(0, 4);
+  document.getElementById("fresh").innerHTML = fresh.map(g => `<li>
+    <a href="${pageForType(g.type)}#${encodeURIComponent(g.id)}" style="--accent:${esc(g.accent)}">
+      <span class="fresh-icon">${esc(g.icon)}</span>
+      <span class="fresh-text"><b>${esc(g.title)}</b><small>${esc(g.tagline)}</small></span>
+      <span class="fresh-ver">v${g.version}<small>${esc(fmtDate(g.updated))}</small></span>
+    </a></li>`).join("");
+
+  // Stats
+  const shipped = live.reduce((n, g) => n + (g.version || 0), 0);
+  const stats = [[live.length, "projects"], [shipped, "updates shipped"], [live.filter(g => g.play).length, "playable in your browser"], [0, "ads, ever"]];
+  const st = document.getElementById("stats");
+  st.innerHTML = stats.map(([n, label]) => `<div><b data-n="${n}">${reduceMotion ? n : 0}</b><span>${label}</span></div>`).join("");
+  if (!reduceMotion) {
+    const t0 = performance.now();
+    const tick = t => {
+      const p = Math.min(1, (t - t0) / 1200), e = 1 - Math.pow(1 - p, 3);
+      st.querySelectorAll("b").forEach(b => b.textContent = Math.round(+b.dataset.n * e));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // Surprise me: spin a little slot machine and land on a random project
+  const btn = document.getElementById("spin");
+  let last = null;
+  btn.onclick = () => {
+    if (btn.disabled || !live.length) return;
+    let pick;
+    do { pick = live[Math.floor(Math.random() * live.length)]; } while (live.length > 1 && pick === last);
+    last = pick;
+    const slot = document.getElementById("slot"), reel = document.getElementById("reel");
+    const title = document.getElementById("slot-title"), tag = document.getElementById("slot-tag"), acts = document.getElementById("slot-actions");
+    slot.hidden = false; slot.classList.remove("landed");
+    slot.style.setProperty("--accent", pick.accent || "#888");
+    title.textContent = "Spinning…"; tag.textContent = ""; acts.innerHTML = "";
+    btn.disabled = true;
+    const land = () => {
+      reel.textContent = pick.icon; title.textContent = pick.title; tag.textContent = pick.tagline;
+      const go = pick.play ? `<a class="btn" href="play/${encodeURIComponent(pick.id)}/">▶ ${pick.type === "app" ? "Open" : "Play"} it</a>`
+        : `<a class="btn" href="${esc(pick.guide || pageForType(pick.type) + "#" + pick.id)}">Take a look</a>`;
+      acts.innerHTML = go + `<a class="btn ghost" href="${pageForType(pick.type)}#${encodeURIComponent(pick.id)}">More info</a>`;
+      slot.classList.add("landed"); btn.disabled = false; btn.textContent = "🎲 Spin again";
+    };
+    if (reduceMotion) return land();
+    let delay = 40, i = 0;
+    const step = () => {
+      reel.textContent = live[i++ % live.length].icon;
+      delay *= 1.16;
+      if (delay < 320) setTimeout(step, delay); else land();
+    };
+    step();
+  };
+}).catch(() => { document.getElementById("doors").innerHTML = `<p class="empty">Couldn't load the list.</p>`; });
 </script>
 </body>
 </html>

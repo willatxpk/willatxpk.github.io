@@ -21,7 +21,7 @@ Never edit the files in `play/` or `downloads/` by hand. They're rebuilt from th
 
 Add an entry to the `games` list in `games.json`. Copy an existing entry and change `id`, `title`, `tagline`, `description`, `tags`, `icon`, `accent` and `source` (the game's folder, relative to this one). Set `"version": 0` and `"hash": null`, then run `.\publish.ps1`.
 
-`type` decides which homepage section the card goes in: `"game"`, `"learning"` or `"app"`. To add another section, add it to the `sections` list at the top of `games.json` with a title and a one-line blurb.
+`type` decides which homepage section the card goes in: `"game"`, `"learning"` or `"app"`. Each type has its own page in the top menu (`games.html`, `learning.html`, `apps.html`). The homepage (`index.html`) picks up new projects automatically: they appear behind the right door, in "Fresh off the workbench" when updated, and in the Surprise me spinner. To add a whole new section, copy `apps.html`, change its `data-type`, and add it to the `NAV` list at the top of `shelf.js` and the `DOORS` list in `index.html`.
 
 To show a screenshot instead of the emoji on a game's card, put the image in this folder (for example `img/hearthlands.png`) and add `"image": "img/hearthlands.png"` to that game's entry.
 

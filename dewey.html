@@ -9,8 +9,9 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body style="--accent:#3d8b6e">
+<nav class="wrap topnav" id="topnav" data-page="apps" style="max-width:760px"></nav>
 <main class="wrap guide">
-  <a class="back" href="./">← All games</a>
+  <a class="back" href="apps.html">← All apps</a>
   <h1>📬 Dewey setup guide</h1>
   <p class="lede">Dewey emails you a daily digest of the new research papers that matter to you, from arXiv and your field's journals, ranked by how well they match your interests and the papers you already like. It runs on your own computer and is free.</p>
   <p><a class="btn" href="downloads/dewey.zip" download>⬇ Download Dewey</a></p>
@@ -88,5 +89,6 @@
   <p><b>Update:</b> download the new <code>dewey.zip</code> and extract it over your Dewey folder. Your settings, liked papers and reading list are kept, since they're not in the zip. Then sign out and back in, or restart the <b>Dewey digest</b> task in Task Scheduler.</p>
   <p><b>Uninstall (Windows):</b> in PowerShell run <code>Unregister-ScheduledTask -TaskName "Dewey digest"</code>, then delete the folder. On macOS/Linux the installer printed the matching command.</p>
 </main>
+<script src="shelf.js"></script>
 </body>
 </html>
