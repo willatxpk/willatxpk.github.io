@@ -11,25 +11,35 @@
 <body>
 <nav class="wrap topnav" id="topnav" data-page="home"></nav>
 
-<section class="wrap intro">
-  <p class="eyebrow">Applied Physics PhD candidate · Caltech</p>
-  <h1>I build games, interactive physics lessons, and small tools for everyday research.</h1>
-  <p class="lede">Everything here is free. Most of it runs right in your browser, and the rest runs on your own computer. No accounts, no ads.</p>
-  <div class="actions">
-    <a class="btn" href="games.html">Browse projects</a>
-    <a class="btn ghost" href="about.html">About me</a>
+<section class="wrap hero2">
+  <div class="hero2-text">
+    <p class="eyebrow">Applied Physics PhD candidate · Caltech</p>
+    <h1>Hi, I'm Will. I build games, interactive physics lessons, and small tools for research.</h1>
+    <p class="lede">Everything here is free and made in my spare time. Most of it runs right in your browser.</p>
+    <div class="actions">
+      <a class="btn" href="games.html">Browse projects</a>
+      <a class="btn ghost" href="about.html">About me</a>
+    </div>
   </div>
+  <figure class="featured" id="featured"></figure>
 </section>
 
 <main class="wrap">
   <div id="sections"><p class="empty">Loading…</p></div>
 
-  <section class="home-section">
-    <div class="hs-head">
-      <h2>Recent updates</h2>
-      <p>New versions, newest first.</p>
+  <section class="home-bottom">
+    <div>
+      <h2 class="home-h2">Recent updates</h2>
+      <ol class="changelog" id="changelog"></ol>
     </div>
-    <ol class="changelog" id="changelog"></ol>
+    <aside class="mini-about">
+      <img src="img/me.jpg" alt="Will Pajak" width="400" height="400">
+      <div>
+        <h2 class="home-h2">About</h2>
+        <p>I research single rare-earth ions in crystals for future quantum networks in Prof. Andrei Faraon's group at Caltech. Several of these projects grew out of that work.</p>
+        <a class="textlink" href="about.html">More about me →</a>
+      </div>
+    </aside>
   </section>
 </main>
 
@@ -38,26 +48,42 @@
 <script>
 loadData().then(d => {
   document.title = d.siteTitle || document.title;
+  const byRecent = [...d.live].sort((a, b) => (b.updated || "").localeCompare(a.updated || "") || b.version - a.version);
+
+  // Featured: the most recently updated project that has a screenshot
+  const f = byRecent.find(g => g.image);
+  if (f) {
+    const href = f.play ? `play/${encodeURIComponent(f.id)}/` : `${pageForType(f.type)}#${encodeURIComponent(f.id)}`;
+    document.getElementById("featured").innerHTML = `
+      <a class="shot" href="${href}"><img src="${esc(f.image)}" alt="${esc(f.title)} screenshot"></a>
+      <figcaption>
+        <span class="eyebrow">Latest update · v${f.version} · ${esc(fmtDate(f.updated))}</span>
+        <a class="fc-title" href="${pageForType(f.type)}#${encodeURIComponent(f.id)}">${esc(f.title)}</a>
+        <span class="fc-tag">${esc(f.tagline)}</span>
+      </figcaption>`;
+  }
+
+  // One gallery row per section
   const sections = d.sections && d.sections.length ? d.sections : [{ type: "game", title: "Games" }];
   document.getElementById("sections").innerHTML = sections.map(s => {
     const items = ofType(d, s.type);
     if (!items.length) return "";
     const page = pageForType(s.type);
-    return `<section class="home-section">
-      <div class="hs-head">
+    return `<section class="gallery-sec">
+      <div class="gs-head">
         <h2>${esc(s.title)}</h2>
         <p>${esc(s.blurb || "")}</p>
         <a class="textlink" href="${page}">View all ${items.length} →</a>
       </div>
-      <ul class="index">${items.map(g => `<li><a href="${page}#${encodeURIComponent(g.id)}">
-        <span class="ix-name">${esc(g.title)}</span>
-        <span class="ix-tag">${esc(g.tagline)}</span>
-        <span class="ix-ver">v${g.version}</span></a></li>`).join("")}</ul>
+      <div class="gallery">${items.map(g => `<a class="tile" href="${page}#${encodeURIComponent(g.id)}">
+        ${g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">`
+          : `<span class="tile-blank" style="--swatch:${esc(g.accent || "")}"><span>${esc(g.title)}</span></span>`}
+        <span class="tile-title">${esc(g.title)}</span>
+        <span class="tile-tag">${esc(g.tagline)}</span></a>`).join("")}</div>
     </section>`;
   }).join("");
 
-  const recent = [...d.live].sort((a, b) => (b.updated || "").localeCompare(a.updated || "") || b.version - a.version).slice(0, 6);
-  document.getElementById("changelog").innerHTML = recent.map(g => `<li>
+  document.getElementById("changelog").innerHTML = byRecent.slice(0, 5).map(g => `<li>
     <time datetime="${esc(g.updated)}">${esc(fmtDate(g.updated))}</time>
     <span><a href="${pageForType(g.type)}#${encodeURIComponent(g.id)}">${esc(g.title)}</a> <span class="ix-tag">· ${esc(sectionName(g.type))}</span></span>
     <span class="cl-ver">v${g.version}</span></li>`).join("");
