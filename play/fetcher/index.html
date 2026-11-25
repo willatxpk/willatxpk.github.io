@@ -183,7 +183,7 @@ footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 2
     <div id="fReport" class="report"></div>
     <div class="toolbar">
       <button id="fFlagged">⚠ Show only flagged</button>
-      <button id="fLookup" title="Fill missing volume, issue, page / article numbers and journal abbreviations from Crossref">🔎 Fill missing info from Crossref</button>
+      <button id="fLookup" title="Fill missing volume, issue, page / article numbers and journal abbreviations from Crossref; find DOIs by title; add official links for known software (Lumerical, COMSOL, …)">🔎 Fill missing info</button>
       <label class="checks" style="margin:0"><label><input id="fPreview" type="checkbox"> Preview references in this style</label></label>
     </div>
     <div class="toolbar" style="margin-bottom:0">
@@ -225,7 +225,7 @@ footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 2
       <li>BibTeX comes from <code>doi.org</code> (falling back to Crossref). arXiv IDs are looked up through their arXiv DOI. Nothing else leaves your browser.</li>
       <li>Your library is saved in this browser. In Chrome or Edge you can also <b>Open</b> a <code>.bib</code> file on your computer and Fetcher will save straight into it.</li>
       <li>Papers already in the library (same DOI or arXiv ID) are not added twice. If a citation key is already taken, the new one gets a letter: <code>Smith_2020b</code>.</li>
-      <li><b>Format &amp; check:</b> pick a journal to load its rules (author cut-off, abbreviated journal names). Entries that would print with gaps, such as no page or article number, get a ⚠ flag. <b>Fill missing info</b> looks those up on Crossref. Your library keeps the full data; the formatted .bib and reference list are made fresh for each journal.</li>
+      <li><b>Format &amp; check:</b> pick a journal to load its rules (author cut-off, abbreviated journal names). Entries that would print with gaps, such as no page or article number, get a ⚠ flag. <b>Fill missing info</b> looks those up on Crossref (by DOI, or by exact title when there is none) and adds the official web page for common software such as Lumerical, COMSOL, Tidy3D, MATLAB and Mathematica. Your library keeps the full data; the formatted .bib and reference list are made fresh for each journal.</li>
       <li>doi.org often leaves out article numbers (PRL, Nature Communications, …), so Fetcher fills them in from Crossref when you fetch.</li>
       <li>Shortcuts: <kbd>Enter</kbd> fetch, <kbd>Shift</kbd>+<kbd>Enter</kbd> new line, <kbd>/</kbd> filter, <kbd>Esc</kbd> clear.</li>
     </ul>
@@ -581,7 +581,9 @@ function transformEntry(bib, o = fmt) {
     // single article number stored in pages -> move to eid
     fSet(p, "eid", fGet(p, "pages")); fDel(p, ["pages"]);
   }
-  if (o.drop && o.drop.length) fDel(p, o.drop.filter(n => n !== "doi"));
+  // Keep url when it is the entry's only link (software, web pages): dropping it would leave nothing to find.
+  const onlyLink = !entryIds(bib).size && !fHas(p, "howpublished");
+  if (o.drop && o.drop.length) fDel(p, o.drop.filter(n => n !== "doi" && !(n === "url" && onlyLink)));
   return serialize(p);
 }
 
@@ -689,12 +691,63 @@ async function xrefLookup(doi) {
   return info;
 }
 
+// Software and tools have no DOI, so Crossref can't help: known ones get their official page.
+const SOFTWARE = [
+  [/lumerical|ansys/i, /fdtd/i, "https://www.ansys.com/products/optics/fdtd", "Ansys Lumerical FDTD"],
+  [/lumerical|ansys/i, /\bmode\b/i, "https://www.ansys.com/products/optics/mode", "Ansys Lumerical MODE"],
+  [/lumerical|ansys/i, /interconnect/i, "https://www.ansys.com/products/optics/interconnect", "Ansys Lumerical INTERCONNECT"],
+  [/ansys|hfss/i, /hfss/i, "https://www.ansys.com/products/electronics/ansys-hfss", "Ansys HFSS"],
+  [/comsol/i, /./, "https://www.comsol.com/comsol-multiphysics", "COMSOL Multiphysics"],
+  [/tidy3d|flexcompute/i, /./, "https://www.flexcompute.com/tidy3d/", "Tidy3D"],
+  [/matlab|mathworks/i, /./, "https://www.mathworks.com/products/matlab.html", "MATLAB"],
+  [/mathematica|wolfram/i, /./, "https://www.wolfram.com/mathematica/", "Mathematica"],
+  [/klayout/i, /./, "https://www.klayout.de/", "KLayout"],
+  [/originlab|\borigin(pro)?\b/i, /./, "https://www.originlab.com/", "Origin"],
+];
+function softwareInfo(p) {
+  const text = cleanTex(["title", "author", "note", "howpublished", "publisher", "organization"].map(n => fGet(p, n)).join(" "));
+  const hit = SOFTWARE.find(([who, what]) => who.test(text) && what.test(text));
+  return hit ? { url: hit[2], name: hit[3] } : null;
+}
+
+// Find an entry that has no DOI by its title (strict: titles must match, year too when both have one).
+const normTitle = s => cleanTex(s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "");
+async function xrefSearch(p) {
+  const title = cleanTex(fGet(p, "title"));
+  if (title.length < 12) return null;
+  const ck = "q:" + normTitle(title);
+  if (xref.has(ck)) return xref.get(ck);
+  const first = authorInfo(p).list[0];
+  const q = [title, first ? nameParts(first).last : ""].join(" ").trim();
+  const url = "https://api.crossref.org/works?rows=5&select=DOI,title,issued,container-title,short-container-title,volume,issue,page,article-number,type&query.bibliographic=" + encodeURIComponent(q);
+  let r = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await new Promise(res => setTimeout(res, 800 * 2 ** attempt));
+    try { r = await fetch(url); } catch { r = null; continue; }
+    if (r.ok) break;
+  }
+  if (!r || !r.ok) throw new Error("search failed");
+  const items = ((await r.json()).message || {}).items || [];
+  const want = normTitle(title), year = cleanTex(fGet(p, "year"));
+  const m = items.find(it => normTitle((it.title || [])[0]) === want &&
+    (!year || !it.issued || String(((it.issued["date-parts"] || [[]])[0] || [])[0] || "") === year));
+  const info = m ? {
+    doi: m.DOI, short: (m["short-container-title"] || [])[0] || "", long: (m["container-title"] || [])[0] || "",
+    art: m["article-number"] || "", page: m.page || "", volume: m.volume || "", issue: m.issue || "",
+    year: String(((m.issued || {})["date-parts"] || [[]])[0][0] || ""),
+  } : {};
+  xref.set(ck, info); saveXref();
+  return info;
+}
+
 // Adds only what is missing. Returns {bib, filled:[names]}
 function fillEntry(bib, info, artField = fmt.artField) {
   const p = parseEntry(bib);
   if (isSpecial(p) || !info) return { bib, filled: [] };
   const filled = [];
   const put = (name, v) => { if (v && !fHas(p, name)) { fSet(p, name, braced(v)); filled.push(name); } };
+  if (info.doi && !doiFromBib(bib)) put("doi", info.doi);
+  if (info.url && !["url", "howpublished", "eprint", "doi"].some(n => fHas(p, n))) put("url", info.url);
   if (p.type.toLowerCase() === "article") {
     put("journal", info.long);
     put("volume", info.volume);
@@ -1205,10 +1258,10 @@ function renderReport(all) {
   const tally = {};
   flagged.forEach(a => a.miss.forEach(m => { tally[m] = (tally[m] || 0) + 1; }));
   const parts = Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([m, n]) => `${m} (${n})`);
-  const withDoi = flagged.filter(a => a.s.doi).length;
+  const fixable = flagged.filter(a => { const p = parseEntry(a.bib); return a.s.doi || (p && (softwareInfo(p) || fHas(p, "title"))); }).length;
   els.fReport.className = "report bad";
   els.fReport.textContent = `⚠ ${flagged.length} of ${all.length} entries would print with gaps for ${label}. Missing: ${parts.join(", ")}.`
-    + (withDoi ? ` ${withDoi} have a DOI, so Fill missing info can probably fix them.` : "");
+    + (fixable ? ` Try Fill missing info: it looks up entries by DOI or title, and adds the official link for known software.` : "");
 }
 
 function fmtChanged() { saveFmt(); syncFormControls(); render(); }
@@ -1275,20 +1328,31 @@ els.fLookup.onclick = async () => {
   if (state.busy) return;
   await syncFromFile();
   const entries = splitEntries(state.text);
-  const needs = entries.map((e, i) => ({ e, i, doi: doiFromBib(e) })).filter(({ e, doi }) => {
-    if (!doi || /^10\.48550\//.test(doi)) return false;
-    if (checkEntry(e).length) return true;
+  // Per citation key: what to add. Software is matched locally; DOI-less entries are searched by title.
+  const local = new Map(), byTitle = new Map();
+  const needs = [];
+  for (const e of entries) {
     const p = parseEntry(e);
-    return fmt.journal !== "asis" && p && fHas(p, "journal") && !journalForms(fGet(p, "journal"), doi).known;
-  });
-  if (!needs.length) return setStatus("Nothing to look up: no flagged entries with a DOI, and every journal abbreviation is known.", "ok");
+    if (!p || isSpecial(p)) continue;
+    const doi = doiFromBib(e), key = getKey(e);
+    if (!doi) {
+      const sw = softwareInfo(p);
+      if (sw) { local.set(key, { url: sw.url }); continue; }
+      if (entryIds(e).size) continue;   // arXiv preprint: nothing Crossref can add
+      if (checkEntry(e).length || p.type.toLowerCase() === "article") needs.push({ key, p });
+      continue;
+    }
+    if (/^10\.48550\//.test(doi)) continue;
+    if (checkEntry(e).length || (fmt.journal !== "asis" && fHas(p, "journal") && !journalForms(fGet(p, "journal"), doi).known)) needs.push({ doi });
+  }
+  if (!needs.length && !local.size) return setStatus("Nothing to look up: no flagged entries, every entry has a DOI or link, and every journal abbreviation is known.", "ok");
   state.busy = true; els.fLookup.disabled = true;
   let done = 0, failed = 0;
   const queue = [...needs];
   const worker = async () => {
     while (queue.length) {
       const n = queue.shift();
-      try { await xrefLookup(n.doi); } catch { failed++; }
+      try { if (n.doi) await xrefLookup(n.doi); else byTitle.set(n.key, await xrefSearch(n.p)); } catch { failed++; }
       done++;
       setStatus(`Looking up ${done} of ${needs.length} on Crossref…`);
     }
@@ -1301,8 +1365,8 @@ els.fLookup.onclick = async () => {
   const fresh = splitEntries(state.text);
   const tally = {}; let changed = 0;
   const updated = fresh.map(e => {
-    const doi = doiFromBib(e);
-    const info = doi && xref.get(doi);
+    const doi = doiFromBib(e), key = getKey(e);
+    const info = doi ? xref.get(doi) : local.get(key) || byTitle.get(key);
     if (!info) return e;
     const r = fillEntry(e, info);
     if (r.filled.length) { changed++; r.filled.forEach(f => { tally[f] = (tally[f] || 0) + 1; }); }
@@ -1312,7 +1376,7 @@ els.fLookup.onclick = async () => {
   const still = splitEntries(state.text).filter(e => checkEntry(e).length);
   const what = Object.entries(tally).map(([k, v]) => `${k} ×${v}`).join(", ");
   setStatus(
-    (changed ? `Filled in ${changed} entr${changed === 1 ? "y" : "ies"} (${what}).` : "Crossref had nothing new to add.")
+    (changed ? `Filled in ${changed} entr${changed === 1 ? "y" : "ies"} (${what}).` : "Nothing new to add.")
     + (failed ? ` ${failed} lookups failed.` : "")
     + (still.length ? ` ${still.length} still missing info: ${still.slice(0, 6).map(getKey).join(", ")}${still.length > 6 ? "…" : ""}.` : " Everything is complete now."),
     still.length || failed ? "warn" : "ok");
