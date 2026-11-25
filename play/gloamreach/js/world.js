@@ -24,7 +24,7 @@ export const B = {
   AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, ASH: 4, LOG: 5, LEAVES: 6, PLANKS: 7, COAL: 8, IRON: 9, COBBLE: 10, BRICK: 11,
   TORCH: 12, GLOWCAP: 13, BEDROCK: 14, CHEST: 15, MOSSY: 16, TALLGRASS: 17, CAMPFIRE: 18, CRACKED: 19, GRAVEL: 20,
   MUD: 21, DEADWOOD: 22, BONES: 23, COBWEB: 24, BARS: 25, CANDLES: 26, BANNER: 27, SLATE: 28, TOMBSTONE: 29,
-  MIRECAP: 30, BASALT: 31, EMBERVENT: 32, NOTE: 33, STALK: 34, WARDROBE: 35, THICKET: 36, SAND: 37, SALT: 38, SNOW: 39, ICE: 40, BLACKBARK: 41, MOSS: 42, GLOOMLEAF: 43, HOLLOWLOG: 44,
+  MIRECAP: 30, BASALT: 31, EMBERVENT: 32, NOTE: 33, STALK: 34, WARDROBE: 35, THICKET: 36, SAND: 37, SALT: 38, SNOW: 39, ICE: 40, BLACKBARK: 41, MOSS: 42, GLOOMLEAF: 43, HOLLOWLOG: 44, MOON: 45,
 };
 
 export const BLOCKS = [];
@@ -44,6 +44,7 @@ def(11, { name: 'Weathered Ashlar', tex: ['ashlar', 'ashlar', 'ashlar'], hard: 2
 def(12, { name: 'Torch', tex: ['torch', 'torch', 'torch'], solid: false, opaque: false, light: 14, render: 'cross', hard: 0.05 });
 def(13, { name: 'Glowcap', tex: ['glowcap', 'glowcap', 'glowcap'], solid: false, opaque: false, light: 7, render: 'cross', hard: 0.05 });
 def(14, { name: 'Bedrock', tex: ['bedrock', 'bedrock', 'bedrock'], hard: Infinity, drop: null });
+def(45, { name: 'The Swallowed Moon', tex: ['snow', 'snow', 'snow'], light: 15, hard: Infinity, drop: null });
 def(15, { name: 'Old Chest', tex: ['chest_top', 'chest_side', 'chest_top'], hard: 2.5, drop: 'b7' });
 def(16, { name: 'Mossy Ashlar', tex: ['mossy', 'mossy', 'mossy'], hard: 2.8, drop: 'b11' });
 def(17, { name: 'Dry Grass', tex: ['tallgrass', 'tallgrass', 'tallgrass'], solid: false, opaque: false, render: 'cross', hard: 0, drop: null });
@@ -507,6 +508,7 @@ export class World {
         }
       }
     }
+    this.deepPass();
     // the written remains of the Concord, each set down where its writer would have been
     this.notes = new Map();
     for (const [id, x, z, yh] of notePlaces(this)) {
@@ -647,6 +649,52 @@ export class World {
     return { x: cx, y: base + 1, z: cz };
   }
   // somewhere to go to ground in every stretch of open country: thorn brakes, and here and there a ruined shed with its cupboard still standing
+  // the Gloam Below: under Vharrow's courtyard well, a stair winds down into a cavern where the moon is held.
+  // Built last and with its own hash (no shared random stream), so everything else generates exactly as before.
+  deepPass() {
+    const h = (x, y, z) => { let n = (x * 374761393 + y * 668265263 + z * 2147483647) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+    const WX = 102, WZ = 158, TOP = this.castle.G - 1, FL = 5; // the stair starts right under the courtyard well's mouth
+    const CX = 117, CZ = 161, CY = 13, RX = 17, RZ = 13, RY = 9;
+    // the cavern: a low dome, its floor black with still Gloam
+    for (let y = FL; y <= CY + RY; y++) for (let z = CZ - RZ - 2; z <= CZ + RZ + 2; z++) for (let x = CX - RX - 2; x <= CX + RX + 2; x++) {
+      const dx = (x - CX) / RX, dz = (z - CZ) / RZ, dy = y > CY ? (y - CY) / RY : 0, wob = (h(x, 0, z) - 0.5) * 0.12;
+      const d = dx * dx + dz * dz + dy * dy;
+      if (d < 1 + wob) {
+        if (y === FL) this.raw(x, y, z, h(x, 1, z) < 0.45 + 0.4 * (1 - d) ? B.ICE : B.BASALT);
+        else this.raw(x, y, z, B.AIR);
+      } else if (d < 1.25 && y > FL && this.get(x, y, z) !== B.AIR) this.raw(x, y, z, h(x, y, z) < 0.3 ? B.BASALT : B.STONE);
+    }
+    for (let z = CZ - RZ; z <= CZ + RZ; z++) for (let x = CX - RX; x <= CX + RX; x++) {
+      if (this.get(x, FL + 1, z) !== B.AIR || this.get(x, FL, z) === B.AIR) continue;
+      const r = h(x, 2, z);
+      if (r < 0.03) this.raw(x, FL + 1, z, B.BONES); else if (r < 0.045) this.raw(x, FL + 1, z, B.COBWEB);
+    }
+    // the stair: a shaft from the bottom of the well, a stone newel, and steps winding down around it
+    for (let y = FL + 1; y <= TOP; y++) for (let dz = -4; dz <= 4; dz++) for (let dx = -4; dx <= 4; dx++) {
+      const r = Math.hypot(dx, dz), x = WX + dx, z = WZ + dz;
+      if (r <= 0.75) this.raw(x, y, z, B.BRICK);
+      else if (r <= 3.1) {
+        const a = (Math.atan2(dz, dx) / (Math.PI * 2) + 1) % 1, step = ((TOP - y) / 10) % 1;
+        const da = Math.abs(((a - step) % 1 + 1.5) % 1 - 0.5);
+        this.raw(x, y, z, da < 0.07 ? (h(x, y, z) < 0.2 ? B.CRACKED : B.BRICK) : B.AIR);
+      } else if (r <= 4.2 && this.get(x, y, z) !== B.AIR) this.raw(x, y, z, h(x, y, z) < 0.25 ? B.MOSSY : B.BRICK);
+    }
+    // a way through from the foot of the stair into the cavern
+    for (let x = WX; x <= CX - RX + 3; x++) for (let z = WZ - 1; z <= WZ + 2; z++) for (let y = FL + 1; y <= FL + 4; y++) this.raw(x, y, z, B.AIR);
+    for (let x = WX; x <= CX - RX + 3; x++) for (let z = WZ - 1; z <= WZ + 2; z++) if (this.get(x, FL, z) === B.AIR) this.raw(x, FL, z, B.BASALT);
+    // the moon, held in a cage of black roots that hang from the roof
+    const MY = CY - 1;
+    for (let y = MY - 3; y <= MY + 3; y++) for (let z = CZ - 3; z <= CZ + 3; z++) for (let x = CX - 3; x <= CX + 3; x++) if (Math.hypot(x - CX, y - MY, z - CZ) < 2.6) this.raw(x, y, z, B.MOON);
+    for (let k = 0; k < 10; k++) {
+      const a = k / 10 * Math.PI * 2;
+      for (let y = MY - 1; y <= CY + RY + 1; y++) {
+        const r = 3 + (y - MY) * 0.55, x = Math.round(CX + Math.cos(a) * r), z = Math.round(CZ + Math.sin(a) * r);
+        if (this.get(x, y, z) === B.AIR) this.raw(x, y, z, B.BLACKBARK);
+      }
+    }
+    for (let x = CX - 1; x <= CX + 1; x++) for (let z = CZ - 1; z <= CZ + 1; z++) for (let y = FL + 1; y <= MY - 3; y++) if (Math.hypot(x - CX, z - CZ) < 1.2) this.raw(x, y, z, B.BLACKBARK);
+    this.deep = { x: CX, z: CZ, y: FL + 1, moon: { x: CX, y: MY, z: CZ }, well: { x: WX + 0.5, y: this.castle.G + 1, z: WZ + 0.5 }, stairFoot: { x: WX + 4.5, y: FL + 1, z: WZ + 0.5 }, x0: CX - RX - 3, x1: CX + RX + 3, z0: CZ - RZ - 3, z1: CZ + RZ + 3 };
+  }
   hidePass(skip) {
     let h = 0;
     const r = () => { h = Math.imul(h ^ (h >>> 15), 2246822519); h = Math.imul(h ^ (h >>> 13), 3266489917); return ((h ^= h >>> 16) >>> 0) / 4294967296; };

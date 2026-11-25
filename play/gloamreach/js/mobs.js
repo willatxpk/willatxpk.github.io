@@ -32,6 +32,8 @@ const HUMANS = {
   taker: { skin: 0x8c877c, tunic: 0x7a7468, pants: 0x3e3a34, boots: 0x6a665c, gloves: 0x7e796e, bald: true, belt: false, wide: 1.5, thin: 1.0, tall: 1.12, longArms: 1.95, hunch: 0.6, armBase: -0.05,
     gaunt: true, bone: 0xb4ac98, jawOpen: 1.1, teeth: true, cloak: 0x161210, rags: 0x26221c, grime: 1, gore: 0.8, twitch: true, eyes: 0xdfe8ff, eyeK: 3.4, sleeves: false,
     taker: true, scale: 2.5, stride: 0.42, giant: true },
+  // what lies under the light: a black, many-eyed giant shaped like the people it kept, moonlight leaking from its eyes
+  gloam: { skin: 0x0b0a0d, tunic: 0x0b0a0d, pants: 0x0b0a0d, boots: 0x0b0a0d, gloves: 0x0b0a0d, bald: true, belt: false, sockets: true, thin: 0.8, tall: 1.5, longArms: 1.9, hunch: 0.4, armBase: -0.1, jawOpen: 1.5, gaunt: true, bone: 0x1a181c, cloak: 0x050407, grime: 0.2, gore: 0.3, twitch: true, eyes: 0xcfe0ff, eyeK: 4 },
   watcher: { skin: 0xd9d5cc, tunic: 0xd9d5cc, pants: 0xd9d5cc, boots: 0xd9d5cc, gloves: 0xd9d5cc, bald: true, belt: false, sockets: true, thin: 0.66, tall: 1.45, longArms: 1.55, hunch: 0.08, armBase: 0.05, jawOpen: 1.4, gaunt: true, bone: 0xc8c4ba, grime: 0.25, gore: 0.15 },
 };
 
@@ -60,10 +62,11 @@ export const MOB_TYPES = {
   // the star-monks of the Rimewatch, frozen through and still keeping the vigil
   // the hunter that hunts hunters: for a long time you cannot fight it. Run, break its sight, and hide until it goes
   taker: { name: 'Lantern-Taker', hpDice: [20, 10, 120], ac: 16, atk: 8, dmg: [3, 10, 8], speed: 5.0, sense: 26, size: [0.9, 1.95], xp: 900, cd: 1.9, reach: 3.6, wind: 0.8, charge: 1.2, noBurn: true, giant: true },
+  gloam: { name: 'The Gloam Below', hpDice: [20, 10, 150], ac: 17, atk: 9, dmg: [3, 10, 8], speed: 3.6, sense: 60, size: [1.0, 2.8], xp: 3000, cd: 1.6, reach: 3.2, wind: 0.75, charge: 1.4, noBurn: true, boss: true },
   rimed: { name: 'Rime-Kept', hpDice: [4, 8, 5], ac: 14, atk: 6, dmg: [1, 8, 3], speed: 5.0, sense: 18, size: [0.6, 1.95], xp: 170, cd: 1.2, reach: 1.9, wind: 0.45, charge: 1.8, noBurn: true },
 };
 // the old magic, still in them: what escapes when they die
-export const ACCURSED = new Set(['ghoul', 'crawler', 'watcher', 'knight', 'king', 'wendigo', 'mirekin', 'cinder', 'barkkin', 'drowned', 'rimed', 'taker']);
+export const ACCURSED = new Set(['ghoul', 'crawler', 'watcher', 'knight', 'king', 'wendigo', 'mirekin', 'cinder', 'barkkin', 'drowned', 'rimed', 'taker', 'gloam']);
 
 // a short path around walls, ruins and cliffs when the straight line is blocked: breadth-first over standable columns
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];

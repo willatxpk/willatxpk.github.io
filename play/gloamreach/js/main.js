@@ -234,8 +234,15 @@ const QUESTS = [
   { act: 'frost', text: 'Reach the abbey and read the Abbot’s confession on the lectern', at: () => notePos('frost2'), done: () => S.notesRead?.includes('frost2') },
   { act: 'frost', boss: 'abbot', text: 'The Abbot Under Snow keeps his vigil. End it, or return him to the morning', at: () => bossAt('abbot'), done: () => S.flags.boss_abbot },
   // ---- Act XII: the Gloam Below — the endless hunt
-  { act: 'deep', text: 'Go home and tell Maren what waits past the Wall. Then, at her colony projects, turn the Beacon down: Deepen the Gloam', at: () => npcAt('maren'), done: () => (S.tier || 0) >= 1 },
-  { act: 'deep', text: 'Hunt ever deeper. Reach level 400', done: () => S.level >= 400 },
+  { act: 'deep', text: 'Every land the Gloam kept has told you its grief. Go home and tell Brother Aldric what you found', at: () => npcAt('aldric'), done: () => S.flags.deepTold,
+    talk: { npc: 'aldric', flag: 'deepTold', gift: { healing: 3 }, say: 'Gardeners, sailors, monks waiting for the moon. All of them kept, all of them still doing the last thing they loved. Hunter, I have been reading the hymnal fragments again, the ones about the wells. The Lumen rose through them, and the deepest was the Lord’s own, in Vharrow’s courtyard. When the light began to fail, that is where he went with his cup, and that is where he drank the dark. The Gloam is not a sickness. It is something that lives beneath the light, and it swallowed the moon to keep itself fed. The astronomer saw it go. If there is an end to this curse, it is at the bottom of that well. Go down. End it. And hunter: it kneels like all the rest of them, I think. What you do then is yours to choose.' } },
+  { act: 'deep', text: 'Climb down the dry well in Vharrow’s courtyard. A stair winds into the dark beneath it', at: () => world.deep && (P.pos.y > world.castle.G - 2 ? world.deep.well : world.deep.stairFoot), done: () => S.flags.inDeep },
+  { act: 'deep', text: 'Read what the Lord of Vharrow left at the foot of the stair', at: () => notePos('deep'), done: () => S.notesRead?.includes('deep') },
+  { act: 'deep', boss: 'gloam', text: 'The moon is held in the dark at the bottom of the world. End the Gloam: strike it down, or give it the Rite when it kneels', at: () => bossAt('gloam'), done: () => S.flags.boss_gloam },
+  { act: 'deep', text: 'There is a moon over the land again. Go home to the Landing and tell Maren', at: () => npcAt('maren'), done: () => S.flags.finaleTold,
+    talk: { npc: 'maren', flag: 'finaleTold', gift: { gold: 500 }, say: () => (S.flags.endReturned
+      ? 'They have been walking in all day. Out of the mire, down off the mountain, up from the salt. Thin and frightened and asking what year it is. We have run out of blankets twice. ' : 'They lay down where they stood, Wen says. All across the land, at the same moment, as if somebody had finally told them they could rest. We are burying who we can. ') + 'Hunter, look up. There is a moon. The children have never seen one; they think you hung it there. I am not going to tell them otherwise. The Company will send its ships now, and I will tell them what this land cost, and who paid it. Stay as long as you like. This is your home too.' } },
+  { act: 'deep', text: 'The curse is lifted. Walk the freed land as long as you like', done: () => false },
 ];
 const KING_STEP = QUESTS.findIndex(q => q.boss === 'king');
 // ---- the act bosses: each a person of the old kingdom (or of ours) the Gloam made into something else
@@ -258,6 +265,8 @@ const BOSSES = {
     at: () => world.wrecks?.[0] && { x: world.wrecks[0].x + 0.5, y: world.topSolid(world.wrecks[0].x, world.wrecks[0].z + 6) + 1, z: world.wrecks[0].z + 6.5 } },
   abbot: { type: 'rimed', name: 'The Abbot Under Snow', sub: 'He kept the vigil for the moon. He keeps it still.', scale: 1.5, lvl: 142, hp: 6, r: 16, wild: true, drops: [['rimeglaive', 1]],
     at: () => world.monastery && { x: world.monastery.x + 0.5, y: world.monastery.y, z: world.monastery.z + 0.5 } },
+  gloam: { type: 'gloam', name: 'The Gloam Below', sub: 'It swallowed the moon. It has been hungry for two hundred years.', scale: 2.1, lvl: 160, hp: 7, r: 15,
+    at: () => world.deep && { x: world.deep.x + 0.5, y: world.deep.y, z: world.deep.z - 7.5 } },
   astronomer: { type: 'watcher', name: 'The Pale Astronomer', sub: 'He is only looking for the moon. He is only looking at you.', scale: 1.25, lvl: 110, hp: 6, r: 22, night: true,
     at: () => { const p = notePos('barrens2'); return p && { x: p.x, y: world.topSolid(Math.floor(p.x), Math.floor(p.z - 10)) + 1, z: p.z - 10 }; } },
 };
@@ -363,6 +372,13 @@ const starGeo = new THREE.BufferGeometry();
 }
 const starMat = new THREE.PointsMaterial({ color: 0xc8d0ff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false });
 const stars = new THREE.Points(starGeo, starMat); stars.frustumCulled = false; scene.add(stars);
+// the moon: gone for two hundred years, until the curse is lifted
+const moonMat = new THREE.SpriteMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(64, 64, 20, 64, 64, 64); gr.addColorStop(0, 'rgba(230,236,255,.35)'); gr.addColorStop(1, 'rgba(230,236,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = '#e6ebf5'; g.beginPath(); g.arc(64, 64, 26, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(150,160,180,.45)'; for (const [x, y, r] of [[56, 58, 7], [72, 70, 5], [66, 52, 4], [54, 74, 3]]) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })(), transparent: true, depthWrite: false, fog: false });
+const moon = new THREE.Sprite(moonMat); moon.scale.set(34, 34, 1); moon.visible = false; moon.renderOrder = -1; scene.add(moon);
 
 // drifting ash
 const ASH_N = 700, ashGeo = new THREE.BufferGeometry(), ashPos = new Float32Array(ASH_N * 3);
@@ -1019,7 +1035,7 @@ const PROJECTS = {
   beacon: { name: 'The Lumen Beacon', need: { lumencore: 1, shard: 8, gold: 100 }, needs: ['palisade'], desc: 'Set the Lumen Core burning at the heart of the Landing. No raid will ever come again, and nothing accursed walks within 70 blocks. Emberfall becomes a colony.' },
 };
 function renderColony() {
-  const tierBtn = S.flags.boss_astronomer && S.colony.built.beacon ? `<div class="recipe"><div class="nm"><b>Deepen the Gloam</b> — tier ${S.tier || 0} → ${(S.tier || 0) + 1}<div class="need">Turn the Beacon down into the dark beneath the Lumen. Every creature in the land rises by 40 levels, and pays in kind. There is no going back.</div></div><button data-tier="1">Deepen</button></div>` : '';
+  const tierBtn = S.flags.boss_astronomer && S.colony.built.beacon && !S.flags.curseLifted ? `<div class="recipe"><div class="nm"><b>Deepen the Gloam</b> — tier ${S.tier || 0} → ${(S.tier || 0) + 1}<div class="need">Turn the Beacon down into the dark beneath the Lumen. Every creature in the land rises by 40 levels, and pays in kind. There is no going back.</div></div><button data-tier="1">Deepen</button></div>` : '';
   setTimeout(() => { const tb = $('talkShop').querySelector('button[data-tier]'); if (tb) tb.onclick = () => { S.tier = (S.tier || 0) + 1; msg(`Gloam tier ${S.tier}`, 'The dark beneath the light stirs. Everything out there is stronger now.', 6); snd.stinger(); renderColony(); }; }, 0);
   $('talkText').innerHTML = `“Every stone we raise is a night we sleep. Bring what's needed and the colonists will build it.” <span class="dim">Emberfall: <b>${colonyRank()}</b></span>`;
   $('talkShop').innerHTML = `<div class="col">${Object.entries(PROJECTS).map(([id, p]) => {
@@ -1096,7 +1112,7 @@ function updateRaid(dt) {
   if (S.colony?.built?.beacon || S.day < 2) return;
   const raidNight = S.day % 3 === 0 || (S.day >= 6 && S.day % 2 === 0);
   if (S.colony.built.watchtower && raidNight && prevT < 0.5 && S.time >= 0.5 && !S.raidWarned) { S.raidWarned = true; msg('The watch calls out', 'Shapes on the north road. They will come for the Landing tonight.', 5); }
-  if (raidNight && !S.raid?.active && S.raid?.day !== S.day && S.time > 0.66 && S.time < 0.9) startRaid();
+  if (raidNight && !S.flags.curseLifted && !S.raid?.active && S.raid?.day !== S.day && S.time > 0.66 && S.time < 0.9) startRaid();
   if (S.raid?.active) {
     // march on the fire — through a gate, if the wall is up
     const c = camp();
@@ -1907,6 +1923,20 @@ function travelTo(f) {
     saveGame();
   }, 900);
 }
+// ---- the end of the curse
+function endCurse(returned) {
+  S.flags.curseLifted = true; S.flags.endReturned = !!returned; S.tier = 0;
+  boss = null; hunter = null;
+  if (S.raid?.active) endRaid(true);
+  // the moon leaves its cage
+  const mo = world.deep?.moon;
+  if (mo) for (let y = mo.y - 3; y <= mo.y + 3; y++) for (let z = mo.z - 3; z <= mo.z + 3; z++) for (let x = mo.x - 3; x <= mo.x + 3; x++) if (world.get(x, y, z) === B.MOON) setBlock(x, y, z, B.AIR);
+  for (const o of mobs.slice()) if (!o.dead && ACCURSED.has(o.type)) G.mobVanish(o, returned ? 'kneels, and is a person again' : 'lies down, and is still');
+  fadeFlash(600); snd.levelup();
+  msg('The curse is lifted', returned ? 'It gives back the moon, and every one of the kept wakes as themselves.' : 'It dies, and the moon rises up the well like a held breath let go.', 9);
+  setTimeout(() => { if (ui === 'none') openNote('ending', true); else journalEntry('ending'); }, 6000);
+  saveGame();
+}
 function restAtFire(t) {
   const night = sunNow < 0.35;
   S.spawnPt = { x: P.pos.x, y: P.pos.y, z: P.pos.z };
@@ -2107,7 +2137,8 @@ function killMob(m, restored = false) {
     const Bd = BOSSES[m.bossId]; S.flags['boss_' + m.bossId] = true;
     for (const [k, n] of Bd.drops || []) addItem(k, n);
     if (Bd.item && !count(Bd.item)) addItem(Bd.item);
-    if (m.bossId !== 'king') { if (restored) msg(`${Bd.name} is returned`, 'For a moment, a person kneels where the monster stood.', 6); else msg(`${Bd.name} falls`, 'Something bright escapes it, like breath on a cold morning.', 6); snd.levelup(); fadeFlash(250); }
+    if (m.bossId === 'gloam') endCurse(restored);
+    else if (m.bossId !== 'king') { if (restored) msg(`${Bd.name} is returned`, 'For a moment, a person kneels where the monster stood.', 6); else msg(`${Bd.name} falls`, 'Something bright escapes it, like breath on a cold morning.', 6); snd.levelup(); fadeFlash(250); }
     if (m.bossId === 'astronomer') hint('tier', 'With the Astronomer gone, the <b>Beacon</b> can be turned down into the Gloam itself. Ask Maren about <b>Deepening the Gloam</b>: everything grows stronger — and so do you.', 14);
     boss = null; bossId = null;
   }
@@ -2336,7 +2367,9 @@ function updateSpawns(dt) {
       if (colonySafe(x, z)) continue;
       if (Math.hypot(x - P.pos.x, y - P.pos.y, z - P.pos.z) < 12) continue;
       const under = y < top - 3;
-      const sm = spawnMob(regionalType(x, under, night), x + 0.5, y, z + 0.5);
+      const ty = regionalType(x, under, night);
+      if (S.flags.curseLifted && ACCURSED.has(ty)) break; // the freed land: nothing kept walks it any more
+      const sm = spawnMob(ty, x + 0.5, y, z + 0.5);
       if (sm.type === 'ghoul' && Math.random() < 0.35) sm.dormant = true;
       break;
     }
@@ -2361,7 +2394,7 @@ function updateSpawns(dt) {
     }
   }
   // the Pale Watcher: later nights, once per night
-  if (night && S.day >= 2 && S.time > 0.66 && S.time < 0.94 && !S.watcherTonight && !mobs.some(m => m.type === 'watcher') && Math.random() < 0.08) {
+  if (night && !S.flags.curseLifted && S.day >= 2 && S.time > 0.66 && S.time < 0.94 && !S.watcherTonight && !mobs.some(m => m.type === 'watcher') && Math.random() < 0.08) {
     for (let a = 0; a < 12; a++) {
       const ang = yaw + (Math.random() - 0.5) * 1.6, r = 20 + Math.random() * 10; // behind the player
       const x = P.pos.x + Math.sin(ang) * r, z = P.pos.z + Math.cos(ang) * r;
@@ -2386,6 +2419,7 @@ function updatePosts(dt) {
   const posts = world.posts || [];
   for (let i = 0; i < posts.length; i++) {
     if (S.postsDead[i]) continue;
+    if (S.flags.curseLifted && ACCURSED.has(posts[i].type)) continue;
     const pm = postMob[i];
     if (pm && !pm.dead) continue;
     const p = posts[i];
@@ -2734,7 +2768,7 @@ function updateHunt(dt) {
   const night = sunNow < 0.35, safe = colonySafe(P.pos.x, P.pos.z);
   tenseK = Math.max(0, tenseK - dt * 0.2);
   if (!hunter) {
-    if (safe || !(S.flags.villageDone || S.day >= 2) || ui === 'resting' || boss || S.raid?.active || hideSpot) return;
+    if (safe || S.flags.curseLifted || !(S.flags.villageDone || S.day >= 2) || ui === 'resting' || boss || S.raid?.active || hideSpot) return;
     huntT -= dt * (night ? 1 : 0.6) * (night && isWhisperNight() ? 1.5 : 1);
     if (huntT > 0) return;
     huntT = 12; // no spot this time: try again soon
@@ -2913,6 +2947,7 @@ function riteOfReturn() {
   restoreMob(m);
 }
 function restoreMob(m) {
+  if (m.bossId === 'gloam') { snd.rite(); fadeFlash(400); log('☀ <b>The Rite of Return.</b> You give it the light, and it gives back everything it ever swallowed.', 'lore'); killMob(m, true); return; }
   snd.rite(); fadeFlash(220);
   const R = RETURNED[m.type] || RETURNED.ghoul;
   const work = R.w[Math.floor(Math.random() * R.w.length)];
@@ -2993,8 +3028,8 @@ function update(dt) {
     snd.whisper(-0.6, 0.6);
     hint('dusk', 'Night is falling, and it will be <b>pitch black</b>.<br><b>F</b> lights your lantern, but at night <b>any light you carry draws the Gloam-kept from far away</b>. Night vision is safer. The bonfire at Emberfall is safe: <b>right-click</b> it to rest until dawn.', 15);
   }
-  if (prevT < 0.585 && t >= 0.585) { msg('Night', 'There is no moon. There is no light but yours.'); S.sawNight = true; snd.growl(0, 0.5); }
-  if (prevT < 0.985 && t >= 0.985) msg('Dawn', 'The Gloam-kept flee the sun, into shade and under the earth. They still hunt from there.');
+  if (prevT < 0.585 && t >= 0.585) { msg('Night', S.flags.curseLifted ? 'The moon is up.' : 'There is no moon. There is no light but yours.'); S.sawNight = true; snd.growl(0, 0.5); }
+  if (prevT < 0.985 && t >= 0.985) msg('Dawn', S.flags.curseLifted ? 'Another morning in the freed land.' : 'The Gloam-kept flee the sun, into shade and under the earth. They still hunt from there.');
   prevT = t;
 
   // ---- player movement
@@ -3033,6 +3068,7 @@ function update(dt) {
     S.flags.catacombs = true; msg('The Catacombs', 'The air is old here. Something breathes in the dark.', 4.5); snd.whisper(0, 1);
   }
   if (P.pos.y < -10) { P.pos.set(S.spawnPt.x, S.spawnPt.y, S.spawnPt.z); P.vel.set(0, 0, 0); }
+  if (!S.flags.inDeep && world.deep && P.pos.y < world.castle.G - 16 && P.pos.x > world.deep.x0 - 16 && P.pos.x < world.deep.x1 && P.pos.z > world.deep.z0 && P.pos.z < world.deep.z1) { S.flags.inDeep = true; msg('The Gloam Below', S.flags.curseLifted ? 'Only stone and still water now.' : 'There is a light down here. Pale, and caged.', 5); snd.whisper(0, 1); }
   { const K = world.castle; if (!S.flags.inCastle && P.pos.z < K.z1 - 1 && P.pos.z > K.z0 && P.pos.x > K.x0 && P.pos.x < K.x1 && P.pos.y > K.G - 2) { S.flags.inCastle = true; msg('Vharrow', 'The castle that swallowed the moon.', 4.5); snd.whisper(0, 0.8); } }
 
   const bob = P.onGround ? Math.sin(performance.now() / 120) * 0.035 * Math.min(1, Math.hypot(P.vel.x, P.vel.z) / 4) : 0;
@@ -3300,6 +3336,10 @@ function updateBoss() {
     if (at && (!Bd.night || sunNow < 0.35) && Math.hypot(P.pos.x - at.x, P.pos.z - at.z) < Bd.r && Math.abs(P.pos.y - at.y) < 7) spawnBoss(id, at);
   }
   if (boss) {
+    if (bossId === 'gloam' && !boss.summoned && boss.hp < boss.maxHp * 0.5) {
+      boss.summoned = true; log('The black pools stir. Shapes climb out of them, the way they climbed out of the Lord’s cup.', 'lore'); snd.stinger();
+      for (const [dx, dz, t] of [[-6, 3, 'ghoul'], [6, 3, 'crawler'], [-4, -5, 'crawler'], [4, -5, 'ghoul']]) spawnMob(t, boss.pos.x + dx, world.deep.y, boss.pos.z + dz, boss.lvl - 25).aware = true;
+    }
     if (bossId === 'king' && !boss.summoned && boss.hp < boss.maxHp * 0.5) {
       boss.summoned = true; log('The Hollow King raises his blade. The dead answer.', 'lore'); snd.stinger();
       for (const dx of [-5, 5]) spawnMob('ghoul', boss.pos.x + dx, boss.pos.y, boss.pos.z + 7, boss.lvl - 10).aware = true;
@@ -3390,6 +3430,10 @@ function updateVisuals(dt) {
   U.uSunCol.value.set(...lerp3([1.75, 1.55, 1.25], [1.8, 0.7, 0.3], dk).map(c => c * s));
   U.uSkyCol.value.set(...lerp3([0.24, 0.27, 0.32], [0.26, 0.17, 0.17], dk).map(c => c * s));
   U.uGroundCol.value.set(0.08 * s, 0.07 * s, 0.06 * s);
+  const moonK = S.flags?.curseLifted ? clamp((0.3 - s) / 0.3, 0, 1) : 0;
+  if (moonK > 0) { const sc = U.uSkyCol.value; sc.set(sc.x + 0.05 * moonK, sc.y + 0.06 * moonK, sc.z + 0.09 * moonK); }
+  moon.visible = moonK > 0.01; moonMat.opacity = moonK;
+  if (moon.visible) { const ph = ((S.time - 0.55 + 1) % 1) / 0.5, ma = clamp(ph, 0, 1) * Math.PI; moon.position.set(eye.x - Math.cos(ma) * 220, eye.y + Math.sin(ma) * 150 + 30, eye.z - 90); }
   U.uCam.value.copy(eye);
   const rx = Math.cos(yaw), rz = -Math.sin(yaw);
   U.uLampPos.value.set(eye.x - rx * 0.35 + look.x * 0.3, eye.y - 0.3 + look.y * 0.3, eye.z - rz * 0.35 + look.z * 0.3);
@@ -3651,4 +3695,4 @@ window.__gr = {
   get target() { return target; }, get npcs() { return npcs; }, get crows() { return crows; }, get targetNpc() { return targetNpc; }, openTalk, get talkActs() { return talkActs; }, questReady, get targetMob() { return targetMob; }, craft: i => craft(RECIPES[i]), RECIPES, playerAttack, get dread() { return S.dread; },
   get wp2() { return wp2Target; }, acceptQuest, get bolts() { return bolts; }, castSpell, buildProject, startRaid, openMap, openNote, get look() { return look; }, get eye() { return eye; }, get S() { return S; }, get world() { return world; }, get mobs() { return mobs; }, P, setLook(y, p) { yaw = y; pitch = p; }, spawnMob, MOB_TYPES, U, keys, mouse, useAction, setTime(t) { S.time = t; prevT = t; },
   guard(on) { guarding = on; if (on) guardAt = gameT; }, dodge, quaff, addItem, equip, openPanel, swapWeapon, useBelt, QUESTS, get wp() { return wpTarget; }, get boss() { return boss; }, get yaw() { return yaw; },
-  perceive, setCrouch, enterHide, exitHide, openFire, travelTo, knownFires, riteOfReturn, breakBlock, unlockMagic, get hunter() { return hunter; }, set huntT(v) { huntT = v; }, get hideSpot() { return hideSpot; }, get crouch() { return crouch; }, get inCover() { return inCover; }, get returned() { return returned; }, setSun(v) { sunNow = v; }, snd };
+  perceive, setCrouch, enterHide, exitHide, openFire, travelTo, knownFires, riteOfReturn, breakBlock, unlockMagic, get hunter() { return hunter; }, set huntT(v) { huntT = v; }, get hideSpot() { return hideSpot; }, get crouch() { return crouch; }, get inCover() { return inCover; }, get returned() { return returned; }, setSun(v) { sunNow = v; }, snd, get moon() { return moon; }, get eye() { return eye; } };

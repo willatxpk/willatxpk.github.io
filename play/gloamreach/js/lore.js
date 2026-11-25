@@ -195,6 +195,31 @@ Tonight the Beacon burns at the heart of Emberfall, and nothing that walks in th
 Send ships. Send lamps. Send hunters, too — but tell them what they are hunting. The dark beneath this land goes deeper than any of us has walked, and something down there has begun to notice us.`,
   },
 
+  deep: {
+    title: 'Scratched into the newel of the stair',
+    where: 'at the bottom of the Lord’s well',
+    text: `I am Aurel, Lord of Vharrow, and I came down here with a cup.
+
+The Lumen has been thinning for nine years. My physicians call it a season. I have read the old hymns and I know better: the light is not ours, it rises from something we were never shown, and that something is going away.
+
+But there is another current under it. Black, and cold, and very old. It spoke to me the way a well speaks when you lean over it. It said it would keep us. Not save us: keep us, every one, for as long as there was dark. It asked only for the moon, which it has wanted for longer than there have been men to look at it.
+
+I said yes. I am going up now to tell my people to drink. They will thank me. They will never be afraid of the dark again.
+
+God forgive me, I can hear it eating.`,
+  },
+  ending: {
+    title: 'The last page of your journal', mine: true, where: 'written by moonlight',
+    text: S => `It is done.
+
+${S?.flags?.endReturned ? `When it knelt in the black water I gave it the Rite, the same as all the others. I do not know what I expected. It did not become a person. It became light, all of it at once, every cup the Concord ever drank, and it went up the well and took the moon with it. When I climbed out, the courtyard was full of people sitting in the moonlight, holding their own hands, looking at them.` : `When it knelt in the black water I put my blade through it. It made no sound. The moon came up out of its cage and rose through the well like a held breath let go, and I climbed after it. The courtyard was full of the kept, lying down in the moonlight as if they had only been waiting for permission. Aldric says they were tired. I have decided to believe him.`}
+
+${n(S, 'mercy')} returned with the Rite along the way; ${n(S, 'saved')} of those lived. ${n(S, 'slain')} killed. ${S?.flags?.wyllRestored ? 'Wyll came home.' : 'Wyll did not come home.'} ${S?.flags?.kingRestored ? 'The Lord of Vharrow knelt and asked to be forgiven.' : 'The Lord of Vharrow died on his throne.'} I carry every one of those numbers. I think I always will.
+
+The Gloam is gone from the land. The wells are only wells. Tonight there is a moon over Emberfall, and the children of the Lantern Company are seeing it for the first time.
+
+I was hired to hunt monsters. There were never any monsters. There were only people, and the dark that kept them, and a man who was afraid.`,
+  },
   // ---- the hunter's own journal, one entry per chapter
   hj_vale: {
     title: 'Hunter\'s journal: the second day', mine: true, where: 'your own journal',
@@ -310,6 +335,7 @@ export function notePlaces(world) {
     ['barrens1', 378, 126, null], ['barrens2', 420, 196, null], ['beacon', 396, 60, null],
     ['wood1', 486, 98, null], ['wood2', 528, 172, null],
     ['salt1', (world.wrecks?.[0]?.x ?? 580) + 4, (world.wrecks?.[0]?.z ?? 70) + 3, null], ['salt2', 634, 200, null],
+    ['deep', world.deep ? Math.floor(world.deep.stairFoot.x) + 2 : 106, world.deep ? Math.floor(world.deep.stairFoot.z) : 158, world.deep?.y ?? null],
     ['frost1', 690, 160, null], ['frost2', (world.monastery?.x ?? 712) - 6, (world.monastery?.z ?? 120) - 3, world.monastery?.y ?? null],
   ];
 }
