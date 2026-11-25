@@ -7,7 +7,7 @@ import {
 } from './sim.js';
 import { MAIL_ACTIONS, EXT } from './events.js';
 import { QUALITY, setQuality } from './gfx.js';
-import { sayTo, judgeRemark, AI, aiStatus } from './say.js';
+import { sayTo, judgeRemark, AI, aiStatus, aiDownMsg } from './say.js';
 import { interestText, fitScore } from './career.js';
 const fitTag = (p, pr) => { const f = fitScore(p, pr); return f >= 1.5 ? '💚 dream fit' : f >= 1 ? '✓ in their area' : '✗ not their interest'; };
 const interestBlock = p => { const t = interestText(p); return `<div style="font-size:12px;margin-top:8px">🧭 <b>Wants to work on</b> ${esc(t.plats)}${t.goal ? `, toward <b>${esc(t.goal)}</b>` : ''} · prefers ${esc(t.style)}. Dream: ${esc(t.dream)}.</div>`; };
@@ -564,7 +564,7 @@ const APP_BIND = {
     b.querySelector('#sAiModel').onchange = e => { AI.model = e.target.value.trim() || 'qwen2.5:3b'; };
     b.querySelector('#sAiModel').onkeydown = e => e.stopPropagation();
     b.querySelector('#sAiGpu').onchange = e => { AI.gpu = e.target.checked; };
-    b.querySelector('#sAiTest').onclick = async () => { const s = b.querySelector('#sAiStat'); s.textContent = 'Checking…'; const r = await aiStatus(); s.textContent = !r.ok ? '❌ Ollama is not running' : r.models.includes(AI.model) ? `✅ Connected, ${AI.model} is installed` : `⚠️ Connected, but ${AI.model} isn't installed. Installed: ${r.models.join(', ') || 'none'}`; };
+    b.querySelector('#sAiTest').onclick = async () => { const s = b.querySelector('#sAiStat'); s.textContent = 'Checking…'; const r = await aiStatus(); s.textContent = !r.ok ? '❌ ' + aiDownMsg() : r.models.includes(AI.model) ? `✅ Connected, ${AI.model} is installed` : `⚠️ Connected, but ${AI.model} isn't installed. Installed: ${r.models.join(', ') || 'none'}`; };
     b.querySelector('#sNew').onclick = () => { if (confirm('Abandon this career and start over? Your save will be deleted.')) UI.onNewGame(); };
   },
 };

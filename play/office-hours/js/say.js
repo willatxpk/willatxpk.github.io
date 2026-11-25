@@ -182,9 +182,14 @@ export async function judgeAI(A, text, timeoutMs = 90000) {
 export async function judgeRemark(A, text) {
   if (AI.on) {
     try { return await judgeAI(A, text); }
-    catch (e) { const r = judgeText(text); r.aiError = e.name === 'AbortError' ? 'the local AI took too long' : 'Ollama is not running'; return r; }
+    catch (e) { const r = judgeText(text); r.aiError = e.name === 'AbortError' ? 'the local AI took too long' : aiDownMsg(); return r; }
   }
   return judgeText(text);
+}
+// a browser can't tell "Ollama is off" from "Ollama refused this website", so name both when hosted online
+const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\]|)$/.test(location.hostname);
+export function aiDownMsg() {
+  return LOCAL ? 'Ollama is not running' : `Ollama is not running, or it is blocking this website (set OLLAMA_ORIGINS=${location.origin} and restart Ollama)`;
 }
 export async function aiStatus() {
   try { const r = await fetch(`${AI.url}/api/tags`, { signal: AbortSignal.timeout(3000) }); const j = await r.json(); return { ok: true, models: j.models.map(m => m.name) }; }
