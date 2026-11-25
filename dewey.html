@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dewey Setup Guide</title>
+<meta name="description" content="How to install Dewey, the daily research-paper digest: setup wizard, Zotero import, buttons, learning topics and free local AI summaries.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body style="--accent:#3d8b6e">
+<main class="wrap guide">
+  <a class="back" href="./">← All games</a>
+  <h1>📬 Dewey setup guide</h1>
+  <p class="lede">Dewey emails you a daily digest of the new research papers that matter to you, from arXiv and your field's journals, ranked by how well they match your interests and the papers you already like. It runs on your own computer and is free.</p>
+  <p><a class="btn" href="downloads/dewey.zip" download>⬇ Download Dewey</a></p>
+
+  <div class="toc"><b>Steps</b>
+    <ol>
+      <li><a href="#install">Install it</a></li>
+      <li><a href="#setup">The setup wizard</a></li>
+      <li><a href="#daily">Your daily email</a></li>
+      <li><a href="#library">Learn from your Zotero library</a></li>
+      <li><a href="#learn">Learn a topic from the ground up</a></li>
+      <li><a href="#ai">Free AI summaries (optional)</a></li>
+      <li><a href="#tune">Tune it</a></li>
+      <li><a href="#update">Update or uninstall</a></li>
+    </ol>
+  </div>
+
+  <h2 id="install">1. Install it</h2>
+  <ol>
+    <li>Install <b>Python 3.10 or newer</b> from <a href="https://www.python.org/downloads/">python.org</a>. On Windows, tick <b>"Add python.exe to PATH"</b> in the installer.</li>
+    <li>Download <code>dewey.zip</code> above, right-click it and choose <b>Extract All</b>. Put the folder somewhere it can stay, such as <code>Documents\Dewey</code>.</li>
+    <li><b>Windows:</b> right-click <code>install_windows.ps1</code> and choose <b>Run with PowerShell</b>.<br>
+        <b>macOS / Linux:</b> open a terminal in the folder and run <code>bash install_unix.sh</code>.</li>
+  </ol>
+  <p>The installer sets up everything Dewey needs, runs the setup wizard, and makes Dewey start quietly in the background whenever you log in, so the email goes out every day.</p>
+  <div class="callout"><b>Windows warning?</b> If Windows says it can't run the script, open PowerShell in the folder and run <code>powershell -ExecutionPolicy Bypass -File .\install_windows.ps1</code>. This affects only that one run.</div>
+
+  <h2 id="setup">2. The setup wizard</h2>
+  <p>The wizard asks a few questions in the console window:</p>
+  <ol>
+    <li><b>Email.</b> Where to send the digest, and an account to send it from. For Gmail, create an <a href="https://myaccount.google.com/apppasswords">app password</a> (needs 2-step verification) and paste it when asked. It's stored only on your computer.</li>
+    <li><b>Your field:</b> physical sciences, life sciences, computing &amp; AI, or earth &amp; space. This picks suggested keywords, arXiv categories and journals.</li>
+    <li><b>Up to 20 keywords</b> from a menu, plus any of your own.</li>
+    <li><b>arXiv categories</b> to scan in full every day.</li>
+    <li><b>A short description of your research.</b> Write it like an abstract; this matters most for ranking.</li>
+    <li><b>Optional:</b> researchers to follow, a topic to learn, whether to favour experimental papers over theory, and the time to send.</li>
+    <li><b>Optional:</b> import your Zotero library or a <code>.bib</code> file (see step 4).</li>
+  </ol>
+  <p>At the end it can send a test email. Run the wizard again any time with <code>python dewey.py --setup</code>.</p>
+
+  <h2 id="daily">3. Your daily email</h2>
+  <ul>
+    <li><b>⭐ Paper of the Day:</b> the most impactful new paper in your broad field.</li>
+    <li><b>Top picks:</b> your best matches, with abstracts.</li>
+    <li><b>🔭 Blindspot:</b> five notable results from selective journals just outside your usual areas.</li>
+    <li><b>📚 Learning:</b> one foundational paper on the topic you're learning.</li>
+    <li><b>More from arXiv / journals:</b> everything else relevant, in short lists.</li>
+    <li><b>🔖 Your reading list,</b> grouped by category.</li>
+  </ul>
+  <p>Every paper has buttons: <b>✨ Summarize</b>, <b>♡ Like</b> (similar papers rank higher), <b>🔖 Read later</b> and <b>👎 Not relevant</b> (similar papers rank lower). <b>➕ Add a paper</b> lets you paste an arXiv link, DOI, journal link or title to save papers you found yourself.</p>
+  <div class="callout"><b>Buttons work on the computer running Dewey.</b> They open small pages at <b>http://localhost:8377</b>, which is also where your reading list lives. On a phone they can't reach your computer.</div>
+
+  <h2 id="library">4. Learn from your Zotero library</h2>
+  <p>Papers you already have tell Dewey what you care about from day one. In the Dewey folder, run:</p>
+  <p><code>python dewey.py --import-zotero</code></p>
+  <p>It finds your Zotero library and lets you choose which folders describe your current research (skip old projects so they don't steer the ranking). For a BibTeX file instead: <code>python dewey.py --import-bib refs.bib</code>.</p>
+  <div class="callout">On Windows, use <code>.venv\Scripts\python.exe</code> in place of <code>python</code> (or <code>.venv/bin/python</code> on macOS/Linux), so the commands use Dewey's own Python.</div>
+
+  <h2 id="learn">5. Learn a topic from the ground up</h2>
+  <p>Open <b>http://localhost:8377</b> and type any topic in the <b>📚 Learn</b> box, for example "Rydberg atom arrays" or "CRISPR base editing". Each digest then includes one of that field's most-cited papers, starting with the classics and big reviews. Put <code>"quotes"</code> around words that must appear together. Leave the box empty to turn it off.</p>
+
+  <h2 id="ai">6. Free AI summaries (optional)</h2>
+  <p>Install <a href="https://ollama.com">Ollama</a>, then in a terminal run <code>ollama pull qwen2.5:3b</code>. The <b>✨ Summarize</b> button then writes a short summary and "why it may matter to you" on your own computer, for free and privately. For arXiv papers it also reads the introduction and conclusions. Small local models can get details wrong, so treat summaries as triage.</p>
+
+  <h2 id="tune">7. Tune it</h2>
+  <p>Settings live in <code>config.json</code> in the Dewey folder: keywords (<code>topics</code>), journals, section sizes, followed authors, reading-list categories and delivery time. Useful commands:</p>
+  <ul>
+    <li><code>python dewey.py --preview</code>: build today's digest as <code>preview.html</code> without sending it.</li>
+    <li><code>python dewey.py --stats</code>: see which sections your likes and saves come from.</li>
+    <li><code>python dewey.py --test-email</code>: check your email settings.</li>
+  </ul>
+  <p>If your computer is asleep at delivery time, the digest goes out within a minute of waking (up to 12 hours late). Problems are written to <code>digest.log</code>.</p>
+
+  <h2 id="update">8. Update or uninstall</h2>
+  <p><b>Update:</b> download the new <code>dewey.zip</code> and extract it over your Dewey folder. Your settings, liked papers and reading list are kept, since they're not in the zip. Then sign out and back in, or restart the <b>Dewey digest</b> task in Task Scheduler.</p>
+  <p><b>Uninstall (Windows):</b> in PowerShell run <code>Unregister-ScheduledTask -TaskName "Dewey digest"</code>, then delete the folder. On macOS/Linux the installer printed the matching command.</p>
+</main>
+</body>
+</html>

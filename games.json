@@ -275,6 +275,35 @@
                       "hash":  "e79fb9de3b5480a1fcc3afeb00696b3a000ba83ae7b99a67c2391d5fb582a108",
                       "size":  null,
                       "type":  "app"
+                  },
+                  {
+                      "id":  "dewey",
+                      "title":  "Dewey",
+                      "tagline":  "Your daily research-paper digest, ranked for you.",
+                      "description":  "Every morning Dewey emails you the new arXiv and journal papers that matter to you, ranked by your keywords, your research description and the papers you like. Paper of the Day, a Blindspot of big results just outside your field, a daily foundational paper on any topic you want to learn, a categorised reading list, and one-click Like, Read later, Not relevant and free local AI summaries. Import your Zotero library to teach it your interests on day one.",
+                      "tags":  [
+                                   "App",
+                                   "Research",
+                                   "Email"
+                               ],
+                      "icon":  "📬",
+                      "accent":  "#3d8b6e",
+                      "source":  "../../dewey-digest",
+                      "play":  false,
+                      "download":  true,
+                      "downloadNote":  "Needs Python 3.10+ (Windows, macOS or Linux). Read the setup guide first.",
+                      "guide":  "dewey.html",
+                      "excludeDirs":  [
+                                          ".venv"
+                                      ],
+                      "excludeFiles":  [
+
+                                       ],
+                      "version":  1,
+                      "updated":  "2026-11-24",
+                      "hash":  "d9bf31e1e54f4b268e0b3457e4a5155dfea6d77386e233df1376511ed2590bc0",
+                      "size":  51962,
+                      "type":  "app"
                   }
               ]
 }
