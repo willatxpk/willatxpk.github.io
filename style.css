@@ -211,3 +211,6 @@ footer.site a:hover { color: var(--ink); text-decoration: underline; }
   .gs-head .textlink { margin-left: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .shot img, .tile img, .tile-blank { transition: none; } }
+
+/* small legal line under a project (e.g. trademark notice) */
+.p-notice{font-size:12px;color:var(--muted);margin:6px 0 0;font-style:italic}

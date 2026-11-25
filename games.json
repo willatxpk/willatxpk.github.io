@@ -170,6 +170,7 @@
                       "id":  "quiz-maze",
                       "title":  "Quiz Maze",
                       "tagline":  "Physics GRE practice disguised as a dungeon crawl.",
+                      "notice":  "Not affiliated with or endorsed by ETS. GRE is a registered trademark of ETS; the questions here are original.",
                       "description":  "Every step onto new ground costs a question. Questions you miss come back more often, and you collect physicist cards as you go. Adventure mode adds a story dungeon with a boss at the exit.",
                       "tags":  [
                                    "Quiz",

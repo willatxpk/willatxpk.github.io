@@ -1,0 +1,19 @@
+Copyright (c) 2025-2026 William Pajak. All rights reserved.
+
+The games, apps, lessons, artwork, text and code on this site and in this
+repository are the work of William Pajak unless noted otherwise.
+
+You may play the games in your browser, download them, and run them on your own
+devices for personal, non-commercial use. You may not redistribute, sell, or
+publish modified versions of them without written permission.
+
+Third-party material keeps its own license:
+  - three.js (loaded from cdn.jsdelivr.net) - MIT License, (c) three.js authors
+  - Inter, Source Serif 4, IBM Plex Mono and other Google Fonts - SIL Open Font License 1.1
+  - Comments left through Giscus belong to the people who wrote them.
+
+"GRE" is a registered trademark of ETS. This site is not affiliated with or
+endorsed by ETS, and the Quiz Maze questions are original.
+
+Questions or permission requests: open an issue at
+https://github.com/willatxpk/willatxpk.github.io/issues

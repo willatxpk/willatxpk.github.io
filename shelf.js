@@ -34,8 +34,9 @@ function drawFooter() {
   const f = document.getElementById("sitefoot");
   if (!f) return;
   f.className = "site";
-  f.innerHTML = `<div class="wrap"><span>© ${new Date().getFullYear()} William Pajak</span>` +
-    LINKS.map(l => `<a href="${l.href}">${l.label}</a>`).join("") + `<a href="about.html">About</a></div>`;
+  f.innerHTML = `<div class="wrap"><span>© ${new Date().getFullYear()} William Pajak. All rights reserved.</span>` +
+    LINKS.map(l => `<a href="${l.href}">${l.label}</a>`).join("") + `<a href="about.html">About</a>` +
+    `<a href="https://github.com/willatxpk/willatxpk.github.io/blob/main/LICENSE">License</a></div>`;
 }
 
 // One project as a row: name and tags | description and actions | version and date
@@ -57,6 +58,7 @@ function project(g) {
     <div>
       <p class="p-desc">${esc(g.description)}</p>
       ${g.downloadNote ? `<p class="note">${esc(g.downloadNote)}</p>` : ""}
+      ${g.notice ? `<p class="p-notice">${esc(g.notice)}</p>` : ""}
       <div class="actions">${acts.join("")}</div>
     </div>
     <div class="p-side"><span><b>v${g.version}</b></span><br><span>${esc(fmtDate(g.updated))}</span></div>
