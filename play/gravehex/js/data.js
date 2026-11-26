@@ -64,7 +64,7 @@ const ARCANA = {
   mirror: { name: 'Mirror Rite', ic: 'gem', col: '#9ae8ff', desc: 'The first scoring card triggers again.' },
 };
 const ARCANA_KEYS = Object.keys(ARCANA);
-const DECK_MAX = 96;
+const DECK_MAX = 48;
 
 const CLASSES = {
   knight: { name: 'Knight', col: '#c4d0e4', desc: 'steel, oaths, standing firm' },
