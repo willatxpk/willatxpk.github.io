@@ -17,19 +17,25 @@ const RES = {
 };
 const RES_KEYS = Object.keys(RES);
 
+// lc / lm: Chips and Mult gained per level. Levels are capped per Act (see riteCap).
 const RITES = {
   high: { name: 'Lone Strike', chips: 5, mult: 1, lc: 10, lm: 1, desc: 'Your single highest card' },
-  pair: { name: 'Twin Fangs', chips: 10, mult: 2, lc: 15, lm: 1, desc: 'Two cards of one rank' },
-  two: { name: 'Double Pact', chips: 20, mult: 2, lc: 20, lm: 1, desc: 'Two different pairs' },
-  three: { name: 'Coven of Three', chips: 30, mult: 3, lc: 20, lm: 2, desc: 'Three cards of one rank' },
-  straight: { name: 'Procession', chips: 30, mult: 4, lc: 30, lm: 3, desc: 'Five ranks in a row' },
-  flush: { name: 'Bloodline', chips: 35, mult: 4, lc: 15, lm: 2, desc: 'Five cards of one suit' },
-  full: { name: 'Grand Coven', chips: 40, mult: 4, lc: 25, lm: 2, desc: 'Three of a rank plus a pair' },
-  four: { name: 'Quartet of Ruin', chips: 60, mult: 7, lc: 30, lm: 3, desc: 'Four cards of one rank' },
-  sflush: { name: 'Black Procession', chips: 100, mult: 8, lc: 40, lm: 4, desc: 'A Procession all of one suit' },
-  five: { name: 'Pentacle', chips: 120, mult: 12, lc: 35, lm: 3, desc: 'Five cards of one rank' },
+  pair: { name: 'Twin Fangs', chips: 10, mult: 2, lc: 10, lm: 1, desc: 'Two cards of one rank' },
+  two: { name: 'Double Pact', chips: 20, mult: 2, lc: 15, lm: 1, desc: 'Two different pairs' },
+  three: { name: 'Coven of Three', chips: 30, mult: 3, lc: 15, lm: 1, desc: 'Three cards of one rank' },
+  thirteen: { name: 'Black Thirteen', chips: 13, mult: 4, lc: 13, lm: 1, trick: true, desc: 'Three or more cards whose ranks total exactly 13' },
+  humours: { name: 'Four Humours', chips: 25, mult: 3, lc: 15, lm: 1, trick: true, desc: 'Four or five cards covering all four suits' },
+  straight: { name: 'Procession', chips: 30, mult: 4, lc: 25, lm: 2, desc: 'Five ranks in a row' },
+  flush: { name: 'Bloodline', chips: 35, mult: 4, lc: 15, lm: 1, desc: 'Five cards of one suit' },
+  beggar: { name: "Beggar's Rite", chips: 40, mult: 5, lc: 20, lm: 1, trick: true, desc: 'Five cards, every one rank 3 or lower' },
+  full: { name: 'Grand Coven', chips: 40, mult: 4, lc: 20, lm: 1, desc: 'Three of a rank plus a pair' },
+  four: { name: 'Quartet of Ruin', chips: 60, mult: 7, lc: 25, lm: 2, desc: 'Four cards of one rank' },
+  sflush: { name: 'Black Procession', chips: 100, mult: 8, lc: 35, lm: 2, desc: 'A Procession all of one suit' },
+  five: { name: 'Pentacle', chips: 120, mult: 12, lc: 35, lm: 2, desc: 'Five cards of one rank' },
+  trick: { name: 'Trickery', chips: 0, mult: 1, lc: 0, lm: 0, desc: 'Only Arcana or Tombstones played' },
 };
-const RITE_ORDER = ['high', 'pair', 'two', 'three', 'straight', 'flush', 'full', 'four', 'sflush', 'five'];
+const RITE_ORDER = ['high', 'pair', 'two', 'three', 'thirteen', 'humours', 'straight', 'flush', 'beggar', 'full', 'four', 'sflush', 'five'];
+const STUDY_RITES = RITE_ORDER.filter(k => k !== 'high');
 
 const ENCH = {
   gilded: { name: 'Gilded', col: '#ffd44a', desc: '+4 Mult when scored' },
@@ -37,7 +43,28 @@ const ENCH = {
   glass: { name: 'Glass', col: '#9ae8ff', desc: '×2 Mult when scored · 1 in 4 to shatter' },
   holy: { name: 'Holy', col: '#fff6a0', desc: 'Heal 2 HP when scored' },
   cursed: { name: 'Cursed', col: '#8a3ab0', desc: 'Never scores' },
+  spectral: { name: 'Spectral', col: '#b8f0ff', desc: 'Counts as every suit when forming Rites' },
+  echo: { name: 'Echoing', col: '#ff9ad0', desc: 'Scores twice' },
+  effigy: { name: 'Effigy', col: '#e0a82e', desc: '+3 Mult to every Rite while held in hand (not played)' },
+  venom: { name: 'Venom', col: '#6ae08a', desc: 'When scored, deals 4% of the monster\'s max HP' },
+  fated: { name: 'Fated', col: '#9ae8ff', desc: 'When scored, 1 in 3 chance of +1 Fate' },
+  mimic: { name: 'Mimic', col: '#ff7a2a', desc: 'Counts as whichever rank makes the best Rite' },
+  tomb: { name: 'Tombstone', col: '#8a7e94', desc: 'No rank or suit. Always scores: +40 Chips' },
 };
+// enchantments that can turn up on reward / shop cards
+const ENCH_DROP = ['gilded', 'bloodied', 'glass', 'holy', 'spectral', 'echo', 'effigy', 'venom', 'fated', 'mimic', 'tomb'];
+
+// Arcana: trick cards. Played alongside a Rite they take a card slot, add no rank, and fire their effect.
+const ARCANA = {
+  snare: { name: 'Snare', ic: 'key', col: '#a8b4c4', desc: 'The monster skips its next attack.' },
+  witchfire: { name: 'Witchfire', ic: 'candle', col: '#c890ff', desc: '+30 Chips to this Rite.' },
+  bloodlet: { name: 'Bloodletting', ic: 'dagger', col: '#ff5068', desc: '×1.5 Mult to this Rite. You lose 3 HP.' },
+  graverob: { name: 'Grave Robber', ic: 'skull', col: '#f2e8d0', desc: 'Draw 2 extra cards after this Rite.' },
+  secondwind: { name: 'Second Wind', ic: 'hourglass', col: '#40e0b0', desc: '+1 Discard this fight.' },
+  mirror: { name: 'Mirror Rite', ic: 'gem', col: '#9ae8ff', desc: 'The first scoring card triggers again.' },
+};
+const ARCANA_KEYS = Object.keys(ARCANA);
+const DECK_MAX = 32;
 
 const CLASSES = {
   knight: { name: 'Knight', col: '#c4d0e4', desc: 'steel, oaths, standing firm' },
@@ -226,8 +253,11 @@ const ACTS = {
 };
 
 const COSTS = {
+  road: { bone: 1, iron: 1 },
   outpost: { bone: 1, iron: 1, gold: 1, ichor: 1 },
   citadel: { iron: 2, soul: 2 },
+  keep: { iron: 2, gold: 2, soul: 2 },
+  siege: { iron: 2, bone: 2, gold: 1 },
   tend: { ichor: 1, bone: 1 },
   forge: { iron: 1, ichor: 1 },
   summon: { soul: 2, gold: 2, bone: 1 },
@@ -235,6 +265,19 @@ const COSTS = {
   fate: { gold: 1, soul: 1 },
   cleanse: { soul: 1, ichor: 1, bone: 1 },
   purge: { soul: 1, bone: 2 },
+};
+// Keeps: a Citadel can be raised into one of these for the rest of the Act
+const KEEPS = {
+  watchtower: { name: 'Watchtower', col: '#5ad0ff', desc: '+1 hand size in fights.' },
+  chapel: { name: 'Chapel', col: '#fff6a0', desc: '+1 Discard in fights; heal 3 HP every harvest.' },
+  armory: { name: 'Armory', col: '#ff5068', desc: '+15 Chips on every Rite.' },
+  treasury: { name: 'Treasury', col: '#ffd44a', desc: '+1 Gold and +1 Soul every harvest.' },
+};
+// Expandable capacity: start, max, and cost of the n-th purchase (n = 0, 1, ...)
+const SLOTS = {
+  relic: { name: 'Reliquary', start: 4, max: 8, cost: n => ({ gold: 3 + n, soul: 2 + n }), desc: '+1 relic slot' },
+  scroll: { name: 'Satchel', start: 2, max: 5, cost: n => ({ gold: 1 + n, ichor: 2 + n }), desc: '+1 scroll slot' },
+  party: { name: 'Barracks', start: 3, max: 5, cost: n => ({ bone: 2 + n, iron: 2 + n, soul: 1 + n }), desc: '+1 party slot' },
 };
 
 // ── Choose-your-own-adventure events ──
@@ -368,6 +411,74 @@ const EVENTS = [
       { t: 'Ask her to take a burden', go: () => { queuePurge(1); return 'Choose a card to leave on the altar.'; } },
       { t: 'Ask what happened to Saint Ulfra', go: () => 'The nun\'s face falls away like wet paper. Beneath is the saint. She is not generous anymore. ' + queueFight() },
     ] },
+  // ── dice events (go() may be async; rollOpen shows the dice) ──
+  { id: 'gamblers', title: 'The Bone Gamblers', art: 'tavern',
+    text: 'Three skeletons crouch around an upturned shield, rolling knucklebones for a pile of coins and teeth. One of them pats the mud beside it. "Sit. Roll. Higher takes the pot."',
+    choices: [
+      { t: 'Wager 2 Gold (dice duel)', cost: { gold: 2 }, go: async () => { const r = await diceDuel('The Bone Gamblers'); return r > 0 ? 'You take the pot. ' + gain({ gold: 5 }) : r === 0 ? 'A draw. Your stake comes back. ' + gain({ gold: 2 }) : 'They rattle with laughter and sweep up your coins.'; } },
+      { t: 'Wager blood (6 HP, dice duel)', hpCost: 6, go: async () => { const r = await diceDuel('Blood Wager'); return r > 0 ? 'The pot holds something better than coin.' + giveRelic() : r === 0 ? 'A draw. They let you keep your dignity. ' + healHP(6) : 'They drink your stake, somehow.'; } },
+      { t: 'Cheat', check: { n: 8, cls: { ranger: 3, witch: 1 } }, win: () => 'Your loaded bones never miss. ' + gain({ gold: 4 }) + giveArcana(), lose: () => 'Skeletons hate a cheat. ' + hurt(8) + ' ' + addCurse(1) },
+    ] },
+  { id: 'ferry', title: "The Ferryman's Dice", art: 'well',
+    text: 'A black river, a black boat, and a ferryman with no face. He will not take coin. He holds out two dice in a palm of bare bone. "Passage is a matter of chance," he says.',
+    choices: [
+      { t: 'Roll for passage', go: async () => { const { vals, sum } = await rollOpen("The Ferryman's Dice", 2, 'Doubles: blessed · 7: the river takes a toll · 9+: safe · else: the water bites');
+        if (vals[0] === vals[1]) return 'Doubles. He bows. ' + addFate(1) + giveRelic();
+        if (sum === 7) return 'Seven. Hands rise from the river. ' + doomAdd(2) + ' ' + gain({ soul: 3 });
+        if (sum >= 9) return 'A smooth crossing. ' + gain({ ichor: 2, soul: 1 });
+        return 'Something below the boat takes a bite. ' + hurt(7); } },
+      { t: 'Pay in Soul (2)', cost: { soul: 2 }, go: () => 'He accepts. The river parts. ' + addFate(1) + ' ' + doomAdd(-1) },
+      { t: 'Swim', check: { n: 7, cls: { ranger: 2, knight: 1, butcher: 1 } }, win: () => 'You haul yourself out on the far bank with treasure in your fists. ' + gain({ ichor: 2, gold: 1 }), lose: () => 'The river does not want you to leave. ' + hurt(10) },
+    ] },
+  { id: 'blades', title: 'Hall of Falling Blades', art: 'door',
+    text: 'A corridor of rusted pendulums, each one older than the last. Gold glitters in the far chambers. The blades swing to a rhythm. If you can read it, you can run it.',
+    choices: [
+      { t: 'Run the halls (push your luck)', go: () => runBlades() },
+      { t: 'Strip the first blade for iron', go: () => gain({ iron: 2 }) },
+      { t: 'Leave', go: () => 'The rhythm follows you into your sleep.' },
+    ] },
+  { id: 'oracle', title: 'The Drunk Oracle', art: 'eye',
+    text: 'A three-eyed woman sprawls in a ruined chapel with a bottle of something luminous. "I read dice, not stars," she slurs, shaking two of them in a cup. "Stars lie."',
+    choices: [
+      { t: 'Let her read your dice', go: () => oracleRoll(0) },
+      { t: 'Buy her a drink first (1 Gold, +2 to the roll)', cost: { gold: 1 }, go: () => oracleRoll(2) },
+      { t: 'Leave her to it', go: () => 'She is still rolling when you go. "Seven," you hear. "Always seven."' },
+    ] },
+  { id: 'sickhouse', title: 'The Sickhouse', art: 'coffin',
+    text: 'A long house full of coughing. The sick lie in rows, attended by no one. A plague doctor\'s mask hangs on a nail by the door, still warm.',
+    choices: [
+      { t: 'Tend the sick (each hero rolls a die)', go: () => sickhouseRolls() },
+      { t: 'Burn it', go: () => 'You do what has to be done. ' + hurt(4) + ' ' + doomAdd(-2) },
+      { t: 'Take the mask and go', go: () => 'It smells of cloves and death. ' + gain({ soul: 1 }) },
+    ] },
+  { id: 'wheel', title: 'The Hexed Wheel', art: 'shrine',
+    text: 'A great wheel of bone and brass stands in a clearing, its spokes painted with symbols. A sign: SPIN, AND YOUR CARDS SHALL BE CHANGED. The paint on the sign is very fresh.',
+    choices: [
+      { t: 'Spin (1 Soul): 3 cards each roll a die', cost: { soul: 1 }, go: () => wheelSpin() },
+      { t: 'Smash it for parts', check: { n: 7, cls: { butcher: 2, knight: 1 } }, win: () => gain({ gold: 2, iron: 2 }), lose: () => 'A spoke whips round and catches you. ' + hurt(7) },
+      { t: 'Leave', go: () => 'Behind you, the wheel turns on its own.' },
+    ] },
+  { id: 'pit', title: 'The Pit of Champions', art: 'tavern',
+    text: 'A sunken arena ringed with cheering dead. A herald with a voice like a broken bell calls for challengers. "Fight the beast! Or bet on it!"',
+    choices: [
+      { t: 'Fight for the purse (+3 Gold now)', go: () => gain({ gold: 3 }) + ' The crowd roars. ' + queueFight() },
+      { t: 'Bet 2 Gold on the beast (roll 8+)', cost: { gold: 2 }, go: async () => { const { sum } = await rollOpen('The Pit', 2, '8 or more: the beast wins'); return sum >= 8 ? 'The beast wins. So do you. ' + gain({ gold: 6 }) : 'The challenger wins, somehow. Your coins are gone.'; } },
+      { t: 'Leave', go: () => 'The crowd boos you all the way out.' },
+    ] },
+  { id: 'lich', title: 'The Card-Sharp Lich', art: 'altar',
+    text: 'A lich in a moth-eaten waistcoat deals cards onto a coffin lid. "A game?" Its jaw clicks. "I play for tricks. Real tricks. The kind that cheat the dark."',
+    choices: [
+      { t: 'Play a hand against him', check: { n: 8, cls: { witch: 2, gravecaller: 2 } }, win: () => '"Well played." He slides you his best trick.' + giveArcana(3), lose: () => '"Pity." He takes something from you. ' + hurt(6) + ' ' + addCurse(1) },
+      { t: 'Buy a trick (3 Gold)', cost: { gold: 3 }, go: () => '"A fair price."' + giveArcana(2) },
+      { t: 'Leave', go: () => '"Next time," he says, shuffling.' },
+    ] },
+  { id: 'roadstones', title: 'The Old Roadstones', art: 'door',
+    text: 'Beneath the moss, a buried road of fitted stone runs straight as an arrow into the fog. Whoever built it meant to go somewhere, and meant to get there fast.',
+    choices: [
+      { t: 'Clear the old road', check: { n: 6, cls: { knight: 2, ranger: 2 } }, win: () => 'The road is yours to use. +2 free roads. ' + freeRoads(2), lose: () => 'Back-breaking work. ' + hurt(5) + ' +1 free road. ' + freeRoads(1) },
+      { t: 'Pry up the stones', go: () => gain({ iron: 2, bone: 1 }) },
+      { t: 'Follow it into the fog', go: () => doomAdd(1) + ' ' + revealAll() },
+    ] },
 ];
 
 const OMENS = [
@@ -390,6 +501,9 @@ const UPGRADES = [
   { id: 'heroes4', name: 'Wider Muster', desc: 'Choose your first hero from 4 instead of 3.', cost: 20 },
   { id: 'scroll', name: 'Satchel', desc: 'Start each run with a random scroll; +1 scroll slot.', cost: 30 },
   { id: 'tome', name: 'Old Learning', desc: 'Start each run with a random Rite at level 2.', cost: 40 },
+  { id: 'vault', name: 'Vaulted Reliquary', desc: 'Start each run with +1 relic slot.', cost: 30 },
+  { id: 'barracks', name: 'Old Barracks', desc: 'Start each run with +1 party slot.', cost: 35 },
+  { id: 'roads', name: 'Surveyor', desc: '+1 free road every Act.', cost: 20 },
 ];
 const DESCENTS = [
   'The ordinary dark.',

@@ -2,24 +2,30 @@
 // ───────────────────────── Combat: Rites (poker-style hands) × relics × heroes ─────────────────────────
 let SORT = 'rank';
 function handSize() {
-  let n = 8 + party().reduce((s, h) => s + (h.handSize || 0), 0) + relicsD().reduce((s, r) => s + (r.handSize || 0), 0);
+  let n = 8 + party().reduce((s, h) => s + (h.handSize || 0), 0) + relicsD().reduce((s, r) => s + (r.handSize || 0), 0) + (F && F.keeps ? F.keeps.watchtower : keepCount('watchtower'));
   if (F && F.ab.includes('fog')) n--; if (G.descent >= 8) n--;
   return Math.max(4, n);
 }
+// difficulty knobs
+const HP_ACT = [0, 2.2, 2.6, 2.8], HP_BOSS = 3.0, DMG_ACT = [1, 1.3, 0.9, 0.7];
 function scaleMonster(base, opts) {
-  let hp = base.hp * ACTS[G.act].hpMul * (1 + 0.08 * Math.floor(G.doom / 6)) * (base.boss ? 2.6 : [0, 1.7, 2.2, 2.4][G.act]);
+  let hp = base.hp * ACTS[G.act].hpMul * (1 + 0.08 * Math.floor(G.doom / 6)) * (opts.boss ? HP_BOSS : HP_ACT[G.act]);
   if (G.descent >= 2) hp *= 1.2; if (opts.unprepared) hp *= 1.35; if (opts.enraged) hp *= 1.25;
-  let dmg = Math.round(base.dmg * [1, 1, 0.8, 0.65][G.act]) + Math.floor(G.doom / 12) + (G.descent >= 6 ? 2 : 0); if (opts.unprepared) dmg = Math.ceil(dmg * 1.3);
+  if (opts.boss) hp *= 1 - Math.min(DOM_BOSS_MAX, dominion().pts * DOM_BOSS);
+  let dmg = Math.round(base.dmg * DMG_ACT[G.act]) + Math.floor(G.doom / 12) + (G.descent >= 6 ? 2 : 0); if (opts.unprepared) dmg = Math.ceil(dmg * 1.3);
   return { hp: Math.max(10, Math.round(hp / 10) * 10), dmg };
 }
 async function runFight(base, opts = {}) {
   const sc = scaleMonster(base, opts);
   F = { mon: base, opts, hp: sc.hp, maxHp: sc.hp, dmg: sc.dmg, ab: base.ab.slice(), draw: shuffle(G.deck.slice()), hand: [], disc: [], sel: new Set(),
-    discards: 0, bonus: { chips: 0, mult: 0, x: 1 }, invoked: {}, rites: 0, stun: 0, shield: 0, martyr: 0, lastKey: null, busy: false };
-  F.discards = Math.max(0, 3 + relicsD().reduce((s, r) => s + (r.discards || 0), 0) - (G.descent >= 4 ? 1 : 0) - (F.ab.includes('hex') ? 1 : 0));
+    discards: 0, bonus: { chips: 0, mult: 0, x: 1 }, invoked: {}, rites: 0, stun: 0, shield: 0, martyr: 0, lastKey: null, busy: false, extra: 0 };
+  F.dom = dominion(); F.keeps = {}; Object.keys(KEEPS).forEach(k => F.keeps[k] = keepCount(k));
+  F.discards = Math.max(0, 3 + relicsD().reduce((s, r) => s + (r.discards || 0), 0) + F.keeps.chapel + (F.dom.kr ? 1 : 0) - (G.descent >= 4 ? 1 : 0) - (F.ab.includes('hex') ? 1 : 0));
   showScreen('fight'); $('#f-played').innerHTML = ''; $('#f-dmg').innerHTML = '';
   renderFight(); drawCards(handSize() - F.hand.length, true);
-  const won = await new Promise(r => F.done = r);
+  const donePromise = new Promise(r => F.done = r);
+  if (opts.boss && G.siege) { const d = Math.ceil(F.maxHp * SIEGE_DMG * G.siege); toast(`Your ${G.siege} siege engine${G.siege > 1 ? 's' : ''} batter${G.siege > 1 ? '' : 's'} the Throne!`); damageMonster(d); log(`Siege engines deal ${d} damage.`); }
+  const won = await donePromise;
   party().forEach(h => h.fightEnd && h.fightEnd.call(h, won));
   const fs = F; F = null;
   if (!won) { await sleep(500); await gameOver(false); return false; }
@@ -56,35 +62,67 @@ function drawCards(n, initial) {
   renderHand(added); renderFightSide();
 }
 function sortHand() {
-  if (SORT === 'rank') F.hand.sort((a, b) => b.rank - a.rank || SUIT_KEYS.indexOf(a.suit) - SUIT_KEYS.indexOf(b.suit));
-  else F.hand.sort((a, b) => SUIT_KEYS.indexOf(a.suit) - SUIT_KEYS.indexOf(b.suit) || b.rank - a.rank);
+  const ord = c => c.arc ? 2 : c.ench === 'tomb' ? 1 : 0;
+  if (SORT === 'rank') F.hand.sort((a, b) => ord(a) - ord(b) || b.rank - a.rank || SUIT_KEYS.indexOf(a.suit) - SUIT_KEYS.indexOf(b.suit));
+  else F.hand.sort((a, b) => ord(a) - ord(b) || SUIT_KEYS.indexOf(a.suit) - SUIT_KEYS.indexOf(b.suit) || b.rank - a.rank);
 }
 
 // ── rite evaluation & scoring ──
-function evalRite(cards) {
-  if (!cards.length) return null;
+// Value of a Rite at your current level, used to pick the strongest Rite a set of cards forms
+function riteVal(k) { const R = RITES[k], lv = (G.riteLv[k] || 1) - 1; return (R.chips + R.lc * lv) * (R.mult + R.lm * lv); }
+function evalPlain(cards) {
   const by = {}; cards.forEach(c => (by[c.rank] = by[c.rank] || []).push(c));
   const groups = Object.values(by).sort((a, b) => b.length - a.length || b[0].rank - a[0].rank);
-  const n = cards.length, flush = n === 5 && cards.every(c => c.suit === cards[0].suit);
+  const n = cards.length, real = cards.filter(c => c.ench !== 'spectral');
+  const flush = n === 5 && real.every(c => c.suit === (real[0] || {}).suit);
   const ranks = [...new Set(cards.map(c => c.rank))].sort((a, b) => a - b);
   const straight = n === 5 && ranks.length === 5 && ranks[4] - ranks[0] === 4;
   const g0 = groups[0].length, g1 = groups[1] ? groups[1].length : 0;
-  if (g0 === 5) return { key: 'five', scoring: cards };
-  if (straight && flush) return { key: 'sflush', scoring: cards };
-  if (g0 === 4) return { key: 'four', scoring: groups[0] };
-  if (g0 === 3 && g1 >= 2) return { key: 'full', scoring: cards };
-  if (flush) return { key: 'flush', scoring: cards };
-  if (straight) return { key: 'straight', scoring: cards };
-  if (g0 === 3) return { key: 'three', scoring: groups[0] };
-  if (g0 === 2 && g1 === 2) return { key: 'two', scoring: groups[0].concat(groups[1]) };
-  if (g0 === 2) return { key: 'pair', scoring: groups[0] };
-  return { key: 'high', scoring: [cards.slice().sort((a, b) => b.rank - a.rank)[0]] };
+  let std;
+  if (g0 === 5) std = { key: 'five', scoring: cards };
+  else if (straight && flush) std = { key: 'sflush', scoring: cards };
+  else if (g0 === 4) std = { key: 'four', scoring: groups[0] };
+  else if (g0 === 3 && g1 >= 2) std = { key: 'full', scoring: cards };
+  else if (flush) std = { key: 'flush', scoring: cards };
+  else if (straight) std = { key: 'straight', scoring: cards };
+  else if (g0 === 3) std = { key: 'three', scoring: groups[0] };
+  else if (g0 === 2 && g1 === 2) std = { key: 'two', scoring: groups[0].concat(groups[1]) };
+  else if (g0 === 2) std = { key: 'pair', scoring: groups[0] };
+  else std = { key: 'high', scoring: [cards.slice().sort((a, b) => b.rank - a.rank)[0]] };
+  const cands = [std];
+  const suits = new Set(real.map(c => c.suit)), wild = n - real.length;
+  if (n >= 4 && suits.size + wild >= 4) cands.push({ key: 'humours', scoring: cards });
+  if (n >= 3 && cards.reduce((t, c) => t + c.rank, 0) === 13) cands.push({ key: 'thirteen', scoring: cards });
+  if (n === 5 && cards.every(c => c.rank <= 3)) cands.push({ key: 'beggar', scoring: cards });
+  return cands.reduce((b, c) => riteVal(c.key) > riteVal(b.key) ? c : b);
 }
-const isDead = c => c.ench === 'cursed' || (F && F.ab.includes('d_' + c.suit));
+// Arcana never form part of a Rite; Tombstones always score but add no rank; Mimics try every rank
+function evalRite(cards) {
+  if (!cards.length) return null;
+  const tomb = cards.filter(c => c.ench === 'tomb'), norm = cards.filter(c => !c.arc && c.ench !== 'tomb');
+  if (!norm.length) return { key: 'trick', scoring: tomb };
+  const mims = norm.filter(c => c.ench === 'mimic').slice(0, 2);
+  let best = null;
+  const consider = set => {
+    const e = evalPlain(set), v = riteVal(e.key), pts = e.scoring.reduce((t, c) => t + c.rank, 0);
+    if (!best || v > best.v || (v === best.v && pts > best.pts)) best = { key: e.key, scoring: e.scoring.concat(tomb), v, pts };
+  };
+  if (!mims.length) consider(norm);
+  else {
+    const assign = (i, set) => {
+      if (i === mims.length) { consider(set); return; }
+      for (let r = 1; r <= 10; r++) assign(i + 1, set.map(c => c === mims[i] ? Object.assign({}, c, { rank: r, _o: c }) : c));
+    };
+    assign(0, norm);
+  }
+  return best;
+}
+const isDead = c => c.ench === 'cursed' || (c.ench !== 'tomb' && F && F.ab.includes('d_' + c.suit));
 function computeRite(cards, preview) {
   const e = evalRite(cards); if (!e) return null;
   const R = RITES[e.key], lv = G.riteLv[e.key] || 1;
-  const ctx = { key: e.key, lv, cards, scoring: e.scoring, f: F, preview, chips: R.chips + R.lc * (lv - 1), mult: R.mult + R.lm * (lv - 1), ev: [], heal: 0, shatter: [], cur: null };
+  const ctx = { key: e.key, lv, cards, scoring: e.scoring, f: F, preview, chips: R.chips + R.lc * (lv - 1), mult: R.mult + R.lm * (lv - 1), ev: [], heal: 0, shatter: [], cur: null, venom: 0, fate: 0 };
+  const arcs = cards.filter(c => c.arc).map(c => c.arc);
   ctx.ev.push({ type: 'base', chips: ctx.chips, mult: ctx.mult });
   const push = (type, n, src) => ctx.ev.push({ type, n, src: src ? (src.id || src.name) : null, card: ctx.cur, chips: ctx.chips, mult: ctx.mult });
   ctx.chip = (n, src) => { ctx.chips += n; push('chip', n, src); };
@@ -92,32 +130,40 @@ function computeRite(cards, preview) {
   ctx.xm = (n, src) => { ctx.mult *= n; push('x', n, src); };
   if (F.bonus.chips) ctx.chip(F.bonus.chips, { id: 'invoke' });
   if (F.bonus.mult) ctx.mul(F.bonus.mult, { id: 'invoke' });
+  if (F.dom && F.dom.pts) ctx.chip(F.dom.pts * DOM_CHIPS, { id: 'dominion' });
+  if (F.keeps && F.keeps.armory) ctx.chip(15 * F.keeps.armory, { id: 'armory' });
+  if (arcs.includes('witchfire')) ctx.chip(30, { id: 'arcana' });
   const P = party(), Rl = relicsD();
   e.scoring.forEach((c, i) => {
-    const times = i === 0 && hasRelic('mirror') ? 2 : 1;
+    const times = 1 + (i === 0 && hasRelic('mirror') ? 1 : 0) + (i === 0 && arcs.includes('mirror') ? 1 : 0) + (c.ench === 'echo' ? 1 : 0);
     for (let t = 0; t < times; t++) {
       ctx.cur = c;
       if (isDead(c)) { ctx.ev.push({ type: 'dead', card: c, chips: ctx.chips, mult: ctx.mult }); continue; }
-      ctx.chip(c.rank, null);
+      ctx.chip(c.ench === 'tomb' ? 40 : c.rank, null);
+      if (c.ench === 'venom') ctx.venom += Math.ceil(F.maxHp * 0.04);
+      if (c.ench === 'fated' && !preview && Math.random() < 1 / 3) ctx.fate++;
       if (c.ench === 'gilded') ctx.mul(4, null);
       if (c.ench === 'bloodied') ctx.chip(20, null);
-      if (c.ench === 'glass') { ctx.xm(2, null); if (!preview && Math.random() < 0.25 && !ctx.shatter.includes(c)) ctx.shatter.push(c); }
+      if (c.ench === 'glass') { ctx.xm(2, null); const o = c._o || c; if (!preview && Math.random() < 0.25 && !ctx.shatter.includes(o)) ctx.shatter.push(o); }
       if (c.ench === 'holy') ctx.heal += hasHero('morrow') ? 4 : 2;
       P.forEach(h => h.card && h.card.call(h, ctx, c));
       Rl.forEach(r => r.card && r.card.call(r, ctx, c));
     }
   });
   ctx.cur = null;
+  F.hand.forEach(c => { if (c.ench === 'effigy' && !cards.includes(c)) { ctx.cur = c; ctx.mul(3, null); } });
+  ctx.cur = null;
   P.forEach(h => h.rite && h.rite.call(h, ctx));
   Rl.forEach(r => r.rite && r.rite.call(r, ctx));
   if (F.bonus.x !== 1) ctx.xm(F.bonus.x, { id: 'invoke' });
+  if (arcs.includes('bloodlet')) ctx.xm(1.5, { id: 'arcana' });
   let factor = 1, why = [];
   if (F.ab.includes('armor') && F.rites === 0) { factor *= 0.5; why.push('Armored'); }
   if (F.ab.includes('shy') && cards.length < 3) { factor *= 0.5; why.push('Elusive'); }
   if (F.ab.includes('monotony') && F.lastKey === e.key) { factor *= 0.5; why.push('Ennui'); }
   ctx.factor = factor; ctx.why = why;
   ctx.mult = Math.round(ctx.mult * 100) / 100;
-  ctx.dmg = Math.floor(ctx.chips * ctx.mult * factor);
+  ctx.dmg = Math.floor(ctx.chips * ctx.mult * factor) + ctx.venom;
   return ctx;
 }
 
@@ -152,6 +198,7 @@ function renderFightSide() {
   if (!F) return;
   $('#f-side').innerHTML = `<div class="ptitle">Reliquary</div><div class="reliclist">${relicsD().map(r => relicHTML(r)).join('') || '<span class="dim small">none</span>'}</div>
     <div class="ptitle">Satchel</div><div class="reliclist">${G.scrolls.map((id, i) => { const s = scroll(id); return `<div class="relic scrollbtn usable" data-si="${i}" data-tip="${esc(`<b>${s.name}</b><br>${s.desc}<br><i>Click to use${s.sel ? ' on selected cards' : ''}.</i>`)}">${relicIcon(s.ic, s.col, 3)}</div>`; }).join('') || '<span class="dim small">empty</span>'}</div>
+    <div class="ptitle">Dominion</div><div class="pile" data-src="dominion">+<b>${F.dom.pts * DOM_CHIPS}</b> Chips per Rite${F.keeps.armory ? `<br><span data-src="armory">Armory +${15 * F.keeps.armory} Chips</span>` : ''}</div>
     <div class="ptitle">Deck</div><div class="pile">Draw <b>${F.draw.length}</b> · Discard <b>${F.disc.length}</b></div>
     <div class="pile">Rites performed: <b>${F.rites}</b></div>
     <button class="btn sm ghost" id="f-rites">Rite table</button>`;
@@ -188,10 +235,10 @@ function updatePreview() {
   if (!F) return; const cards = selCards();
   if (!cards.length) { $('#f-rite').innerHTML = '<span class="dim">Select up to 5 cards</span>'; setScore(0, 0); $('#f-est').innerHTML = ''; return; }
   const ctx = computeRite(cards, true); const R = RITES[ctx.key];
-  $('#f-rite').innerHTML = `${R.name} <small>Lv ${ctx.lv}</small>`;
+  $('#f-rite').innerHTML = `${R.name}${ctx.key === 'trick' ? '' : ` <small>Lv ${ctx.lv}</small>`}`;
   setScore(R.chips + R.lc * (ctx.lv - 1), R.mult + R.lm * (ctx.lv - 1));
   const kill = ctx.dmg >= F.hp;
-  $('#f-est').innerHTML = `≈ <b class="${kill ? 'gold' : ''}">${ctx.dmg.toLocaleString()}</b> damage${ctx.why.length ? ` <span class="red">(halved: ${ctx.why.join(', ')})</span>` : ''}${kill ? ' <span class="gold">— lethal</span>' : ''}`;
+  $('#f-est').innerHTML = `≈ <b class="${kill ? 'gold' : ''}">${ctx.dmg.toLocaleString()}</b> damage${ctx.venom ? ` <span style="color:#6ae08a">(incl. ${ctx.venom} venom)</span>` : ''}${ctx.why.length ? ` <span class="red">(halved: ${ctx.why.join(', ')})</span>` : ''}${kill ? ' <span class="gold">— lethal</span>' : ''}`;
 }
 function fmtN(n) { n = Math.round(n * 100) / 100; return n >= 10000 ? Math.round(n).toLocaleString() : String(n); }
 function setScore(c, m) { $('#f-chips').textContent = fmtN(c); $('#f-mult').textContent = fmtN(m); }
@@ -214,6 +261,12 @@ async function playRite() {
   G.best = Math.max(G.best || 0, ctx.dmg);
   if (ctx.heal) healHP(ctx.heal);
   if (hasRelic('leech')) healHP(2);
+  if (ctx.fate) { addFate(ctx.fate); toast(`Fated: +${ctx.fate} Fate`); }
+  const arcs = cards.filter(c => c.arc).map(c => c.arc);
+  if (arcs.includes('snare')) { F.stun++; toast('Snared: the monster will skip its next attack.'); }
+  if (arcs.includes('bloodlet')) { hurt(3); renderFightHP(); }
+  if (arcs.includes('graverob')) F.extra += 2;
+  if (arcs.includes('secondwind')) F.discards++;
   damageMonster(ctx.dmg, true);
   F.lastKey = ctx.key; F.rites++; F.bonus = { chips: 0, mult: 0, x: 1 };
   cards.forEach(c => { if (ctx.shatter.includes(c)) { destroyCard(c); bubble($(`#f-played [data-cid="${c.id}"]`), 'SHATTERED', 'x'); } else F.disc.push(c); });
@@ -225,16 +278,16 @@ async function playRite() {
   await monsterTurn();
   if (!F) return;
   if (G.hp <= 0) { F.done(false); return; }
-  drawCards(handSize() - F.hand.length);
+  drawCards(handSize() - F.hand.length + F.extra); F.extra = 0;
   F.busy = false; renderFight();
 }
 async function animateRite(ctx) {
   const R = RITES[ctx.key]; let i = 0;
-  $('#f-rite').innerHTML = `<span class="ritename">${R.name}</span> <small>Lv ${ctx.lv}</small>`; pulse($('#f-rite'), 'pop');
+  $('#f-rite').innerHTML = `<span class="ritename">${R.name}</span>${ctx.key === 'trick' ? '' : ` <small>Lv ${ctx.lv}</small>`}`; pulse($('#f-rite'), 'pop');
   const base = 160;
   for (const e of ctx.ev) {
-    const cardEl = e.card ? $(`#f-played [data-cid="${e.card.id}"]`) : null;
-    const srcEl = e.src ? (e.src === 'invoke' ? $('#f-party') : $(`#scr-fight [data-src="${e.src}"]`)) : null;
+    const cardEl = e.card ? ($(`#f-played [data-cid="${e.card.id}"]`) || $(`#f-hand [data-cid="${e.card.id}"]`)) : null;
+    const srcEl = e.src ? (e.src === 'invoke' ? $('#f-party') : ($(`#scr-fight [data-src="${e.src}"]`) || $('#f-rite'))) : null;
     const at = cardEl || srcEl;
     if (e.type === 'base') { setScore(e.chips, e.mult); sfx('click'); await sleep(base * 1.4); continue; }
     if (e.type === 'dead') { pulse(cardEl, 'deadc'); bubble(cardEl, 'NOTHING', 'dead'); sfx('fail'); await sleep(base); continue; }
@@ -246,6 +299,7 @@ async function animateRite(ctx) {
     await sleep(base * (e.type === 'x' ? 1.6 : 1));
   }
   setScore(ctx.chips, ctx.mult);
+  if (ctx.venom) { bubble($('#f-mon .monspr'), `+${ctx.venom} venom`, 'heal'); await sleep(base); }
   const big = ctx.dmg >= F.hp;
   $('#f-dmg').innerHTML = `<div class="dmgnum ${big ? 'blaze' : ''}">${ctx.dmg.toLocaleString()}</div>${ctx.why.length ? `<div class="red small">Halved by ${ctx.why.join(', ')}</div>` : ''}`;
   if (big) $('#f-score').classList.add('burn');
@@ -299,7 +353,7 @@ async function discardSel() {
 async function invokeHero(id) {
   if (!F || F.busy || F.invoked[id]) return;
   const h = hero(id);
-  const sel = selCards();
+  const sel = selCards().filter(c => !c.arc && c.ench !== 'tomb');
   if (h.sel && !sel.length) { toast(`Select up to ${h.sel} card${h.sel > 1 ? 's' : ''} first for ${h.name}.`); return; }
   F.busy = true;
   F.invoked[id] = true;
@@ -314,7 +368,7 @@ async function invokeHero(id) {
 }
 async function useScroll(i) {
   if (!F || F.busy) return;
-  const s = scroll(G.scrolls[i]); const sel = selCards();
+  const s = scroll(G.scrolls[i]); const sel = selCards().filter(c => !c.arc && (c.ench !== 'tomb' || s.id === 'sc_ash' || s.id === 'sc_mirror'));
   if (s.sel && !sel.length) { toast(`Select up to ${s.sel} card${s.sel > 1 ? 's' : ''} first.`); return; }
   G.scrolls.splice(i, 1);
   s.use(sel.slice(0, s.sel || 0)); sfx('invoke'); toast(`${s.name} used.`);
@@ -384,6 +438,12 @@ function testHooks() {
         if (G.phase === 'act' && !BUSY) {
           if (G.hp < maxHP() * 0.5 && canPay(costOf('tend'))) { pay(costOf('tend')); healHP(15); continue; }
           if (canPay(costOf('outpost')) && buildableVerts().length) { const vs = buildableVerts().sort((a, b) => vval(b) - vval(a)); pay(costOf('outpost')); G.map.verts[vs[0]].b = 1; drawMapBase(); continue; }
+          if (!buildableVerts().length && canPay(costOf('road')) && G.map.roads.length < 3 + 3 * G.map.verts.filter(v => v.b).length) {
+            const M = G.map, opts2 = buildableRoads();
+            const score = i => { const E = M.edges[i]; return Math.max(...[E.a, E.b].map(v => M.verts[v].b || M.verts[v].adj.some(a => M.verts[a].b) ? 0 : vval(v))) + Math.random(); };
+            if (opts2.length) { const e = opts2.sort((a, b) => score(b) - score(a))[0]; if (G.freeRoads > 0) G.freeRoads--; else pay(costOf('road')); M.roads.push(e); drawMapBase(); continue; }
+          }
+          if (G.sigils >= 2 && (G.siege || 0) < SIEGE_MAX && canPay(costOf('siege'))) { pay(costOf('siege')); G.siege = (G.siege || 0) + 1; continue; }
           if (canPay(costOf('citadel'))) { const v = G.map.verts.findIndex(v => v.b === 1); if (v >= 0) { pay(costOf('citadel')); G.map.verts[v].b = 2; continue; } }
           if (canPay(costOf('tome')) && Math.random() < 0.5) { pay(costOf('tome')); levelRite(pick(['pair', 'two', 'three', 'flush', 'straight'])); continue; }
           if (G.heroes.length < 3 && canPay(costOf('summon'))) { pay(costOf('summon')); const pool = HEROES.filter(h => isUnlocked(h) && !G.heroes.includes(h.id)); G.heroes.push(pick(pool).id); continue; }

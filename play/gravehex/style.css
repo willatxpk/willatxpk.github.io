@@ -143,6 +143,15 @@ b { font-weight: normal; color: #fff; }
 .e-glass { background: linear-gradient(165deg, rgba(120,220,255,.35), rgba(30,60,90,.6) 60%, #0a1420); } .e-glass .en { color: #9ae8ff; box-shadow: 0 0 0 2px #5ad0ff; }
 .e-holy { background: linear-gradient(165deg, #4a4420, #22200c 60%, #100e06); box-shadow: 0 0 0 3px var(--ink), 0 0 16px rgba(255,246,160,.45), 0 7px 0 rgba(0,0,0,.6); } .e-holy .en { color: #fff6a0; box-shadow: 0 0 0 2px #fff6a0; }
 .e-cursed { background: repeating-linear-gradient(45deg, #2a0a36 0 6px, #14051a 6px 12px); filter: saturate(.6); } .e-cursed .en { color: #c890ff; box-shadow: 0 0 0 2px #6a2a8a; }
+.e-spectral { background: linear-gradient(165deg, rgba(184,240,255,.28), rgba(60,40,90,.55) 60%, #0e0812); } .e-spectral .si { opacity: .75; filter: drop-shadow(0 0 8px #b8f0ff); } .e-spectral .en { color: #b8f0ff; box-shadow: 0 0 0 2px #6ac0e0; }
+.e-echo { background: linear-gradient(165deg, #4a1a3a, #22101e 60%, #0e0812); } .e-echo .en { color: #ff9ad0; box-shadow: 0 0 0 2px #c04a8a; }
+.e-effigy { background: linear-gradient(165deg, #3a2a10, #1c1408 60%, #0e0812); } .e-effigy .en { color: #e0a82e; box-shadow: 0 0 0 2px #8a5a14; }
+.e-venom { background: linear-gradient(165deg, #1a3a20, #0c1c10 60%, #0e0812); } .e-venom .en { color: #6ae08a; box-shadow: 0 0 0 2px #2e8a4a; }
+.e-fated { background: linear-gradient(165deg, #1a2e4a, #0c1626 60%, #0e0812); } .e-fated .en { color: #9ae8ff; box-shadow: 0 0 0 2px #2a6ad8; }
+.e-mimic { background: repeating-linear-gradient(135deg, #3a1a0a 0 5px, #24100a 5px 10px); } .e-mimic .rk { color: #ff7a2a; } .e-mimic .en { color: #ff7a2a; box-shadow: 0 0 0 2px #a04a14; }
+.card.e-tomb { --sc: #8a7e94; background: linear-gradient(180deg, #4a4452, #2a2630 70%, #1a161e); } .e-tomb .en { color: #d8d0e0; box-shadow: 0 0 0 2px #5a5068; }
+.card.arc { background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--sc) 30%, #1a0e22), #120a18 70%); border-style: double; border-width: 4px; }
+.card.arc .si { filter: drop-shadow(0 0 8px var(--sc)); } .card.arc .en { color: var(--sc); box-shadow: 0 0 0 2px var(--sc); } .card.arc .rk { font-size: 12px; }
 .cardrow { gap: 14px; justify-content: center; padding: 10px 0 18px; }
 .cardrow.small .card { width: 66px; height: 94px; } .cardrow.small .card .si img { width: 24px; height: 24px; } .cardrow.small .card .rk { font-size: 11px; }
 .cardrow.small { gap: 10px; max-height: 56vh; overflow-y: auto; }

@@ -87,12 +87,34 @@ const hasRelic = id => G && G.relics.includes(id);
 const hasHero = id => G && G.heroes.includes(id);
 const isUnlocked = x => !x.unlock || META.unlocked[x.id];
 function maxHP() { return G.baseHp + party().reduce((s, h) => s + h.hp, 0) + relicsD().reduce((s, r) => s + (r.maxHp || 0), 0); }
-function scrollSlots() { return 2 + (META.up.scroll ? 1 : 0); }
+function slots(k) { return (G.slots && G.slots[k]) || SLOTS[k].start; }
+function scrollSlots() { return slots('scroll'); }
+function initSlots() {
+  if (G.slots) return;
+  G.slots = { relic: SLOTS.relic.start + (META.up.vault ? 1 : 0), scroll: SLOTS.scroll.start + (META.up.scroll ? 1 : 0), party: SLOTS.party.start + (META.up.barracks ? 1 : 0) };
+  G.slotBuys = { relic: 0, scroll: 0, party: 0 };
+}
+function slotCost(k) { return SLOTS[k].cost((G.slotBuys && G.slotBuys[k]) || 0); }
+function buySlot(k) { const c = slotCost(k); if (!canPay(c) || slots(k) >= SLOTS[k].max) return; pay(c); G.slots[k]++; G.slotBuys[k] = (G.slotBuys[k] || 0) + 1; sfx('build'); log(`${SLOTS[k].name} expanded: ${SLOTS[k].desc} (now ${G.slots[k]}).`); }
+// old saves: fill in fields added later
+function migrateRun() {
+  if (!G.slots) { G.slots = { relic: Math.max(6, G.relics.length), scroll: 2 + (META.up.scroll ? 1 : 0), party: Math.max(4, G.heroes.length) }; G.slotBuys = { relic: 0, scroll: 0, party: 0 }; }
+  if (G.freeRoads === undefined) G.freeRoads = 0;
+  if (G.siege === undefined) G.siege = 0;
+  if (G.studied === undefined) G.studied = 0;
+  if (G.map) ensureEdges(G.map);
+}
 function mkCard(suit, rank, ench = null) { return { id: G.cid++, suit, rank, ench }; }
 function log(s) { G.log.unshift(s); G.log.length = Math.min(G.log.length, 60); renderLog(); }
 const resStr = o => Object.entries(o).filter(([, v]) => v).map(([k, v]) => `${v} ${icon('r_' + k, 2, 'inl')}`).join(' ');
 const costStr = o => Object.entries(o).map(([k, v]) => `<span class="cost" style="color:${RES[k].col}">${v}${icon('r_' + k, 2, 'inl')}</span>`).join('');
-function costOf(key) { const c = Object.assign({}, COSTS[key]); if (key === 'outpost' && G.descent >= 3) c.soul = (c.soul || 0) + 1; return c; }
+function costOf(key) {
+  const c = Object.assign({}, COSTS[key]);
+  if (key === 'outpost' && G.descent >= 3) c.soul = (c.soul || 0) + 1;
+  if (key === 'tome') c.gold += G.studied || 0; // each study costs 1 more Gold
+  if (key === 'road' && G.freeRoads > 0) return {};
+  return c;
+}
 const canPay = o => Object.entries(o).every(([k, v]) => G.res[k] >= v);
 function pay(o) { for (const [k, v] of Object.entries(o)) G.res[k] -= v; }
 
@@ -106,13 +128,16 @@ function addFate(n) { G.fate += n; renderSide(); return `+${n} Fate.`; }
 function doomAdd(n) { G.doom = Math.max(0, G.doom + n); renderSide(); return n > 0 ? `Doom +${n}.` : `Doom ${n}.`; }
 function addCurse(n) { for (let i = 0; i < n; i++) G.deck.push(mkCard(pick(SUIT_KEYS), ri(1, 3), 'cursed')); return n > 1 ? `${n} Cursed cards join your deck.` : 'A Cursed card joins your deck.'; }
 function removeCurses() { let n = 0; G.deck.forEach(c => { if (c.ench === 'cursed') { c.ench = null; n++; } }); return n ? `${n} curse${n > 1 ? 's' : ''} lifted.` : ''; }
+function riteCap() { return 1 + 2 * G.act; } // Act 1: Lv 3, Act 2: Lv 5, Act 3: Lv 7
+const riteLv = k => G.riteLv[k] || 1;
 function levelRite(key) {
-  if (!key) key = pick(RITE_ORDER.slice(1, 8));
-  G.riteLv[key] = (G.riteLv[key] || 1) + 1; return `${RITES[key].name} (Lv ${G.riteLv[key]})`;
+  if (!key) { const open = STUDY_RITES.filter(k => riteLv(k) < riteCap() && k !== 'five' && k !== 'sflush'); if (!open.length) return 'Your Rites are at their limit for this Act; instead ' + addFate(1); key = pick(open); }
+  if (riteLv(key) >= riteCap()) return `${RITES[key].name} is at its limit for this Act (Lv ${riteCap()}); instead ` + addFate(1);
+  G.riteLv[key] = riteLv(key) + 1; return `${RITES[key].name} (Lv ${G.riteLv[key]})`;
 }
-function rankUpRandom(n, by) { const pool = shuffle(G.deck.filter(c => c.rank < 10 && c.ench !== 'cursed')).slice(0, n); pool.forEach(c => c.rank = Math.min(10, c.rank + by)); return `${pool.length} cards rise in rank.`; }
-function dupRandom(n) { const pool = shuffle(G.deck.filter(c => c.ench !== 'cursed')).slice(0, n); pool.forEach(c => G.deck.push(mkCard(c.suit, c.rank, c.ench))); return `${pool.length} cards are doubled: ${pool.map(cardName).join(', ')}.`; }
-function enchantRandom(e, n) { const pool = shuffle(G.deck.filter(c => !c.ench)).slice(0, n); pool.forEach(c => c.ench = e); return `${pool.length} cards become ${ENCH[e].name}: ${pool.map(cardName).join(', ')}.`; }
+function rankUpRandom(n, by) { const pool = shuffle(G.deck.filter(c => c.rank < 10 && c.ench !== 'cursed' && c.ench !== 'tomb' && !c.arc)).slice(0, n); pool.forEach(c => c.rank = Math.min(10, c.rank + by)); return `${pool.length} cards rise in rank.`; }
+function dupRandom(n) { const room = Math.max(0, DECK_MAX - G.deck.length); const pool = shuffle(G.deck.filter(c => c.ench !== 'cursed')).slice(0, Math.min(n, room)); if (!pool.length) return 'Your deck is full; nothing more can be doubled.'; pool.forEach(c => { const d = mkCard(c.suit, c.rank, c.ench); if (c.arc) d.arc = c.arc; G.deck.push(d); }); return `${pool.length} card${pool.length > 1 ? 's are' : ' is'} doubled: ${pool.map(cardName).join(', ')}.`; }
+function enchantRandom(e, n) { const pool = shuffle(G.deck.filter(c => !c.ench && !c.arc)).slice(0, n); pool.forEach(c => c.ench = e); return `${pool.length} cards become ${ENCH[e].name}: ${pool.map(cardName).join(', ')}.`; }
 function revealAll() { G.revealed = true; drawMapBase(); return 'Every hex\'s secret is inked onto your map.'; }
 function addSigil() { G.sigils++; renderSide(); drawMapBase(); return `A Sigil burns into your palm (${G.sigils}/2).` + (G.sigils >= 2 ? ' The Throne is unsealed!' : ''); }
 function loseHero() { const i = ri(0, G.heroes.length - 1); const h = hero(G.heroes[i]); G.heroes.splice(i, 1); G.hp = Math.min(G.hp, maxHP()); renderSide(); return `${h.name} walks into the dark with it. `; }
@@ -131,15 +156,33 @@ function destroyCard(c) {
   if (hasHero('ossian')) G.res.soul++;
   if (hasRelic('ledger')) G.ledger = (G.ledger || 0) + 2;
 }
-function copyCard(c) { const n = mkCard(c.suit, c.rank, c.ench); G.deck.push(n); if (F) F.hand.push(n); return n; }
+function copyCard(c) { const n = mkCard(c.suit, c.rank, c.ench); if (c.arc) n.arc = c.arc; if (G.deck.length < DECK_MAX) G.deck.push(n); else toast('Deck full: the copy lasts only this fight.'); if (F) F.hand.push(n); return n; }
+function mkArcana(id) { const c = mkCard(null, 0); c.arc = id || pick(ARCANA_KEYS); return c; }
+function freeRoads(n) { G.freeRoads = (G.freeRoads || 0) + n; renderAll(); return `Free roads: ${G.freeRoads}.`; }
+function giveArcana(n = 3) { Q.push(() => chooseCard([...Array(n)].map(() => mkArcana()), 'Choose an Arcana trick card')); return ' ✦ A trick card awaits you.'; }
+// add a card, respecting the deck limit (curses ignore it)
+async function addCard(c) {
+  if (c.ench === 'cursed' || G.deck.length < DECK_MAX) { G.deck.push(c); return true; }
+  const deck = sortedDeck();
+  const html = `<p>Your deck is full (${DECK_MAX}). Destroy a card to make room for</p><div class="row center cardrow">${cardHTML(c)}</div><div class="row wrap cardrow small">${deck.map((d, i) => `<div class="pickable" data-i="${i}">${cardHTML(d)}</div>`).join('')}</div>`;
+  const v = await showModal({ title: 'Deck full', html, buttons: [{ t: 'Leave the new card', v: -1, cls: 'ghost' }], pickSel: '.pickable', wide: true });
+  if (v === -1 || v === undefined) return false;
+  const old = deck[v]; destroyCard(old); G.deck.push(c); log(`Replaced ${cardName(old)} with ${cardName(c)}.`); return true;
+}
 async function runQueue() { while (Q.length) { const fn = Q.shift(); await fn(); if (!G || G.over) { Q = []; return; } } }
 
-const rankLabel = r => String(r);
-const cardName = c => `${rankLabel(c.rank)} of ${SUITS[c.suit].name}${c.ench ? ' (' + ENCH[c.ench].name + ')' : ''}`;
-function cardTip(c) { return `<b>${cardName(c)}</b><br>${c.rank} Chips when scored${c.ench ? '<br><span style="color:' + ENCH[c.ench].col + '">' + ENCH[c.ench].desc + '</span>' : ''}`; }
+const rankLabel = c => c.ench === 'tomb' ? '' : c.ench === 'mimic' ? '?' : String(c.rank);
+const cardName = c => c.arc ? `${ARCANA[c.arc].name} (Arcana)` : c.ench === 'tomb' ? 'Tombstone' : `${c.ench === 'mimic' ? 'Mimic' : rankLabel(c)} of ${SUITS[c.suit].name}${c.ench && c.ench !== 'mimic' ? ' (' + ENCH[c.ench].name + ')' : ''}`;
+function cardTip(c) {
+  if (c.arc) return `<b>${ARCANA[c.arc].name}</b> <i>Arcana</i><br>${ARCANA[c.arc].desc}<br><span class="dim">Play it with a Rite. It takes a card slot and adds no rank.</span>`;
+  if (c.ench === 'tomb') return `<b>Tombstone</b><br>${ENCH.tomb.desc}`;
+  return `<b>${cardName(c)}</b><br>${c.ench === 'mimic' ? 'Scores the rank it mimics' : c.rank + ' Chips when scored'}${c.ench ? '<br><span style="color:' + ENCH[c.ench].col + '">' + ENCH[c.ench].desc + '</span>' : ''}`;
+}
 function cardHTML(c, cls = '') {
+  if (c.arc) { const A = ARCANA[c.arc]; return `<div class="card arc ${cls}" style="--sc:${A.col}" data-cid="${c.id}" data-tip="${esc(cardTip(c))}"><div class="rk tl">✦</div><div class="si">${relicIcon(A.ic, A.col, 3)}</div><div class="en">${A.name}</div></div>`; }
+  if (c.ench === 'tomb') return `<div class="card e-tomb ${cls}" data-cid="${c.id}" data-tip="${esc(cardTip(c))}"><div class="si">${icon('skull', 4)}</div><div class="en">Tombstone</div></div>`;
   return `<div class="card s-${c.suit} ${c.ench ? 'e-' + c.ench : ''} ${cls}" data-cid="${c.id}" data-tip="${esc(cardTip(c))}">
-    <div class="rk tl">${rankLabel(c.rank)}</div><div class="si">${icon(c.suit, 4)}</div><div class="rk br">${rankLabel(c.rank)}</div>
+    <div class="rk tl">${rankLabel(c)}</div><div class="si">${icon(c.suit, 4)}</div><div class="rk br">${rankLabel(c)}</div>
     ${c.ench ? `<div class="en">${ENCH[c.ench].name}</div>` : ''}</div>`;
 }
 function relicHTML(r, cls = '') { return `<div class="relic ${cls}" data-src="${r.id}" data-tip="${esc(`<b>${r.name}</b><br>${r.desc}${r.id === 'ledger' && G ? '<br>Currently +' + (G.ledger || 0) + ' Mult' : ''}`)}">${relicIcon(r.ic, r.col, 3)}</div>`; }
@@ -196,16 +239,49 @@ function genMap() {
     }
   });
   hexes.forEach(h => { for (let k = 0; k < 6; k++) { const a = h.vs[k], b = h.vs[(k + 1) % 6]; if (!verts[a].adj.includes(b)) verts[a].adj.push(b); if (!verts[b].adj.includes(a)) verts[b].adj.push(a); } });
-  return { hexes, verts, ci, blight: -1 };
+  const M = { hexes, verts, ci, blight: -1 };
+  ensureEdges(M);
+  return M;
 }
+function ensureEdges(M) {
+  if (!M.roads) M.roads = [];
+  if (M.edges) return;
+  M.edges = [];
+  M.verts.forEach((v, a) => v.adj.forEach(b => { if (a < b) { const w = M.verts[b]; M.edges.push({ a, b, x: (v.x + w.x) / 2, y: (v.y + w.y) / 2, hs: v.hs.filter(h => w.hs.includes(h)) }); } }));
+}
+const hasRoad = (M, e) => M.roads.includes(e);
+const vertHasRoad = (M, vi) => M.roads.some(e => M.edges[e].a === vi || M.edges[e].b === vi);
 const isRim = h => Math.max(Math.abs(h.q), Math.abs(h.r), Math.abs(h.q + h.r)) === 2;
 function frontier() { const M = G.map; return M.hexes.map((h, i) => i).filter(i => !M.hexes[i].exp && M.hexes[i].nb.some(j => M.hexes[j].exp)); }
 function canDelve(i) { const h = G.map.hexes[i]; if (h.exp || !h.nb.some(j => G.map.hexes[j].exp)) return false; if (h.enc === 'throne' && G.sigils < 2) return false; return true; }
 function startVerts() { const M = G.map; return M.verts.map((v, i) => i).filter(i => { const v = M.verts[i]; return v.hs.length === 2 && v.hs.every(h => isRim(M.hexes[h]) && M.hexes[h].enc !== 'lair'); }); }
+// Outposts: on a corner your roads reach, touching explored land, with no building on a neighbouring corner
 function buildableVerts() {
   const M = G.map;
-  return M.verts.map((v, i) => i).filter(i => { const v = M.verts[i]; return !v.b && v.hs.every(h => M.hexes[h].exp) && v.adj.every(a => !M.verts[a].b) && v.hs.some(h => M.hexes[h].t !== 'throne'); });
+  return M.verts.map((v, i) => i).filter(i => { const v = M.verts[i]; return !v.b && vertHasRoad(M, i) && v.hs.some(h => M.hexes[h].exp && M.hexes[h].t !== 'throne') && v.adj.every(a => !M.verts[a].b); });
 }
+// Roads: along an edge touching explored land, joined to one of your buildings or roads
+function buildableRoads() {
+  const M = G.map; ensureEdges(M);
+  return M.edges.map((e, i) => i).filter(i => { const e = M.edges[i]; if (hasRoad(M, i) || !e.hs.some(h => M.hexes[h].exp)) return false;
+    return [e.a, e.b].some(v => M.verts[v].b || vertHasRoad(M, v)); });
+}
+function longestRoad() {
+  const M = G.map; if (!M || !M.roads || !M.roads.length) return 0;
+  let best = 0; const used = new Set();
+  const dfs = (v, len) => { best = Math.max(best, len); M.roads.forEach(e => { if (used.has(e)) return; const E = M.edges[e]; const o = E.a === v ? E.b : E.b === v ? E.a : -1; if (o < 0) return; used.add(e); dfs(o, len + 1); used.delete(e); }); };
+  const ends = new Set(); M.roads.forEach(e => { ends.add(M.edges[e].a); ends.add(M.edges[e].b); });
+  ends.forEach(v => dfs(v, 0)); return best;
+}
+function keepCount(type) { return G.map ? G.map.verts.filter(v => v.b === 3 && v.keep === type).length : 0; }
+// Dominion: 1 per Outpost, 2 per Citadel, 3 per Keep, +2 for a Kingsroad (longest road 5+)
+function dominion() {
+  const M = G.map; if (!M) return { pts: 0, lr: 0, kr: false };
+  let pts = 0; M.verts.forEach(v => { pts += v.b === 1 ? 1 : v.b === 2 ? 2 : v.b === 3 ? 3 : 0; });
+  const lr = longestRoad(), kr = lr >= 5; if (kr) pts += 2;
+  return { pts, lr, kr };
+}
+const DOM_CHIPS = 3, DOM_BOSS = 0.04, DOM_BOSS_MAX = 0.4, SIEGE_MAX = 3, SIEGE_DMG = 0.08;
 function tradeRate(give) {
   let r = META.up.broker ? 3 : 4; const M = G.map;
   const docks = M.hexes.filter(h => h.dock && h.vs.some(v => M.verts[v].b));
@@ -216,7 +292,7 @@ function tradeRate(give) {
 }
 
 // ── map rendering (internal low-res canvas, scaled up pixelated) ──
-let GEO = null, mapBase = null, hoverHex = -1, hoverVert = -1, selHex = -1, buildMode = null, mapAnim = 0;
+let GEO = null, mapBase = null, hoverHex = -1, hoverVert = -1, hoverEdge = -1, selHex = -1, buildMode = null, mapAnim = 0;
 function computeGeo() {
   const M = G.map, own = new Int16Array(MW * MH).fill(-1), idx = new Map(M.hexes.map((h, i) => [h.q + ',' + h.r, i]));
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
@@ -285,12 +361,20 @@ function drawMapBase() {
     else if (mk) { const m = { monster: '#d0213a', event: '#a65cf0', tavern: '#e0a82e', market: '#40e0b0', shrine: '#5ad0ff', treasure: '#ffd44a' }[mk]; if (m) { x.fillStyle = '#0a0610'; x.fillRect(cx - 3, cy - 18, 6, 5); x.fillStyle = m; x.fillRect(cx - 2, cy - 17, 4, 3); } }
     if (h.dock) { x.fillStyle = '#0a0610'; x.fillRect(cx + 7, cy - 14, 7, 7); x.fillStyle = h.dock === 'any' ? '#ffd44a' : RES[h.dock].col; x.fillRect(cx + 8, cy - 13, 5, 5); x.fillStyle = '#0a0610'; x.fillRect(cx + 10, cy - 12, 1, 3); }
   });
+  // roads
+  ensureEdges(M);
+  M.roads.forEach(e => { const E = M.edges[e], a = M.verts[E.a], b = M.verts[E.b]; pixLine(x, a.x, a.y, b.x, b.y, '#0a0610', 3); pixLine(x, a.x, a.y, b.x, b.y, '#c89a4a', 1); });
   // buildings
   M.verts.forEach(v => {
     if (v.b === 1) drawRows(x, ICONS.tower, v.x - 3, v.y - 5);
     else if (v.b === 2) drawRows(x, ICONS.castle, v.x - 4, v.y - 6);
+    else if (v.b === 3) { drawRows(x, ICONS.castle, v.x - 4, v.y - 6); x.fillStyle = '#0a0610'; x.fillRect(v.x - 1, v.y - 12, 5, 5); x.fillRect(v.x - 1, v.y - 12, 1, 6); x.fillStyle = KEEPS[v.keep].col; x.fillRect(v.x, v.y - 11, 3, 3); }
   });
   const tint = ACTS[G.act].tint; x.fillStyle = tint; x.globalCompositeOperation = 'source-atop'; x.fillRect(0, 0, MW, MH); x.globalCompositeOperation = 'source-over';
+}
+function pixLine(x, x0, y0, x1, y1, col, w) {
+  x.fillStyle = col; const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)), o = (w - 1) / 2;
+  for (let k = 0; k <= n; k++) { const px = Math.round(x0 + (x1 - x0) * k / n - o), py = Math.round(y0 + (y1 - y0) * k / n - o); x.fillRect(px, py, w, w); }
 }
 function mapFrame() {
   const c = $('#mapc'); if (!c || !G || !G.map || $('#scr-map').classList.contains('hide')) { mapAnim = requestAnimationFrame(mapFrame); return; }
@@ -307,6 +391,8 @@ function mapFrame() {
   if (G.phase === 'start') vlist = startVerts();
   else if (buildMode === 'outpost') vlist = buildableVerts();
   else if (buildMode === 'citadel') vlist = M.verts.map((v, i) => i).filter(i => M.verts[i].b === 1);
+  if (buildMode === 'keep') vlist = M.verts.map((v, i) => i).filter(i => M.verts[i].b === 2);
+  if (buildMode === 'road') buildableRoads().forEach(i => { const e = M.edges[i]; const on = i === hoverEdge; x.fillStyle = '#0a0610'; x.fillRect(Math.round(e.x) - 2, Math.round(e.y) - 2, 4, 4); x.fillStyle = on ? '#ffffff' : `rgba(200,154,74,${0.55 + pulse * 0.45})`; x.fillRect(Math.round(e.x) - 1, Math.round(e.y) - 1, 2, 2); });
   if (vlist) vlist.forEach(i => { const v = M.verts[i]; const on = i === hoverVert; x.fillStyle = on ? '#ffffff' : `rgba(255,212,74,${0.5 + pulse * 0.5})`; x.fillRect(v.x - 2, v.y - 1, 5, 3); x.fillRect(v.x - 1, v.y - 2, 3, 5); x.fillStyle = '#0a0610'; x.fillRect(v.x, v.y, 1, 1); });
   // embers drifting over the board
   for (let k = 0; k < 14; k++) { const ex = (k * 53 + t * (6 + k % 5)) % MW, ey = MH - ((t * (8 + k % 7) * 2 + k * 37) % MH); x.fillStyle = k % 3 ? 'rgba(255,122,42,0.7)' : 'rgba(166,92,240,0.7)'; x.fillRect(ex | 0, ey | 0, 1, 1); }
@@ -315,16 +401,19 @@ function mapFrame() {
 function mapPos(ev) { const c = $('#mapc'), r = c.getBoundingClientRect(); return [(ev.clientX - r.left) / r.width * MW, (ev.clientY - r.top) / r.height * MH]; }
 const COARSE = matchMedia('(pointer: coarse)').matches;
 function nearestVert(px, py, list) { let best = -1, bd = COARSE ? 11 : 7; list.forEach(i => { const v = G.map.verts[i]; const d = Math.hypot(v.x - px, v.y - py); if (d < bd) { bd = d; best = i; } }); return best; }
-function vertList() { if (G.phase === 'start') return startVerts(); if (buildMode === 'outpost') return buildableVerts(); if (buildMode === 'citadel') return G.map.verts.map((v, i) => i).filter(i => G.map.verts[i].b === 1); return null; }
+function vertList() { if (G.phase === 'start') return startVerts(); if (buildMode === 'outpost') return buildableVerts(); if (buildMode === 'citadel') return G.map.verts.map((v, i) => i).filter(i => G.map.verts[i].b === 1); if (buildMode === 'keep') return G.map.verts.map((v, i) => i).filter(i => G.map.verts[i].b === 2); return null; }
+function nearestEdge(px, py, list) { let best = -1, bd = COARSE ? 9 : 6; list.forEach(i => { const e = G.map.edges[i]; const d = Math.hypot(e.x - px, e.y - py); if (d < bd) { bd = d; best = i; } }); return best; }
 function onMapMove(ev) {
   if (!G || !G.map || !GEO) return; const [px, py] = mapPos(ev);
   const vl = vertList(); hoverVert = vl ? nearestVert(px, py, vl) : -1;
+  hoverEdge = buildMode === 'road' ? nearestEdge(px, py, buildableRoads()) : -1;
   const xi = Math.floor(px), yi = Math.floor(py); hoverHex = xi >= 0 && yi >= 0 && xi < MW && yi < MH ? GEO.own[yi * MW + xi] : -1;
   const tip = $('#tip');
-  if (hoverVert >= 0) showTip(vertTip(hoverVert), ev);
+  if (hoverEdge >= 0) showTip('<b>Road</b><br>Click to build here.', ev);
+  else if (hoverVert >= 0) showTip(vertTip(hoverVert), ev);
   else if (hoverHex >= 0) showTip(hexTip(hoverHex), ev);
   else tip.style.display = 'none';
-  $('#mapc').style.cursor = (hoverVert >= 0 || (hoverHex >= 0 && !vl)) ? 'pointer' : 'default';
+  $('#mapc').style.cursor = (hoverVert >= 0 || hoverEdge >= 0 || (hoverHex >= 0 && !vl && buildMode !== 'road')) ? 'pointer' : 'default';
 }
 function vertTip(i) { const v = G.map.verts[i]; return '<b>Corner</b><br>' + v.hs.map(h => { const H = G.map.hexes[h]; return H.t === 'throne' ? 'The Throne (nothing)' : `${RES[H.t].terrain} · ${H.num} (${pips(H.num)} pips)`; }).join('<br>') + (G.phase === 'start' ? '<br><i>Click to make camp here.</i>' : ''); }
 function hexTip(i) {
@@ -347,18 +436,38 @@ async function onMapClick(ev) {
   if (!G || BUSY || !GEO) return; const [px, py] = mapPos(ev);
   if (G.phase === 'start') { const v = nearestVert(px, py, startVerts()); if (v >= 0) makeCamp(v); return; }
   if (G.phase !== 'act') return;
+  if (buildMode === 'road') {
+    const e = nearestEdge(px, py, buildableRoads());
+    if (e >= 0) {
+      if (!canPay(costOf('road'))) { toast('Not enough resources.'); return; }
+      if (G.freeRoads > 0) G.freeRoads--; else pay(costOf('road'));
+      const before = dominion().kr;
+      G.map.roads.push(e); sfx('build'); log('A road is laid through the mire.');
+      if (!before && dominion().kr) { log('KINGSROAD: your longest road reaches 5. +2 Dominion and +1 Discard in fights this Act.'); toast('Kingsroad! +2 Dominion, +1 Discard'); }
+      if (!canPay(costOf('road')) || !buildableRoads().length) buildMode = null;
+      drawMapBase(); renderAll(); saveRun();
+    } else { buildMode = null; renderRight(); }
+    return;
+  }
   if (buildMode) {
     const vl = vertList(), v = nearestVert(px, py, vl);
     if (v >= 0) {
       const key = buildMode; if (!canPay(costOf(key))) { toast('Not enough resources.'); return; }
-      pay(costOf(key)); G.map.verts[v].b = key === 'outpost' ? 1 : 2; sfx('build');
-      log(key === 'outpost' ? 'An outpost rises from the mud.' : 'Your outpost becomes a Citadel.');
-      buildMode = null; drawMapBase(); renderSide(); renderRight(); saveRun();
+      if (key === 'keep') { const type = await chooseKeep(); if (!type) return; G.map.verts[v].keep = type; }
+      pay(costOf(key)); G.map.verts[v].b = key === 'outpost' ? 1 : key === 'citadel' ? 2 : 3; sfx('build');
+      log(key === 'outpost' ? 'An outpost rises from the mud.' : key === 'citadel' ? 'Your outpost becomes a Citadel.' : `Your Citadel becomes a ${KEEPS[G.map.verts[v].keep].name}.`);
+      buildMode = null; drawMapBase(); renderAll(); saveRun();
     } else { buildMode = null; renderRight(); }
     return;
   }
   const xi = Math.floor(px), yi = Math.floor(py); const i = xi >= 0 && yi >= 0 && xi < MW && yi < MH ? GEO.own[yi * MW + xi] : -1;
   if (i >= 0) { selHex = i; sfx('click'); renderRight(); }
+}
+async function chooseKeep() {
+  const ks = Object.keys(KEEPS);
+  const html = `<div class="row wrap">${ks.map((k, i) => `<div class="pickable relicpick" data-i="${i}">${icon('castle', 5)}<div class="rp-n" style="color:${KEEPS[k].col}">${KEEPS[k].name}</div><div class="rp-d">${KEEPS[k].desc}</div></div>`).join('')}</div><p class="small dim">Keeps last until the end of this Act and are worth 3 Dominion.</p>`;
+  const v = await showModal({ title: 'Raise a Keep', html, buttons: [{ t: 'Cancel', v: -1, cls: 'ghost' }], pickSel: '.pickable' });
+  return v === -1 || v === undefined ? null : ks[v];
 }
 function makeCamp(v) {
   const M = G.map; M.verts[v].b = 1;
@@ -385,8 +494,10 @@ async function harvest() {
   M.hexes.forEach((h, i) => {
     if (h.t === 'throne' || i === M.blight || !h.exp) return;
     if (h.num !== roll && !wide) return;
-    h.vs.forEach(v => { const bld = M.verts[v].b; if (bld) gainO[h.t] = (gainO[h.t] || 0) + (bld === 2 ? 4 : 2); });
+    h.vs.forEach(v => { const bld = M.verts[v].b; if (bld) gainO[h.t] = (gainO[h.t] || 0) + (bld >= 2 ? 4 : 2); });
   });
+  const tr = keepCount('treasury'); if (tr) { gainO.gold = (gainO.gold || 0) + tr; gainO.soul = (gainO.soul || 0) + tr; }
+  const ch = keepCount('chapel'); if (ch) healHP(3 * ch);
   relicsD().forEach(r => { if (r.harvest) { const o = r.harvest(); for (const k in o) gainO[k] = (gainO[k] || 0) + o[k]; } });
   for (const k in gainO) G.res[k] += gainO[k];
   const box = $('#harvest');
@@ -480,6 +591,7 @@ async function actComplete() {
 }
 function newAct() {
   G.doom = G.descent >= 1 ? 4 : 0; G.turn = 0; G.sigils = 0; G.doomMax = G.descent >= 5 ? 30 : 36;
+  G.freeRoads = 2 + (META.up.roads ? 1 : 0); G.siege = 0;
   G.bossPick = pick(BOSSES[G.act]); G.map = genMap(); G.phase = 'start'; GEO = null;
   if (hasRelic('moth')) G.fate += 2;
 }
@@ -495,8 +607,8 @@ async function chooseHero(n, cls, tavernMode) {
   if (!pool.length) pool = HEROES.filter(h => isUnlocked(h) && !G.heroes.includes(h.id));
   if (!pool.length) { toast('No one else answers your call.'); return; }
   const opts = shuffle(pool).slice(0, n);
-  const full = G.heroes.length >= 4;
-  const html = `<div class="row wrap">${opts.map((h, i) => heroCardHTML(h, 'pickable', `data-i="${i}"`)).join('')}</div>${full ? '<p class="warn">Your party is full (4). Recruiting means dismissing someone.</p>' : ''}`;
+  const full = G.heroes.length >= slots('party');
+  const html = `<div class="row wrap">${opts.map((h, i) => heroCardHTML(h, 'pickable', `data-i="${i}"`)).join('')}</div>${full ? `<p class="warn">Your party is full (${slots('party')}). Recruiting means dismissing someone. Expand your Barracks for more room.</p>` : ''}`;
   const btns = [{ t: tavernMode ? 'Just drink (+15 HP)' : 'Decline', v: tavernMode ? 'drink' : -1, cls: 'ghost' }];
   const v = await showModal({ title: 'Recruit a Hero', html, buttons: btns, pickSel: '.pickable' });
   if (v === 'drink' || v === -1 || v === undefined) return v;
@@ -514,10 +626,10 @@ async function chooseRelic(n) {
   const pool = RELICS.filter(r => isUnlocked(r) && !G.relics.includes(r.id));
   if (!pool.length) { log('The hoard is empty. ' + gain({ gold: 3 })); return; }
   const opts = shuffle(pool).slice(0, n);
-  const html = `<div class="row wrap">${opts.map((r, i) => `<div class="pickable relicpick" data-i="${i}">${relicIcon(r.ic, r.col, 6)}<div class="rp-n">${r.name}</div><div class="rp-d">${r.desc}</div></div>`).join('')}</div>${G.relics.length >= 6 ? '<p class="warn">Your reliquary holds 6. Taking another means casting one away.</p>' : ''}`;
+  const html = `<div class="row wrap">${opts.map((r, i) => `<div class="pickable relicpick" data-i="${i}">${relicIcon(r.ic, r.col, 6)}<div class="rp-n">${r.name}</div><div class="rp-d">${r.desc}</div></div>`).join('')}</div>${G.relics.length >= slots('relic') ? `<p class="warn">Your reliquary holds ${slots('relic')}. Taking another means casting one away.</p>` : ''}`;
   const v = await showModal({ title: 'Choose a Relic', html, buttons: [{ t: 'Take none (+2 Gold)', v: -1, cls: 'ghost' }], pickSel: '.pickable' });
   if (v === -1 || v === undefined) { gain({ gold: 2 }); return; }
-  if (G.relics.length >= 6) {
+  if (G.relics.length >= slots('relic')) {
     const html2 = `<div class="row wrap">${relicsD().map((r, i) => `<div class="pickable relicpick" data-i="${i}">${relicIcon(r.ic, r.col, 5)}<div class="rp-n">${r.name}</div><div class="rp-d">${r.desc}</div></div>`).join('')}</div>`;
     const d = await showModal({ title: 'Cast away which relic?', html: html2, buttons: [{ t: 'Keep mine', v: -1, cls: 'ghost' }], pickSel: '.pickable' });
     if (d === -1 || d === undefined) return; G.relics.splice(d, 1);
@@ -532,16 +644,18 @@ async function replaceScroll(id) {
   if (v === -1 || v === undefined) return; G.scrolls[v] = id; renderSide();
 }
 function randCard(act, enchBoost = 0) {
+  if (Math.random() < 0.08 + 0.02 * act) return mkArcana();
   const lo = [0, 2, 4, 6][act], hi = [0, 8, 10, 10][act];
   const c = mkCard(pick(SUIT_KEYS), ri(lo, hi));
-  if (Math.random() < 0.1 + 0.08 * act + enchBoost) c.ench = pick(['gilded', 'bloodied', 'glass', 'holy']);
+  if (Math.random() < 0.1 + 0.08 * act + enchBoost) c.ench = pick(ENCH_DROP);
   return c;
 }
 async function chooseCard(cards, title = 'Add a card to your deck') {
   const html = `<div class="row wrap cardrow">${cards.map((c, i) => `<div class="pickable" data-i="${i}">${cardHTML(c)}</div>`).join('')}</div>`;
-  const v = await showModal({ title, html, buttons: [{ t: 'Skip (+1 Gold)', v: -1, cls: 'ghost' }], pickSel: '.pickable' });
+  const v = await showModal({ title: title + ` <span class="dim small">(deck ${G.deck.length}/${DECK_MAX})</span>`, html, buttons: [{ t: 'Skip (+1 Gold)', v: -1, cls: 'ghost' }], pickSel: '.pickable' });
   if (v === -1 || v === undefined) { gain({ gold: 1 }); return null; }
-  G.deck.push(cards[v]); sfx('card'); log(`Added ${cardName(cards[v])} to your deck.`); return cards[v];
+  if (!await addCard(cards[v])) return null;
+  sfx('card'); log(`Added ${cardName(cards[v])} to your deck.`); return cards[v];
 }
 async function purgeModal(title = 'Destroy a card forever', optional = true) {
   const deck = sortedDeck();
@@ -553,11 +667,12 @@ async function purgeModal(title = 'Destroy a card forever', optional = true) {
 const sortedDeck = () => G.deck.slice().sort((a, b) => SUIT_KEYS.indexOf(a.suit) - SUIT_KEYS.indexOf(b.suit) || a.rank - b.rank);
 async function market() {
   const stock = [];
-  for (let i = 0; i < 3; i++) { const c = randCard(G.act, 0.15); stock.push({ kind: 'card', c, cost: c.ench ? { gold: 2, iron: 1 } : { gold: 1, iron: 1 } }); }
+  for (let i = 0; i < 3; i++) { const c = randCard(G.act, 0.15); stock.push({ kind: 'card', c, cost: c.ench || c.arc ? { gold: 2, iron: 1 } : { gold: 1, iron: 1 } }); }
+  stock.push({ kind: 'card', c: mkArcana(), cost: { gold: 2, soul: 1 } });
   shuffle(RELICS.filter(r => isUnlocked(r) && !G.relics.includes(r.id))).slice(0, 2).forEach(r => stock.push({ kind: 'relic', r, cost: { gold: 3, soul: 1 } }));
   shuffle(SCROLLS.slice()).slice(0, 2).forEach(s => stock.push({ kind: 'scroll', s, cost: { gold: 1, ichor: 1 } }));
   stock.push({ kind: 'purge', cost: { soul: 1, bone: 1 } });
-  stock.push({ kind: 'tome', cost: { soul: 1, gold: 2 } });
+  stock.push({ kind: 'tome', cost: { soul: 1, gold: 2 + (G.studied || 0) } });
   while (true) {
     const html = `<p class="flav">"Everything is for sale," hisses the hooded thing behind the counter. "Even you. Especially you."</p>
       <div class="shop">${stock.map((it, i) => {
@@ -568,15 +683,15 @@ async function market() {
         else if (it.kind === 'scroll') inner = `<div class="relicpick">${relicIcon(it.s.ic, it.s.col, 5)}<div class="rp-n">${it.s.name}</div><div class="rp-d">${it.s.desc}</div></div>`;
         else if (it.kind === 'purge') inner = `<div class="relicpick">${icon('skull', 6)}<div class="rp-n">Purge a card</div><div class="rp-d">Destroy one card from your deck.</div></div>`;
         else inner = `<div class="relicpick">${relicIcon('book', '#a65cf0', 5)}<div class="rp-n">Forbidden Tome</div><div class="rp-d">Level up a Rite of your choice.</div></div>`;
-        const room = it.kind === 'relic' ? G.relics.length < 6 : it.kind === 'scroll' ? G.scrolls.length < scrollSlots() : true;
+        const room = it.kind === 'relic' ? G.relics.length < slots('relic') : it.kind === 'scroll' ? G.scrolls.length < scrollSlots() : true;
         return `<div class="shopit ${canPay(it.cost) && room ? 'pickable' : 'poor'}" data-i="${i}">${inner}<div class="price">${room ? costStr(it.cost) : '<span class="dim small">no room</span>'}</div></div>`;
       }).join('')}</div>`;
     const v = await showModal({ title: 'The Black Market', art: sceneImg('market', 5), html, wide: true, pickSel: '.shopit.pickable', buttons: [{ t: 'Trade resources', v: 'trade', cls: 'ghost' }, { t: 'Leave', v: -1 }] });
     if (v === -1 || v === undefined) return;
     if (v === 'trade') { await tradeModal(); continue; }
     const it = stock[v]; if (!canPay(it.cost)) continue;
-    if (it.kind === 'card') { pay(it.cost); G.deck.push(it.c); it.sold = true; log(`Bought ${cardName(it.c)}.`); sfx('coin'); }
-    else if (it.kind === 'relic') { if (G.relics.length >= 6) { toast('Your reliquary is full.'); continue; } pay(it.cost); G.relics.push(it.r.id); it.sold = true; log(`Bought ${it.r.name}.`); sfx('invoke'); }
+    if (it.kind === 'card') { if (!await addCard(it.c)) continue; pay(it.cost); it.sold = true; log(`Bought ${cardName(it.c)}.`); sfx('coin'); }
+    else if (it.kind === 'relic') { if (G.relics.length >= slots('relic')) { toast('Your reliquary is full.'); continue; } pay(it.cost); G.relics.push(it.r.id); it.sold = true; log(`Bought ${it.r.name}.`); sfx('invoke'); }
     else if (it.kind === 'scroll') { if (G.scrolls.length >= scrollSlots()) { toast('Your satchel is full.'); continue; } pay(it.cost); G.scrolls.push(it.s.id); it.sold = true; sfx('coin'); }
     else if (it.kind === 'purge') { if (await purgeModal()) { pay(it.cost); it.sold = true; } }
     else if (it.kind === 'tome') { if (await tomeModal()) { pay(it.cost); it.sold = true; } }
@@ -584,11 +699,12 @@ async function market() {
   }
 }
 async function tomeModal(n = 3) {
-  const opts = shuffle(RITE_ORDER.slice(1, 9)).slice(0, n);
-  const html = `<div class="row wrap">${opts.map((k, i) => { const R = RITES[k], lv = G.riteLv[k] || 1; return `<div class="pickable relicpick" data-i="${i}">${relicIcon('book', '#a65cf0', 5)}<div class="rp-n">${R.name}</div><div class="rp-d">${R.desc}<br>Lv ${lv} → ${lv + 1}<br><span class="chips">+${R.lc} Chips</span> <span class="mult">+${R.lm} Mult</span></div></div>`; }).join('')}</div>`;
+  const opts = shuffle(STUDY_RITES.filter(k => riteLv(k) < riteCap())).slice(0, n);
+  if (!opts.length) { await showModal({ title: 'Study a Rite', text: `Every Rite is at its limit for this Act (Lv ${riteCap()}). Deeper Acts allow deeper study.`, buttons: [{ t: 'Close' }] }); return false; }
+  const html = `<p class="small dim">Rites can reach Lv ${riteCap()} in this Act.</p><div class="row wrap">${opts.map((k, i) => { const R = RITES[k], lv = G.riteLv[k] || 1; return `<div class="pickable relicpick" data-i="${i}">${relicIcon('book', '#a65cf0', 5)}<div class="rp-n">${R.name}</div><div class="rp-d">${R.desc}<br>Lv ${lv} → ${lv + 1}<br><span class="chips">+${R.lc} Chips</span> <span class="mult">+${R.lm} Mult</span></div></div>`; }).join('')}</div>`;
   const v = await showModal({ title: 'Study a Rite', html, buttons: [{ t: 'Cancel', v: -1, cls: 'ghost' }], pickSel: '.pickable' });
   if (v === -1 || v === undefined) return false;
-  log('Studied: ' + levelRite(opts[v])); sfx('invoke'); return true;
+  log('Studied: ' + levelRite(opts[v])); G.studied = (G.studied || 0) + 1; sfx('invoke'); return true;
 }
 async function shrine() {
   const v = await showModal({ title: 'A Forgotten Shrine', art: sceneImg('shrine', 6), text: 'A blue flame burns on a cairn of skulls, fed by nothing. Saints have prayed here, and worse things than saints. It will grant you one boon.',
@@ -622,7 +738,7 @@ async function runEvent(ev) {
   if (c.check) {
     const b = classBonus(c.check); const ok = await diceCheck(c.check.n, b, ev.title);
     res = ok ? c.win() : c.lose();
-  } else res = c.go();
+  } else res = await c.go();
   renderSide();
   await showModal({ title: ev.title, art: sceneImg(ev.art, 4), text: `<i>${c.t}</i><br><br>${res}`, buttons: [{ t: 'Continue' }] });
 }
@@ -635,6 +751,70 @@ async function rollDice(title, need, bonus) {
   const total = a + b + bonus, ok = total >= need;
   ov.innerHTML = `<div class="dv-t">${title}</div><div class="dv-d">${dieHTML(a)}${dieHTML(b)}</div><div class="dv-n">${a} + ${b}${bonus ? ' + ' + bonus : ''} = <b class="${ok ? 'ok' : 'bad'}">${total}</b> <small>(need ${need}+)</small></div>`;
   return { a, b, total, ok };
+}
+// open roll with no target: shows the dice, returns { vals, sum }
+async function rollOpen(title, n = 2, note = '') {
+  const ov = $('#diceov'); ov.classList.remove('hide'); sfx('dice');
+  const vals = [...Array(n)].map(d6);
+  for (let k = 0; k < (TEST ? 1 : 10); k++) { ov.innerHTML = `<div class="dv-t">${title}</div><div class="dv-d tumble">${vals.map(() => dieHTML(d6())).join('')}</div>${note ? `<div class="dv-n small">${note}</div>` : ''}`; await sleep(55); }
+  const sum = vals.reduce((a, b) => a + b, 0);
+  ov.innerHTML = `<div class="dv-t">${title}</div><div class="dv-d">${vals.map(dieHTML).join('')}</div><div class="dv-n">${vals.join(' + ')} = <b>${sum}</b>${note ? `<br><small>${note}</small>` : ''}</div>`;
+  await sleep(1300); ov.classList.add('hide');
+  return { vals, sum };
+}
+// you vs. them, 2d6 each (+1 with the Gambler's Knucklebone). Returns 1 win, 0 draw, -1 loss
+async function diceDuel(title) {
+  const b = hasRelic('gambler') ? 1 : 0;
+  const you = (await rollOpen(title + ': your roll', 2, b ? '+1 Knucklebone' : '')).sum + b;
+  const them = (await rollOpen(title + ': their roll', 2, `you rolled ${you}`)).sum;
+  log(`${title}: you ${you}, they ${them}.`);
+  return you > them ? 1 : you === them ? 0 : -1;
+}
+async function askYesNo(title, text, yes, no) { return (await showModal({ title, text, buttons: [{ t: yes, v: 1 }, { t: no, v: 0, cls: 'ghost' }] })) === 1; }
+async function runBlades() {
+  let gold = 0, hall = 1; const out = [];
+  while (hall <= 4) {
+    const { sum } = await rollOpen(`Hall ${hall} of 4`, 1, '3+: you slip through · 1-2: the blades find you');
+    if (sum >= 3) { gold += hall; out.push(`Hall ${hall}: through (+${hall} Gold).`); }
+    else { const d = 5 + hall * 3; out.push(`Hall ${hall}: cut down. ${hurt(d)} The gold spills from your hands.`); gold = Math.floor(gold / 2); break; }
+    if (hall === 4) { out.push('You reach the vault at the end.' + giveRelic()); break; }
+    if (!await askYesNo('Hall of Falling Blades', `${out.join('<br>')}<br><br>You carry <b>${gold}</b> Gold. Run the next hall for more?`, 'Run on', 'Leave with it')) break;
+    hall++;
+  }
+  return out.join('<br>') + (gold ? '<br>' + gain({ gold }) : '');
+}
+async function oracleRoll(bonus) {
+  const { sum } = await rollOpen('The Drunk Oracle', 2, bonus ? `+${bonus} for the drink` : '');
+  const r = Math.min(12, sum + bonus);
+  if (r <= 2) return `${r}: "Oh, dear." ` + addCurse(1) + ' ' + doomAdd(2);
+  if (r <= 4) return `${r}: "Pain, soon." It comes at once. ` + hurt(8);
+  if (r <= 6) return `${r}: "Small fortunes." ` + gain(randRes(2));
+  if (r === 7) return '7: "Seven! The dark is watching you, and so is luck." ' + doomAdd(2) + giveRelic();
+  if (r <= 9) return `${r}: "You will learn something terrible." ` + levelRite() + '.';
+  if (r <= 11) return `${r}: "Fortune favours you." ` + addFate(2) + ' ' + healHP(10);
+  return '12: "Twelve! Friends, and treasure!"' + giveHero() + giveRelic();
+}
+async function sickhouseRolls() {
+  const out = []; let soul = 0;
+  for (const h of party()) {
+    const { sum } = await rollOpen(`${h.name} tends the sick`, 1, '1: falls ill · 4+: a soul is saved · 6: blessed');
+    if (sum === 1) out.push(`${h.name} falls ill. ${maxHpAdd(-3)}`);
+    else if (sum === 6) { soul++; out.push(`${h.name} is blessed. ${addFate(1)}`); }
+    else if (sum >= 4) { soul++; out.push(`${h.name} saves a life.`); }
+    else out.push(`${h.name} can do nothing.`);
+  }
+  return out.join('<br>') + (soul ? '<br>' + gain({ soul }) : '');
+}
+async function wheelSpin() {
+  const pool = shuffle(G.deck.filter(c => !c.arc && c.ench !== 'cursed' && c.ench !== 'tomb')).slice(0, 3), out = [];
+  for (const c of pool) {
+    const name = cardName(c), { sum } = await rollOpen(name, 1, '1: cursed · 2-3: nothing · 4-5: +2 rank · 6: a strange new nature');
+    if (sum === 1) { c.ench = 'cursed'; out.push(`${name} is cursed.`); }
+    else if (sum <= 3) out.push(`${name} is unchanged.`);
+    else if (sum <= 5) { c.rank = Math.min(10, c.rank + 2); out.push(`${name} rises to ${c.rank}.`); }
+    else { c.ench = pick(ENCH_DROP); out.push(`${name} becomes ${ENCH[c.ench].name}.`); }
+  }
+  return out.join('<br>') || 'The wheel spins, but your deck is empty of anything it wants.';
 }
 async function diceCheck(need, bonus, title) {
   let { total, ok } = await rollDice(title, need, bonus);
@@ -704,20 +884,24 @@ function renderTop() {
     <div class="tb-turn">Turn ${G.turn}</div>
     <div class="tb-doom" data-tip="${esc('<b>Doom</b><br>+1 each turn, +1 on every Omen. Monsters grow stronger as it rises (+8% HP per 6 Doom, +1 damage per 12). At ' + G.doomMax + ' the Throne\'s master comes for you, empowered.')}">${icon('doom', 2)}<div class="bar"><i style="width:${Math.min(100, dm * 100)}%"></i></div><span>${G.doom}/${G.doomMax}</span></div>
     <div class="tb-sig" data-tip="${esc('<b>Sigils</b><br>Slay both Lairs to unseal the Throne.')}">${icon('sigil', 2)} ${G.sigils}/2</div>
-    <div class="tb-btns"><button class="btn sm" id="b-deck">Deck (${G.deck.length})</button><button class="btn sm" id="b-rites">Rites</button><button class="btn sm ghost" id="b-menu">☰</button></div>`;
+    <div class="tb-btns"><button class="btn sm" id="b-deck">Deck ${G.deck.length}/${DECK_MAX}</button><button class="btn sm" id="b-rites">Rites</button><button class="btn sm ghost" id="b-menu">☰</button></div>`;
   $('#b-deck').onclick = deckModal; $('#b-rites').onclick = ritesModal; $('#b-menu').onclick = pauseMenu;
 }
 function renderSide() {
   if (!G || !$('#left')) return;
   renderTop();
-  const mh = maxHP();
+  const mh = maxHP(), D = dominion(), bossCut = Math.round(Math.min(DOM_BOSS_MAX, D.pts * DOM_BOSS) * 100);
+  const keeps = Object.keys(KEEPS).map(k => [k, keepCount(k)]).filter(([, n]) => n).map(([k, n]) => `<span style="color:${KEEPS[k].col}">${KEEPS[k].name}${n > 1 ? ' ×' + n : ''}</span>`).join(', ');
+  const domTip = esc(`<b>Dominion</b><br>Outpost 1 · Citadel 2 · Keep 3 · Kingsroad (longest road 5+) 2<br>Each point: +${DOM_CHIPS} Chips on every Rite and −${DOM_BOSS * 100}% HP for the Throne's master (max −${DOM_BOSS_MAX * 100}%).`);
+  const domHTML = `<div class="panel"><div class="ptitle">Dominion · ${D.pts}</div><div class="small" data-tip="${domTip}">+${D.pts * DOM_CHIPS} Chips per Rite · Throne master −${bossCut}% HP<br>Longest road ${D.lr}${D.kr ? ' · <span class="gold">Kingsroad</span> (+1 Discard)' : ' (5 for Kingsroad)'}${G.siege ? `<br>Siege Engines: ${G.siege}/${SIEGE_MAX}` : ''}${keeps ? '<br>' + keeps : ''}</div></div>`;
   $('#left').innerHTML = `
     <div class="panel"><div class="ptitle">Vitality</div>
       <div class="hpbar"><i style="width:${G.hp / mh * 100}%"></i><span>${icon('heart', 2, 'inl')} ${G.hp} / ${mh}</span></div>
       <div class="fate" data-tip="${esc('<b>Fate</b><br>Spend after a failed roll (hero invocations, event checks) to add +1 per Fate.')}">${icon('fate', 2, 'inl')} Fate: <b>${G.fate}</b></div></div>
     <div class="panel"><div class="ptitle">Resources</div><div class="resgrid">${RES_KEYS.map(k => `<div class="res" data-tip="${esc(`<b>${RES[k].name}</b><br>From ${RES[k].terrain} hexes`)}">${icon('r_' + k, 3)}<b style="color:${RES[k].col}">${G.res[k]}</b></div>`).join('')}</div></div>
-    <div class="panel"><div class="ptitle">Party (${G.heroes.length}/4)</div><div class="partylist">${party().map(h => `<div class="pmini" data-tip="${esc(heroTip(h))}">${heroImg(h, 2)}<div><div class="pm-n">${h.name}</div><div class="pm-c" style="color:${CLASSES[h.cls].col}">${CLASSES[h.cls].name}</div></div></div>`).join('')}</div></div>
-    <div class="panel"><div class="ptitle">Reliquary (${G.relics.length}/6)</div><div class="reliclist">${relicsD().map(r => relicHTML(r)).join('') || '<span class="dim">empty</span>'}</div></div>
+    ${domHTML}
+    <div class="panel"><div class="ptitle">Party (${G.heroes.length}/${slots('party')})</div><div class="partylist">${party().map(h => `<div class="pmini" data-tip="${esc(heroTip(h))}">${heroImg(h, 2)}<div><div class="pm-n">${h.name}</div><div class="pm-c" style="color:${CLASSES[h.cls].col}">${CLASSES[h.cls].name}</div></div></div>`).join('')}</div></div>
+    <div class="panel"><div class="ptitle">Reliquary (${G.relics.length}/${slots('relic')})</div><div class="reliclist">${relicsD().map(r => relicHTML(r)).join('') || '<span class="dim">empty</span>'}</div></div>
     <div class="panel"><div class="ptitle">Satchel (${G.scrolls.length}/${scrollSlots()})</div><div class="reliclist">${G.scrolls.map((id, i) => { const s = scroll(id); return `<div class="relic scrollbtn ${s.anywhere ? 'usable' : ''}" data-si="${i}" data-tip="${esc(`<b>${s.name}</b><br>${s.desc}${s.anywhere ? '<br><i>Click to use.</i>' : '<br><i>Use during a fight.</i>'}`)}">${relicIcon(s.ic, s.col, 3)}</div>`; }).join('') || '<span class="dim">empty</span>'}</div></div>`;
   $$('#left .scrollbtn.usable').forEach(el => el.onclick = () => { const i = +el.dataset.si, s = scroll(G.scrolls[i]); G.scrolls.splice(i, 1); s.use([]); toast(s.name + ' used.'); sfx('invoke'); renderSide(); });
 }
@@ -746,19 +930,25 @@ function renderRight() {
   }
   const B = [];
   if (G.phase === 'act') {
-    B.push(actionBtn(buildMode === 'outpost' ? '✕ Cancel building' : '⌂ Build Outpost', buildMode === 'outpost' ? null : costOf('outpost'), () => { buildMode = buildMode === 'outpost' ? null : 'outpost'; if (buildMode && !buildableVerts().length) { toast('No valid corner: all touching hexes must be explored, and no building may stand next door.'); buildMode = null; } renderRight(); }, { id: 'outpost', tip: 'Place on a corner where every touching hex is explored, not adjacent to another building. Yields 2 per touching hex when its number is rolled.' }));
-    B.push(actionBtn(buildMode === 'citadel' ? '✕ Cancel' : '♜ Raise Citadel', buildMode === 'citadel' ? null : costOf('citadel'), () => { buildMode = buildMode === 'citadel' ? null : 'citadel'; renderRight(); }, { id: 'citadel', tip: 'Upgrade an outpost: yields 4 instead of 2.' }));
+    const mode = (key, label, cost, check, failMsg, tip) => B.push(actionBtn(buildMode === key ? '✕ Cancel' : label, buildMode === key ? null : cost, () => { buildMode = buildMode === key ? null : key; if (buildMode && !check()) { toast(failMsg); buildMode = null; } renderRight(); }, { id: key, tip }));
+    mode('road', G.freeRoads > 0 ? `═ Build Road (${G.freeRoads} free)` : '═ Build Road', costOf('road'), () => buildableRoads().length, 'No edge to build on: roads must join your roads or buildings and touch explored land.', 'Roads join your buildings. New Outposts must sit on a corner your roads reach. A road of 5+ is a Kingsroad: +2 Dominion, +1 Discard.');
+    mode('outpost', '⌂ Build Outpost', costOf('outpost'), () => buildableVerts().length, 'No valid corner: it must be on your road, touch explored land, and have no building next door.', 'Place on a corner your roads reach. Yields 2 per touching hex when its number is rolled. +1 Dominion.');
+    mode('citadel', '♜ Raise Citadel', costOf('citadel'), () => G.map.verts.some(v => v.b === 1), 'You have no Outpost to upgrade.', 'Upgrade an Outpost: yields 4 instead of 2. +2 Dominion.');
+    mode('keep', '♛ Raise Keep', costOf('keep'), () => G.map.verts.some(v => v.b === 2), 'You have no Citadel to upgrade.', 'Upgrade a Citadel into a Watchtower, Chapel, Armory or Treasury for the rest of this Act. +3 Dominion.');
+    B.push(actionBtn(`⚙ Siege Engine (${G.siege || 0}/${SIEGE_MAX})`, costOf('siege'), () => { pay(costOf('siege')); G.siege = (G.siege || 0) + 1; sfx('build'); log(`A siege engine is dragged toward the Throne (${G.siege}/${SIEGE_MAX}).`); renderAll(); saveRun(); }, { id: 'siege', disabled: (G.siege || 0) >= SIEGE_MAX, tip: `When you fight the Throne's master, each engine deals ${SIEGE_DMG * 100}% of its max HP before the fight begins.` }));
     B.push(actionBtn('✚ Tend Wounds (+15 HP)', costOf('tend'), () => { pay(costOf('tend')); log('Poultice and prayer. ' + healHP(15)); renderAll(); }, { id: 'tend', disabled: G.hp >= maxHP() }));
     B.push(actionBtn('⚒ Forge a Card', costOf('forge'), async () => { pay(costOf('forge')); renderSide(); const n = META.up.eye ? 4 : 3; await chooseCard([...Array(n)].map(() => randCard(G.act, 0.1)), 'Forge a card'); renderAll(); }, { id: 'forge' }));
     B.push(actionBtn('☥ Summon a Hero', costOf('summon'), async () => { pay(costOf('summon')); renderSide(); const v = await chooseHero(2); if (v === -1 || v === undefined) { gain(costOf('summon')); } renderAll(); }, { id: 'summon' }));
-    B.push(actionBtn('✎ Study a Tome', costOf('tome'), async () => { if (await tomeModal()) pay(costOf('tome')); renderAll(); }, { id: 'tome' }));
+    B.push(actionBtn('✎ Study a Tome', costOf('tome'), async () => { const c = costOf('tome'); if (await tomeModal()) pay(c); renderAll(); }, { id: 'tome', tip: `Level up a Rite (max Lv ${riteCap()} this Act). Each study costs 1 more Gold.` }));
     B.push(actionBtn('✖ Purge a Card', costOf('purge'), async () => { if (await purgeModal()) pay(costOf('purge')); renderAll(); }, { id: 'purge' }));
     B.push(actionBtn('✧ Buy Fate', costOf('fate'), () => { pay(costOf('fate')); addFate(1); sfx('coin'); renderAll(); }, { id: 'fate' }));
     B.push(actionBtn('⇄ Black Market Trade', null, async () => { await tradeModal(); renderAll(); }, { id: 'trade', tip: 'Trade 4:1 (better with docks).' }));
     B.push(actionBtn('☾ Rest (+25% HP, ends turn)', null, () => rest(), { id: 'rest' }));
   }
-  const all = acts.concat(B);
-  $('#right').innerHTML = info + (acts.length ? `<div class="panel actions">${acts.map(a => a.html).join('')}</div>` : '') + (B.length ? `<div class="panel actions"><div class="ptitle">Build & Craft</div>${B.map(a => a.html).join('')}</div>` : '');
+  const X = [];
+  if (G.phase === 'act') Object.keys(SLOTS).forEach(k => { const full = slots(k) >= SLOTS[k].max; X.push(actionBtn(`${SLOTS[k].name} ${slots(k)} → ${full ? 'max' : slots(k) + 1}`, full ? null : slotCost(k), () => { buySlot(k); renderAll(); saveRun(); }, { id: 'slot_' + k, disabled: full, tip: `${SLOTS[k].desc} (max ${SLOTS[k].max}). Each expansion costs more.` })); });
+  const all = acts.concat(B, X);
+  $('#right').innerHTML = info + (acts.length ? `<div class="panel actions">${acts.map(a => a.html).join('')}</div>` : '') + (B.length ? `<div class="panel actions"><div class="ptitle">Build & Craft</div>${B.map(a => a.html).join('')}</div>` : '') + (X.length ? `<div class="panel actions"><div class="ptitle">Expand</div>${X.map(a => a.html).join('')}</div>` : '');
   all.forEach(a => { const el = $(`#right [data-act="${a.id}"]`); if (el) el.onclick = () => { if (BUSY) return; sfx('click'); a.fn(); }; });
 }
 function renderLog() { const l = $('#log'); if (!l || !G) return; l.innerHTML = G.log.slice(0, 14).map((s, i) => `<div style="opacity:${1 - i * 0.055}">${s}</div>`).join(''); }
@@ -778,7 +968,7 @@ async function deckModal() {
   await showModal({ title: `Your Deck (${d.length})`, html: `<p class="small">${SUIT_KEYS.map(s => `<span style="color:${SUITS[s].col}">${SUITS[s].name}: ${counts[s]}</span>`).join(' · ')}</p><div class="row wrap cardrow small">${d.map(c => cardHTML(c)).join('')}</div>`, wide: true, buttons: [{ t: 'Close' }] });
 }
 async function ritesModal() {
-  await showModal({ title: 'The Rites', html: `<table class="rites">${RITE_ORDER.map(k => { const R = RITES[k], lv = G.riteLv[k] || 1; return `<tr><td class="rn">${R.name}</td><td class="lv">Lv ${lv}</td><td><span class="chips">${R.chips + R.lc * (lv - 1)}</span> × <span class="mult">${R.mult + R.lm * (lv - 1)}</span></td><td class="dim">${R.desc}</td></tr>`; }).join('')}</table><p class="small dim">Damage = Chips × Mult. Only the cards that form the Rite add their rank to Chips. Play up to 5 cards.</p>`, wide: true, buttons: [{ t: 'Close' }] });
+  await showModal({ title: 'The Rites', html: `<p class="small dim">Rites can be studied up to Lv ${G ? riteCap() : 3} in this Act.</p><table class="rites">${RITE_ORDER.map(k => { const R = RITES[k], lv = G.riteLv[k] || 1; return `<tr><td class="rn">${R.name}${R.trick ? ' <span class="tag">TRICK</span>' : ''}</td><td class="lv">Lv ${lv}</td><td><span class="chips">${R.chips + R.lc * (lv - 1)}</span> × <span class="mult">${R.mult + R.lm * (lv - 1)}</span></td><td class="dim">${R.desc}</td></tr>`; }).join('')}</table><p class="small dim">Damage = Chips × Mult. Only the cards that form the Rite add their rank to Chips. Play up to 5 cards. When cards fit several Rites, the strongest one counts.</p>`, wide: true, buttons: [{ t: 'Close' }] });
 }
 async function pauseMenu() {
   const v = await showModal({ title: 'Paused', html: settingsHTML(), buttons: [{ t: 'Resume', v: 0 }, { t: 'How to play', v: 2, cls: 'ghost' }, { t: 'Save & quit to title', v: 1, cls: 'ghost' }, { t: 'Abandon run', v: 3, cls: 'danger' }], onOpen: bindSettings });
@@ -800,8 +990,11 @@ async function howTo() {
   await showModal({ title: 'How to Play', wide: true, html: `<div class="howto">
     <p><b>Goal.</b> Survive three Acts. In each, break the two Lair seals and slay the master of the Throne at the centre of the map.</p>
     <p><b>Each turn</b> the harvest dice are rolled. Every explored hex showing that number pays <b>2</b> of its resource to each Outpost on its corners (<b>4</b> for a Citadel). A <b>7</b> is an <span class="omen">Omen</span>: if you hold more than 9 resources you lose half, and the Blight smothers your best hex.</p>
-    <p>Then spend resources freely — build Outposts on corners, raise Citadels, forge cards, summon heroes, study Rites — and finally <b>delve</b> one glowing hex next to explored land. Delving ends the turn. Doom rises every turn; at the limit the Throne's master comes for you.</p>
+    <p>Then spend resources freely and finally <b>delve</b> one glowing hex next to explored land. Delving ends the turn. Doom rises every turn; at the limit the Throne's master comes for you.</p>
+    <p><b>Building.</b> Lay <b>Roads</b> along hex edges (2 free each Act). New <b>Outposts</b> must sit on a corner your roads reach, with no building on a neighbouring corner. Upgrade Outposts to <b>Citadels</b> and Citadels to <b>Keeps</b> (Watchtower, Chapel, Armory or Treasury). Buildings earn <b>Dominion</b>: each point adds +${DOM_CHIPS} Chips to every Rite and weakens the Throne's master. A road of 5+ is a <b>Kingsroad</b>. <b>Siege Engines</b> batter the master before the final fight.</p>
+    <p><b>Expand</b> your Reliquary, Satchel and Barracks to carry more relics, scrolls and heroes. Your deck holds at most ${DECK_MAX} cards. Rites can be studied to Lv 3 in Act 1, Lv 5 in Act 2 and Lv 7 in Act 3.</p>
     <p><b>Combat.</b> Select up to 5 cards and perform a <b>Rite</b> (pairs, threes, Processions of 5 ranks in a row, Bloodlines of 5 in one suit…). Damage = <span class="chips">Chips</span> × <span class="mult">Mult</span>. Only the cards that form the Rite score their rank. Heroes and relics add Chips, Mult and ×Mult. After each Rite the monster strikes back. Discard to dig for better hands.</p>
+    <p><b>Trick Rites</b>: <i>Black Thirteen</i> (3+ cards totalling exactly 13), <i>Four Humours</i> (all four suits), <i>Beggar's Rite</i> (five cards of rank 3 or lower). <b>Special cards</b>: Spectral (every suit), Echoing (scores twice), Effigy (Mult while held), Venom, Fated, Mimic (any rank), Tombstone (always +40 Chips). <b>Arcana</b> are trick cards you play alongside a Rite for an effect.</p>
     <p><b>Heroes</b> give passives, and once per fight can be <b>invoked</b>: roll 2d6 and meet their number. If you fall short, spend Fate to make up the difference.</p>
     <p><b>Lairs</b> demand certain heroes in your party; without them the Lair is far stronger.</p>
     <p><b>Between runs</b>, Echoes buy permanent unlocks in the Ossuary. Win to unlock deeper Descents.</p></div>`, buttons: [{ t: 'Got it' }] });
@@ -823,7 +1016,7 @@ function renderTitle() {
       <button class="btn ghost" id="t-set">Settings</button>
     </div>
     <div class="stats dim">Runs ${META.runs} · Victories ${META.wins} · Deepest Descent unlocked ${META.descentMax}</div></div>`;
-  if ($('#t-cont')) $('#t-cont').onclick = () => { audio(); startMusic(); G = saved; GEO = null; mapBase = null; enterMap(); if (G.phase === 'harvest' || G.phase === 'enc') { G.phase = 'act'; renderAll(); } };
+  if ($('#t-cont')) $('#t-cont').onclick = () => { audio(); startMusic(); G = saved; migrateRun(); GEO = null; mapBase = null; enterMap(); if (G.phase === 'harvest' || G.phase === 'enc') { G.phase = 'act'; renderAll(); } };
   $('#t-new').onclick = () => { audio(); startMusic(); if (saved && !saved.over) { showModal({ title: 'Begin anew?', text: 'Your current run will be lost.', buttons: [{ t: 'Begin anew', v: 1, cls: 'danger' }, { t: 'Cancel', v: 0 }] }).then(v => { if (v) pickScreen(); }); } else pickScreen(); };
   $('#t-oss').onclick = () => { audio(); ossuary(); };
   $('#t-how').onclick = howTo;
@@ -851,11 +1044,13 @@ function newRun(heroId, descent) {
   G = { v: 1, act: 1, turn: 0, doom: 0, descent, baseHp: 50 + (META.up.hp1 ? 8 : 0) + (META.up.hp2 ? 8 : 0), hp: 0,
     res: { bone: 1, ichor: 1, iron: 1, gold: 1, soul: 1 }, fate: 1 + (META.up.fate1 ? 1 : 0), deck: [], cid: 1, heroes: [heroId], relics: [], scrolls: [], riteLv: {}, ledger: 0,
     stats: { kills: 0, lairs: 0, bosses: 0, events: 0, turns: 0 }, echoes: 0, log: [], phase: 'start', sigils: 0, seen: [] };
+  initSlots();
   if (META.up.hoard) RES_KEYS.forEach(k => G.res[k]++);
   for (const s of SUIT_KEYS) for (let r = 1; r <= 6; r++) G.deck.push(mkCard(s, r));
   if (descent >= 7) addCurse(2);
   if (META.up.relic) G.relics.push(pick(RELICS.filter(isUnlocked)).id);
   if (META.up.scroll) G.scrolls.push(pick(SCROLLS).id);
+  G.studied = 0; G.freeRoads = 0; G.siege = 0;
   if (META.up.tome) levelRite(pick(['pair', 'two', 'three', 'straight', 'flush']));
   G.hp = maxHP();
   newAct(); GEO = null; mapBase = null;
