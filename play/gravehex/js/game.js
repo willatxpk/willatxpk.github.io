@@ -313,7 +313,8 @@ function mapFrame() {
   mapAnim = requestAnimationFrame(mapFrame);
 }
 function mapPos(ev) { const c = $('#mapc'), r = c.getBoundingClientRect(); return [(ev.clientX - r.left) / r.width * MW, (ev.clientY - r.top) / r.height * MH]; }
-function nearestVert(px, py, list) { let best = -1, bd = 7; list.forEach(i => { const v = G.map.verts[i]; const d = Math.hypot(v.x - px, v.y - py); if (d < bd) { bd = d; best = i; } }); return best; }
+const COARSE = matchMedia('(pointer: coarse)').matches;
+function nearestVert(px, py, list) { let best = -1, bd = COARSE ? 11 : 7; list.forEach(i => { const v = G.map.verts[i]; const d = Math.hypot(v.x - px, v.y - py); if (d < bd) { bd = d; best = i; } }); return best; }
 function vertList() { if (G.phase === 'start') return startVerts(); if (buildMode === 'outpost') return buildableVerts(); if (buildMode === 'citadel') return G.map.verts.map((v, i) => i).filter(i => G.map.verts[i].b === 1); return null; }
 function onMapMove(ev) {
   if (!G || !G.map || !GEO) return; const [px, py] = mapPos(ev);
